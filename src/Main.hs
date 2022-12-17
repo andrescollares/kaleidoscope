@@ -1,8 +1,7 @@
 module Main where
 
-import ParserH
-
 import Control.Monad.Trans
+import ParserH
 import System.Console.Haskeline
 
 process :: String -> IO ()
@@ -15,8 +14,8 @@ process line = do
 main :: IO ()
 main = runInputT defaultSettings loop
   where
-  loop = do
-    minput <- getInputLine "ready> "
-    case minput of
-      Nothing -> outputStrLn "Goodbye."
-      Just input -> (liftIO $ process input) >> loop
+    loop = do
+      minput <- getInputLine "ready> "
+      case minput of
+        Nothing -> outputStrLn "Goodbye."
+        Just input -> liftIO (process input) >> loop

@@ -1,20 +1,22 @@
 module ParserH where
 
-import Text.Parsec
-import Text.Parsec.String (Parser)
-
-import qualified Text.Parsec.Expr as Ex
-import qualified Text.Parsec.Token as Tok
-
 import Lexer
 import Syntax
+import Text.Parsec
+import Text.Parsec.Expr qualified as Ex
+import Text.Parsec.String (Parser)
+import Text.Parsec.Token qualified as Tok
 
 binary s f assoc = Ex.Infix (reservedOp s >> return (BinOp f)) assoc
 
-table = [[binary "*" Times Ex.AssocLeft,
-          binary "/" Divide Ex.AssocLeft]
-        ,[binary "+" Plus Ex.AssocLeft,
-          binary "-" Minus Ex.AssocLeft]]
+table =
+  [ [ binary "*" Times Ex.AssocLeft,
+      binary "/" Divide Ex.AssocLeft
+    ],
+    [ binary "+" Plus Ex.AssocLeft,
+      binary "-" Minus Ex.AssocLeft
+    ]
+  ]
 
 int :: Parser Expr
 int = do
@@ -56,16 +58,18 @@ call = do
   return $ Call name args
 
 factor :: Parser Expr
-factor = try floating
-      <|> try int
-      <|> try extern
-      <|> try function
-      <|> try call
-      <|> variable
-      <|> parens expr
+factor =
+  try floating
+    <|> try int
+    <|> try extern
+    <|> try function
+    <|> try call
+    <|> variable
+    <|> parens expr
 
 defn :: Parser Expr
-defn = try extern
+defn =
+  try extern
     <|> try function
     <|> expr
 
@@ -78,9 +82,9 @@ contents p = do
 
 toplevel :: Parser [Expr]
 toplevel = many $ do
-    def <- defn
-    reservedOp ";"
-    return def
+  def <- defn
+  reservedOp ";"
+  return def
 
 parseExpr :: String -> Either ParseError Expr
 parseExpr s = parse (contents expr) "<stdin>" s
