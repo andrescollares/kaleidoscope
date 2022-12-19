@@ -6,14 +6,6 @@ https://www.stephendiehl.com/llvm/
 install GHCup: `curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh`
 
 
-## 1.1. (Optional) run sample program
-
-```
-ghc test_run/helloworld.hs
-
-./helloworld
-```
-
 # 2. Install LLVM
 
 `arch -arm64 brew install llvm@11`
