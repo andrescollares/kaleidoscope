@@ -1,0 +1,89 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           kaleidoscope
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/kaleidoscope#readme>
+homepage:       https://github.com/githubuser/kaleidoscope#readme
+bug-reports:    https://github.com/githubuser/kaleidoscope/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2022 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/kaleidoscope
+
+library
+  exposed-modules:
+      Codegen
+      Lexer
+      Lib
+      ParserH
+      Syntax
+  other-modules:
+      Paths_kaleidoscope
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , bytestring >=0.10.12.0
+    , containers >=0.6.5.1
+    , haskeline >=0.8.2
+    , llvm-hs >=9.0.1
+    , llvm-hs-pure >=9.0.0
+    , mtl >=2.2.2
+    , parsec >=3.1.14.0
+    , utf8-string >=1.0.2
+  default-language: Haskell2010
+
+executable kaleidoscope-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_kaleidoscope
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring >=0.10.12.0
+    , containers >=0.6.5.1
+    , haskeline >=0.8.2
+    , kaleidoscope
+    , llvm-hs >=9.0.1
+    , llvm-hs-pure >=9.0.0
+    , mtl >=2.2.2
+    , parsec >=3.1.14.0
+    , utf8-string >=1.0.2
+  default-language: Haskell2010
+
+test-suite kaleidoscope-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_kaleidoscope
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring >=0.10.12.0
+    , containers >=0.6.5.1
+    , haskeline >=0.8.2
+    , kaleidoscope
+    , llvm-hs >=9.0.1
+    , llvm-hs-pure >=9.0.0
+    , mtl >=2.2.2
+    , parsec >=3.1.14.0
+    , utf8-string >=1.0.2
+  default-language: Haskell2010
