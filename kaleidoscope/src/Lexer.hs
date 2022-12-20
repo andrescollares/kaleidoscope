@@ -2,7 +2,7 @@ module Lexer where
 
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
-import Text.Parsec.Token qualified as Tok
+import qualified Text.Parsec.Token as Tok
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style

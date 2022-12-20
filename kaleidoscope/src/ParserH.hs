@@ -3,9 +3,9 @@ module ParserH where
 import Lexer
 import Syntax
 import Text.Parsec
-import Text.Parsec.Expr qualified as Ex
+import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
-import Text.Parsec.Token qualified as Tok
+import qualified Text.Parsec.Token as Tok
 
 binary s f assoc = Ex.Infix (reservedOp s >> return (BinOp f)) assoc
 

@@ -1,29 +1,39 @@
-FROM amd64/haskell:9.2.5-buster
-WORKDIR /src
-COPY . .
+FROM haskell:8.10.7-buster
 
+# Install tools
+RUN apt-get -y update; \
+    apt-get install -y bash vim nano
 
-# instalar llvm
+# Install LLVM
+## Install dependencies
+RUN apt-get -qq update; \
+    apt-get install -qqy --no-install-recommends \
+        gnupg2 wget ca-certificates apt-transport-https \
+        autoconf automake cmake dpkg-dev file make patch libc6-dev
 
-RUN apt-get update
+## Set repository key
+RUN wget -nv -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 
-RUN DEBIAN_FRONTEND=noninteractive \
-  apt-get upgrade \
-  -o Dpkg::Options::=--force-confold \
-  -o Dpkg::Options::=--force-confdef \
-  -y --allow-downgrades --allow-remove-essential --allow-change-held-packages
+## Install
+RUN echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-12 main" \
+        > /etc/apt/sources.list.d/llvm.list; \
+    apt-get -qq update && \
+    apt-get install -qqy -t llvm-toolchain-buster-12 clang-12 clang-tidy-12 clang-format-12 lld-12 && \
+    for f in /usr/lib/llvm-12/bin/*; do ln -sf "$f" /usr/bin; done && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get install llvm-13-dev \
-  -o Dpkg::Options::=--force-confold \
-  -o Dpkg::Options::=--force-confdef \
-  -y --allow-downgrades --allow-remove-essential --allow-change-held-packages
+RUN cabal update
 
-# correr hello world
+WORKDIR /kaleidoscope
 
-# esto da "exec ./test_run/helloworld: exec format error"
-# pero si se corre con docker run -it kaleidoscope-amd64 a mano da bien
+# Add just the .cabal file to capture dependencies
+COPY /kaleidoscope/cabal.project /kaleidoscope/kaleidoscope-fing.cabal .
+# Docker will cache this command as a layer, freeing us up to
+# modify source code without re-installing dependencies
+# (unless the .cabal file changes!)
+RUN cabal build --only-dependencies -j8
 
-# CMD ["ghc", "test_run/helloworld.hs"]
-# CMD ["./test_run/helloworld"]
+COPY /kaleidoscope /kaleidoscope
+RUN cabal install
 
-EXPOSE 3000
+CMD ["bash"]
