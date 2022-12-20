@@ -1,7 +1,8 @@
 module Main where
 
-import Control.Monad.Trans
 import ParserH
+
+import Control.Monad.Trans
 import System.Console.Haskeline
 
 process :: String -> IO ()
