@@ -21,4 +21,10 @@ Andrés Collares & Agustín Gazzano
 
 ## Docker
 
-> TODO: Should we create a docker image for an easier management of the working environment?
+```
+docker build -t kaleidoscope .
+docker run -it kaleidoscope
+cabal build
+cd /kaleidoscope/dist-newstyle/build/aarch64-linux/ghc-8.10.7/kaleidoscope-fing-0.1.0.0/x/kaleidoscope-fing/build/kaleidoscope-fing
+./kaleidoscope-fing
+```

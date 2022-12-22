@@ -46,7 +46,7 @@ common common-options
 executable kaleidoscope-fing
     import: common-options
     main-is: Main.hs
-    other-modules: Codegen, Lexer, Lib, ParserH, Syntax
+    other-modules: Codegen, Lexer, Lib, ParserH, Syntax, Emit, StringUtils
     hs-source-dirs: src
     build-depends:
         , bytestring  >=0.10
