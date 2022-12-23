@@ -69,8 +69,8 @@ binops = Map.fromList [
   ]
 
 cgen :: S.Expr -> Codegen AST.Operand
--- cgen (S.UnaryOp op a) = do
---   cgen $ S.Call ("unary" ++ op) [a]
+cgen (S.UnaryOp op a) = do
+  cgen $ S.Call ("unary" ++ op) [a]
 cgen (S.BinOp "=" (S.Var var) val) = do
   a <- getvar var
   cval <- cgen val

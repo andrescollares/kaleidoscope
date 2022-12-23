@@ -7,14 +7,14 @@ import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
 
-binary s f assoc = Ex.Infix (reservedOp s >> return (BinOp f)) assoc
+binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
 
 table =
-  [ [ binary "*" Times Ex.AssocLeft,
-      binary "/" Divide Ex.AssocLeft
+  [ [ binary "*" Ex.AssocLeft,
+      binary "/" Ex.AssocLeft
     ],
-    [ binary "+" Plus Ex.AssocLeft,
-      binary "-" Minus Ex.AssocLeft
+    [ binary "+" Ex.AssocLeft,
+      binary "-" Ex.AssocLeft
     ]
   ]
 

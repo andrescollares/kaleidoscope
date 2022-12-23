@@ -4,6 +4,9 @@
 
 module Codegen where
 
+import Data.Word
+import Data.String
+import Data.List
 import Data.Function
 import qualified Data.Map as Map
 import qualified Data.ByteString as B
@@ -12,6 +15,7 @@ import qualified Data.ByteString.Short as B (ShortByteString, toShort, fromShort
 import Data.Word
 
 import Control.Monad.State
+import Control.Applicative
 
 import LLVM.AST
 import LLVM.AST.Global
@@ -147,7 +151,7 @@ fresh = do
 instr :: Instruction -> Codegen (Operand)
 instr ins = do
   n <- fresh
-  let ref = UnName n
+  let ref = (UnName n)
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = (ref := ins) : i } )
