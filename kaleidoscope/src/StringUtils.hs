@@ -1,17 +1,18 @@
 module StringUtils where
 
+import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Word
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Short as B (ShortByteString, toShort, fromShort)
+
+
+stringToShortByteString :: String -> SBS.ShortByteString
+stringToShortByteString str = SBS.pack (map fromIntegral (map fromEnum str))
+
+shortByteStringToString :: SBS.ShortByteString -> String
+shortByteStringToString sbs = map toEnum (map fromIntegral (SBS.unpack sbs))
 
 charToWord8 :: Char -> Word8
-charToWord8 = toEnum . fromEnum
+charToWord8 c = fromIntegral (fromEnum c)
 
-stringToShortByteString :: [Char] -> B.ShortByteString
-stringToShortByteString s = B.toShort (B.pack $ map charToWord8 (show s))
-
-shortByteStringToString :: B.ShortByteString -> [Char]
-shortByteStringToString s = show $ B.unpack $ B.fromShort s
-
-byteStringToString :: B.ByteString -> [Char]
-byteStringToString s = show $ B.unpack s
+byteStringToString :: BS.ByteString -> String
+byteStringToString bs = map (toEnum . fromIntegral) (BS.unpack bs)

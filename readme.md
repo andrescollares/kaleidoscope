@@ -1,7 +1,5 @@
 # LLVM+Haskell Kaleidoscope project
 
-Based on 
-
 Andrés Collares & Agustín Gazzano
 
 ## Requirements for working on the project
@@ -22,9 +20,18 @@ Andrés Collares & Agustín Gazzano
 ## Docker
 
 ```
+docker compose build
+docker compose up -d
+docker compose run project bash
+cabal repl
+```
+```
 docker build -t kaleidoscope .
-docker run -it kaleidoscope
+docker run -it kaleidoscope 
 cabal build
 cd /kaleidoscope/dist-newstyle/build/aarch64-linux/ghc-8.10.7/kaleidoscope-fing-0.1.0.0/x/kaleidoscope-fing/build/kaleidoscope-fing
 ./kaleidoscope-fing
+
+o correr en repl
+cabal repl
 ```
