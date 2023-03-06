@@ -10,9 +10,8 @@ import Data.List
 import Data.Function
 import qualified Data.Map as Map
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Short as B (ShortByteString, toShort, fromShort)
-
-import Data.Word
+import qualified Data.ByteString.Short as B (ShortByteString)
+import qualified StringUtils
 
 import Control.Monad.State
 import Control.Applicative
@@ -26,7 +25,6 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
-import Data.List (sortBy)
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -77,16 +75,19 @@ double = FloatingPointType DoubleFP
 -- Names
 -------------------------------------------------------------------------------
 
-charToWord8 :: Char -> Word8
-charToWord8 = toEnum . fromEnum
-
 type Names = Map.Map B.ShortByteString Int
+
+-- uniqueName :: B.ShortByteString -> Names -> (B.ShortByteString, Names)
+-- uniqueName nm ns =
+--   case Map.lookup nm ns of
+--     Nothing -> (nm,  Map.insert nm 1 ns)
+--     Just ix -> (B.toShort $ B.append (B.fromShort nm) (B.pack $ map charToWord8 (show ix)), Map.insert nm (ix+1) ns)
 
 uniqueName :: B.ShortByteString -> Names -> (B.ShortByteString, Names)
 uniqueName nm ns =
   case Map.lookup nm ns of
     Nothing -> (nm,  Map.insert nm 1 ns)
-    Just ix -> (B.toShort $ B.append (B.fromShort nm) (B.pack $ map charToWord8 (show ix)), Map.insert nm (ix+1) ns)
+    Just ix -> (StringUtils.stringToShortByteString $ StringUtils.shortByteStringToString nm ++ show ix, Map.insert nm (ix+1) ns)
 
 -------------------------------------------------------------------------------
 -- Codegen State
