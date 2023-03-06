@@ -17,21 +17,11 @@ Andrés Collares & Agustín Gazzano
 
 > TODO: Check if building llvm-hs-15 from source is better than using stack or cabal, it could also open the possibility to make changes and bugfixes using a fork.
 
-## Docker
+## Docker Compose
 
 ```
 docker compose build
 docker compose up -d
 docker compose run project bash
-cabal repl
-```
-```
-docker build -t kaleidoscope .
-docker run -it kaleidoscope 
-cabal build
-cd /kaleidoscope/dist-newstyle/build/aarch64-linux/ghc-8.10.7/kaleidoscope-fing-0.1.0.0/x/kaleidoscope-fing/build/kaleidoscope-fing
-./kaleidoscope-fing
-
-o correr en repl
 cabal repl
 ```

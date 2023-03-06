@@ -1,9 +1,8 @@
 module Main where
 
-import ParserH
+import Parser
 import Codegen
 import Emit
-import StringUtils
 
 import Control.Monad.Trans
 
@@ -14,7 +13,7 @@ import System.Console.Haskeline
 import qualified LLVM.AST as AST
 
 initModule :: AST.Module
-initModule = emptyModule $ stringToShortByteString "my cool jit"
+initModule = emptyModule "my cool jit"
 
 process :: AST.Module -> String -> IO (Maybe AST.Module)
 process modo source = do
@@ -47,28 +46,3 @@ main = do
   case args of
     []      -> repl
     [fname] -> processFile fname >> return ()
-
-
-
--- module Main where
-
--- import ParserH
-
--- import Control.Monad.Trans
--- import System.Console.Haskeline
-
--- process :: String -> IO ()
--- process line = do
---   let res = parseToplevel line
---   case res of
---     Left err -> print err
---     Right ex -> mapM_ print ex
-
--- main :: IO ()
--- main = runInputT defaultSettings loop
---   where
---     loop = do
---       minput <- getInputLine "ready> "
---       case minput of
---         Nothing -> outputStrLn "Goodbye."
---         Just input -> liftIO (process input) >> loop

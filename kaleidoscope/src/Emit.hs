@@ -17,31 +17,34 @@ import Control.Applicative
 import qualified Data.Map as Map
 
 import Codegen
+import JIT
 import qualified Syntax as S
-import qualified StringUtils as StringUtils
 
-import qualified Data.ByteString.Short as B (ShortByteString, unpack)
+one = cons $ C.Float (F.Double 1.0)
+zero = cons $ C.Float (F.Double 0.0)
+false = zero
+true = one
 
-toSig :: [B.ShortByteString] -> [(AST.Type, AST.Name)]
+toSig :: [String] -> [(AST.Type, AST.Name)]
 toSig = map (\x -> (double, AST.Name x))
 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
-  define double (StringUtils.stringToShortByteString name) fnargs bls
+  define double name fnargs bls
   where
-    fnargs = toSig (map StringUtils.stringToShortByteString args)
+    fnargs = toSig args
     bls = createBlocks $ execCodegen $ do
       entry <- addBlock entryBlockName
       setBlock entry
       forM args $ \a -> do
         var <- alloca double
-        store var (local (AST.Name $ StringUtils.stringToShortByteString a))
+        store var (local (AST.Name a))
         assign a var
       cgen body >>= ret
 
 codegenTop (S.Extern name args) = do
-  external double (StringUtils.stringToShortByteString name) fnargs
-  where fnargs = toSig $ map StringUtils.stringToShortByteString args
+  external double name fnargs
+  where fnargs = toSig args
 
 codegenTop exp = do
   define double "main" [] blks
@@ -69,14 +72,7 @@ binops = Map.fromList [
   ]
 
 cgen :: S.Expr -> Codegen AST.Operand
-cgen (S.UnaryOp op a) = do
-  cgen $ S.Call ("unary" ++ op) [a]
-cgen (S.BinOp "=" (S.Var var) val) = do
-  a <- getvar var
-  cval <- cgen val
-  store a cval
-  return cval
-cgen (S.BinOp op a b) = do
+cgen (S.BinaryOp op a b) = do
   case Map.lookup op binops of
     Just f  -> do
       ca <- cgen a
@@ -87,22 +83,78 @@ cgen (S.Var x) = getvar x >>= load
 cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args
-  call (externf (AST.Name $ StringUtils.stringToShortByteString fn)) largs
+  call (externf (AST.Name fn)) largs
+cgen (S.If cond tr fl) = do
+  ifthen <- addBlock "if.then"
+  ifelse <- addBlock "if.else"
+  ifexit <- addBlock "if.exit"
+
+  -- %entry
+  ------------------
+  cond <- cgen cond
+  test <- fcmp FP.ONE false cond
+  cbr test ifthen ifelse -- Branch based on the condition
+
+  -- if.then
+  ------------------
+  setBlock ifthen
+  trval <- cgen tr       -- Generate code for the true branch
+  br ifexit              -- Branch to the merge block
+  ifthen <- getBlock
+
+  -- if.else
+  ------------------
+  setBlock ifelse
+  flval <- cgen fl       -- Generate code for the false branch
+  br ifexit              -- Branch to the merge block
+  ifelse <- getBlock
+
+  -- if.exit
+  ------------------
+  setBlock ifexit
+  phi double [(trval, ifthen), (flval, ifelse)]
+
+cgen (S.For ivar start cond step body) = do
+  forloop <- addBlock "for.loop"
+  forexit <- addBlock "for.exit"
+
+  -- %entry
+  ------------------
+  i <- alloca double
+  istart <- cgen start           -- Generate loop variable initial value
+  stepval <- cgen step           -- Generate loop variable step
+
+  store i istart                 -- Store the loop variable initial value
+  assign ivar i                  -- Assign loop variable to the variable name
+  br forloop                     -- Branch to the loop body block
+
+  -- for.loop
+  ------------------
+  setBlock forloop
+  cgen body                      -- Generate the loop body
+  ival <- load i                 -- Load the current loop iteration
+  inext <- fadd ival stepval     -- Increment loop variable
+  store i inext
+
+  cond <- cgen cond              -- Generate the loop condition
+  test <- fcmp FP.ONE false cond -- Test if the loop condition is True ( 1.0 )
+  cbr test forloop forexit       -- Generate the loop condition
+
+  -- for.exit
+  ------------------
+  setBlock forexit
+  return zero
 
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
 
-liftError :: ExceptT String IO a -> IO a
-liftError = runExceptT >=> either fail return
-
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
-codegen mod fns = withContext $ \context ->
-  -- liftError $ withModuleFromAST context newast $ \m -> do
-  withModuleFromAST context newast $ \m -> do
-    llstr <- moduleLLVMAssembly m
-    putStrLn $ StringUtils.byteStringToString llstr
-    return newast
+codegen mod fns = do
+  res <- runJIT oldast
+  case res  of
+    Right newast -> return newast
+    Left err     -> putStrLn err >> return oldast
   where
     modn    = mapM codegenTop fns
-    newast  = runLLVM mod modn
+    oldast  = runLLVM mod modn

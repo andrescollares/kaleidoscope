@@ -6,4 +6,9 @@ source-repository-package
         llvm-hs
     tag: 423220bffac4990d019fc088c46c5f25310d5a33
 
+source-repository-package
+    type: git
+    location: https://github.com/llvm-hs/llvm-hs-pretty/
+    tag: 655ff4d47b3a584b4c9a5863f6121b954825920c
+
 packages: ./kaleidoscope-fing.cabal
