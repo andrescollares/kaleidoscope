@@ -49,6 +49,17 @@ main = do
     [fname] -> processFile fname >> return ()
 
 
+-- Imprimir el AST (chapter 2)
+printAST :: String -> IO ()
+printAST line = do
+  let res = parseToplevel line
+  case res of
+    Left err -> print err
+    Right ex -> mapM_ print ex
+
+
+
+
 
 -- module Main where
 
