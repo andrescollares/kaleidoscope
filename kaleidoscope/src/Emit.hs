@@ -22,22 +22,26 @@ import qualified StringUtils as StringUtils
 
 import qualified Data.ByteString.Short as B (ShortByteString, unpack)
 
+import Debug.Trace
+
+
 toSig :: [B.ShortByteString] -> [(AST.Type, AST.Name)]
 toSig = map (\x -> (double, AST.Name x))
 
+-- def foo(x) x; 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
-  define double (StringUtils.stringToShortByteString name) fnargs bls
+  trace ("define double. name=" ++ show name ++ " args=" ++ show args ++ " body=" ++ show body) $ define double (StringUtils.stringToShortByteString name) fnargs bls
   where
     fnargs = toSig (map StringUtils.stringToShortByteString args)
     bls = createBlocks $ execCodegen $ do
       entry <- addBlock entryBlockName
-      setBlock entry
-      forM args $ \a -> do
+      trace ("fnargs=" ++ show fnargs) $ setBlock entry
+      forM_ args $ \a -> do
         var <- alloca double
         store var (local (AST.Name $ StringUtils.stringToShortByteString a))
         assign a var
-      cgen body >>= ret
+      trace ("body=" ++ show body) $ cgen body >>= ret
 
 codegenTop (S.Extern name args) = do
   external double (StringUtils.stringToShortByteString name) fnargs
@@ -104,5 +108,5 @@ codegen mod fns = withContext $ \context ->
     putStrLn $ StringUtils.byteStringToString llstr
     return newast
   where
-    modn    = mapM codegenTop fns
+    modn    = trace ("modn. fns= " ++ show fns) (mapM codegenTop fns)
     newast  = runLLVM mod modn

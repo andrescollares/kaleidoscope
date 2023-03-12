@@ -26,6 +26,8 @@ import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
 
+import Debug.Trace
+
 -------------------------------------------------------------------------------
 -- Module Level
 -------------------------------------------------------------------------------
@@ -34,7 +36,7 @@ newtype LLVM a = LLVM (State AST.Module a)
   deriving (Functor, Applicative, Monad, MonadState AST.Module )
 
 runLLVM :: AST.Module -> LLVM a -> AST.Module
-runLLVM mod (LLVM m) = execState m mod
+runLLVM mod (LLVM m) = trace ("runLLVM " ++ show mod) $ execState m mod
 
 emptyModule :: B.ShortByteString -> AST.Module
 emptyModule label = defaultModule { moduleName = label }
@@ -86,8 +88,8 @@ type Names = Map.Map B.ShortByteString Int
 uniqueName :: B.ShortByteString -> Names -> (B.ShortByteString, Names)
 uniqueName nm ns =
   case Map.lookup nm ns of
-    Nothing -> (nm,  Map.insert nm 1 ns)
-    Just ix -> (StringUtils.stringToShortByteString $ StringUtils.shortByteStringToString nm ++ show ix, Map.insert nm (ix+1) ns)
+    Nothing -> trace ("unique name=nothing.") (nm,  Map.insert nm 1 ns)
+    Just ix -> trace ("unique name=" ++ show (ix - 1)) (StringUtils.stringToShortByteString $ StringUtils.shortByteStringToString nm ++ show ix, Map.insert nm (ix+1) ns)
 
 -------------------------------------------------------------------------------
 -- Codegen State
@@ -153,7 +155,7 @@ instr :: Instruction -> Codegen (Operand)
 instr ins = do
   n <- fresh
   let ref = (UnName n)
-  blk <- current
+  blk <- trace ("ins=" ++ show ins ++ "\n") current
   let i = stack blk
   modifyBlock (blk { stack = (ref := ins) : i } )
   return $ local ref

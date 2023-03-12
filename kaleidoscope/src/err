@@ -34,3 +34,17 @@ error en main:
  maybeAtomicity = Nothing,
  alignment = 0,
  metadata = []}"
+
+
+
+ Store {
+    volatile = False,
+    address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+    value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"),
+    maybeAtomicity = Nothing, alignment = 0, metadata = []}
+
+Store {
+    volatile = False,
+    address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+    value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name \"x\"),
+    maybeAtomicity = Nothing, alignment = 0, metadata = []}
