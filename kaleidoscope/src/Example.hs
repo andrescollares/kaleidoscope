@@ -35,11 +35,49 @@ defAdd = GlobalDefinition functionDefaults
                 []]
         (Do $ Ret (Just (LocalReference int (Name "result"))) [])
 
+defSub :: Definition
+defSub = GlobalDefinition functionDefaults
+  { name = Name "sub"
+  , parameters =
+      ( [ Parameter int (Name "a") []
+        , Parameter int (Name "b") [] ]
+      , False )
+  , returnType = int
+  , basicBlocks = [body]
+  }
+  where
+    body = BasicBlock
+        (Name "entry")
+        [ Name "result" :=
+            Sub False  -- no signed wrap
+                False  -- no unsigned wrap
+                (LocalReference int (Name "a"))
+                (LocalReference int (Name "b"))
+                []]
+        (Do $ Ret (Just (LocalReference int (Name "result"))) [])
+
+defId :: Definition
+defId = GlobalDefinition functionDefaults
+  { name = Name "id"
+  , parameters =
+      ( [ Parameter int (Name "a") []]
+      , False )
+  , returnType = int
+  , basicBlocks = [body]
+  }
+  where
+    body = BasicBlock
+        (Name "entry")
+        [ Name "result" := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP}, numElements = Nothing, AST.alignment = 0, AST.metadata = []},
+          Name "result1" := Store {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []}
+        ]
+        (Do $ Ret (Just (LocalReference int (Name "result"))) [])
+
 
 module_ :: AST.Module
 module_ = defaultModule
   { moduleName = "basic"
-  , moduleDefinitions = [defAdd]
+  , moduleDefinitions = [defAdd, defSub, defId]
   }
 
 

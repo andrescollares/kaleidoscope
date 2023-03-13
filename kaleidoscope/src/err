@@ -48,3 +48,10 @@ Store {
     address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
     value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name \"x\"),
     maybeAtomicity = Nothing, alignment = 0, metadata = []}
+
+
+bls=[BasicBlock (Name "entry")
+ [UnName 1 := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP}, numElements = Nothing, alignment = 0, metadata = []},
+ UnName 2 := Store {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"), maybeAtomicity = Nothing, alignment = 0, metadata = []},
+ UnName 3 := Load {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), maybeAtomicity = Nothing, alignment = 0, metadata = []}]
+(Do (Ret {returnOperand = Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 3)), metadata' = []}))]
