@@ -7,6 +7,9 @@ import qualified LLVM.AST as AST
 import LLVM.AST.Global
 import LLVM.Context
 import LLVM.Module
+import qualified LLVM.AST.Constant as C
+import qualified LLVM.AST.Float as F
+import LLVM.AST.Type (ptr)
 
 import Control.Monad.Except
 import Data.ByteString.Char8 as BS
@@ -56,22 +59,51 @@ defSub = GlobalDefinition functionDefaults
                 []]
         (Do $ Ret (Just (LocalReference int (Name "result"))) [])
 
+-- defId :: Definition
+-- defId = GlobalDefinition functionDefaults
+--   { name = Name "id"
+--   , parameters =
+--       ( [ Parameter int (Name "x") []]
+--       , False )
+--   , returnType = int
+--   , basicBlocks = [body]
+--   }
+--   where
+--     body = BasicBlock
+--         (Name "entry")
+--         [ Name "aux" := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP}, numElements = Nothing, AST.alignment = 0, AST.metadata = []},
+--           Do $ Store {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []},
+--           Name "result" := Load {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []}
+--         ]
+--         (Do $ Ret (Just (LocalReference int (Name "result"))) [])
+
 defId :: Definition
 defId = GlobalDefinition functionDefaults
   { name = Name "id"
   , parameters =
-      ( [ Parameter int (Name "a") []]
+      ( [ Parameter (ptr (FloatingPointType {floatingPointType = DoubleFP})) (Name "a") []]
       , False )
-  , returnType = int
+  , returnType = (FloatingPointType {floatingPointType = DoubleFP})
   , basicBlocks = [body]
   }
   where
     body = BasicBlock
         (Name "entry")
-        [ Name "result" := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP}, numElements = Nothing, AST.alignment = 0, AST.metadata = []},
-          Name "result1" := Store {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []}
+        [ Name "tmp_input_w0" := GetElementPtr {
+                inBounds = True,
+                address = LocalReference (ptr (FloatingPointType {floatingPointType = DoubleFP})) (Name "a"),
+                indices = [ConstantOperand (C.Float (F.Double 1))],
+                AST.metadata = []
+            },
+        UnName 0 := Load {
+                volatile = False,
+                address = LocalReference (ptr (FloatingPointType {floatingPointType = DoubleFP})) (Name "tmp_input_w0"),
+                maybeAtomicity = Nothing,
+                AST.alignment = 8,
+                AST.metadata = []
+            }
         ]
-        (Do $ Ret (Just (LocalReference int (Name "result"))) [])
+        (Do $ Ret (Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 0))) [])
 
 
 module_ :: AST.Module
