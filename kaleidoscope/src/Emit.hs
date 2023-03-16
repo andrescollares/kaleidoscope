@@ -37,6 +37,8 @@ codegenTop (S.Function name args body) = do
     bls = createBlocks $ execCodegen $ do
       entry <- addBlock entryBlockName
       trace ("fnargs=" ++ show fnargs) $ setBlock entry
+      -- FIXME: we probably need to use GetElementPtr here instad of alloca.
+      -- defId from Example.hs has a working version of a function call.
       forM_ args $ \a -> do
         var <- alloca double
         store var (local (AST.Name $ StringUtils.stringToShortByteString a))

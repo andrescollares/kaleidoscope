@@ -35,3 +35,13 @@ cd /kaleidoscope/dist-newstyle/build/aarch64-linux/ghc-8.10.7/kaleidoscope-fing-
 o correr en repl
 cabal repl
 ```
+
+## Testing generated llvm
+
+```
+gcc foo.ll -o foo
+./foo
+```
+
+Para ver el valor devuelto por el programa, se puede usar `echo $?`
+(Nota: el valor devuelto se castea a un entero de 8 bits, sidevolvemos un float o double va a tomar los ultimos 8 bits de la mantisa)

@@ -59,24 +59,6 @@ defSub = GlobalDefinition functionDefaults
                 []]
         (Do $ Ret (Just (LocalReference int (Name "result"))) [])
 
--- defId :: Definition
--- defId = GlobalDefinition functionDefaults
---   { name = Name "id"
---   , parameters =
---       ( [ Parameter int (Name "x") []]
---       , False )
---   , returnType = int
---   , basicBlocks = [body]
---   }
---   where
---     body = BasicBlock
---         (Name "entry")
---         [ Name "aux" := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP}, numElements = Nothing, AST.alignment = 0, AST.metadata = []},
---           Do $ Store {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []},
---           Name "result" := Load {volatile = False, address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1), maybeAtomicity = Nothing, AST.alignment = 0, AST.metadata = []}
---         ]
---         (Do $ Ret (Just (LocalReference int (Name "result"))) [])
-
 defId :: Definition
 defId = GlobalDefinition functionDefaults
   { name = Name "id"
@@ -92,7 +74,7 @@ defId = GlobalDefinition functionDefaults
         [ Name "tmp_input_w0" := GetElementPtr {
                 inBounds = True,
                 address = LocalReference (ptr (FloatingPointType {floatingPointType = DoubleFP})) (Name "a"),
-                indices = [ConstantOperand (C.Float (F.Double 1))],
+                indices = [ConstantOperand (C.Int 64 0)],
                 AST.metadata = []
             },
         UnName 0 := Load {
