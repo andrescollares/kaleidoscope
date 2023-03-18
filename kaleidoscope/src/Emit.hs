@@ -31,7 +31,7 @@ toSig = map (\x -> (double, AST.Name x))
 -- def foo(x) x; 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
-  trace ("define double. name=" ++ show name ++ " args=" ++ show args ++ " body=" ++ show body) $ define double (StringUtils.stringToShortByteString name) fnargs bls
+  trace ("define double. name=" ++ show name ++ " args=" ++ show args ++ " body=" ++ show body ++ " bls=" ++ show bls) $ define double (StringUtils.stringToShortByteString name) fnargs bls
   where
     fnargs = toSig (map StringUtils.stringToShortByteString args)
     bls = createBlocks $ execCodegen $ do

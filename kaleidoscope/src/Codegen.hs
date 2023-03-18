@@ -160,6 +160,13 @@ instr ins = do
   modifyBlock (blk { stack = (ref := ins) : i } )
   return $ local ref
 
+instrStore :: Instruction -> Codegen ()
+instrStore ins = do
+  blk <- trace ("ins=" ++ show ins ++ "\n") current
+  let i = stack blk
+  modifyBlock (blk { stack = (Do ins) : i } )
+  -- return $ local ref
+
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
   blk <- current
@@ -235,7 +242,7 @@ global ::  Name -> C.Constant
 global = C.GlobalReference double
 
 externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference double
+externf = ConstantOperand
 
 -- Arithmetic and Constants
 fadd :: Operand -> Operand -> Codegen Operand
@@ -269,8 +276,8 @@ call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
-store :: Operand -> Operand -> Codegen Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+store :: Operand -> Operand -> Codegen ()
+store ptr val = instrStore $ Store False ptr val Nothing 0 []
 
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
