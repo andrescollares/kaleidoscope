@@ -40,9 +40,14 @@ codegenTop (S.Function name args body) = do
       -- FIXME: we probably need to use GetElementPtr here instad of alloca.
       -- defId from Example.hs has a working version of a function call.
       forM_ args $ \a -> do
-        var <- alloca double
-        store var (local (AST.Name $ StringUtils.stringToShortByteString a))
-        assign a var
+
+        var <- getElementPtr (local (AST.Name $ StringUtils.stringToShortByteString a))
+        -- loaded <- load var -- load is done automatically somehow, this is not necessary
+        assign a var -- add "a" to the symtab, this not an llvm instruction
+
+        -- var <- alloca double
+        -- store var (local (AST.Name $ StringUtils.stringToShortByteString a))
+        -- assign a var
       trace ("body=" ++ show body) $ cgen body >>= ret
 
 codegenTop (S.Extern name args) = do

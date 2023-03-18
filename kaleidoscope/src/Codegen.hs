@@ -25,6 +25,7 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
+import LLVM.AST.Type (ptr)
 
 import Debug.Trace
 
@@ -50,7 +51,7 @@ define ::  Type -> B.ShortByteString -> [(Type, Name)] -> [BasicBlock] -> LLVM (
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+  , parameters  = ([Parameter (ptr ty) nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = body
   }
@@ -275,6 +276,9 @@ store ptr val = instr $ Store False ptr val Nothing 0 []
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
 
+getElementPtr :: Operand -> Codegen Operand
+getElementPtr ptr = instr $ GetElementPtr True ptr [ConstantOperand (C.Int 64 0)] []
+
 -- Control Flow
 br :: Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
@@ -284,3 +288,7 @@ cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
+
+retRef :: Name -> Codegen (Named Terminator)
+retRef val = terminator $ Do $ Ret (Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) val)) []
+

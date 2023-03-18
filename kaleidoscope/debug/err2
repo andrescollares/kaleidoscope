@@ -1,0 +1,57 @@
+### NEW
+
+define double. name="f" args=["x"] bls=[BasicBlock (Name "entry") [
+UnName 1 := GetElementPtr {inBounds = True,
+ address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"),
+ indices = [ConstantOperand (Int {integerBits = 64,
+ integerValue = 0})],
+ metadata = []},
+UnName 2 := Load {volatile = False,
+ address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+ maybeAtomicity = Nothing,
+ alignment = 0,
+ metadata = []},
+UnName 3 := Load {volatile = False,
+ address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 2),
+ maybeAtomicity = Nothing,
+ alignment = 0,
+ metadata = []}] 
+(Do (Ret {returnOperand = Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 3)),
+ metadata' = []}))]
+
+### NEW NEW
+
+define double. name="f" args=["x"] bls=[BasicBlock (Name "entry") [
+UnName 1 := GetElementPtr {inBounds = True,
+    address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"),
+    indices = [ConstantOperand (Int {integerBits = 64, integerValue = 0})],
+    metadata = []},
+UnName 2 := Load {volatile = False,
+    address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+    maybeAtomicity = Nothing,
+    alignment = 0,
+    metadata = []}] 
+(Do (Ret {returnOperand = Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 2)),
+metadata' = []}))]
+
+
+### ORIGINAL
+
+define double. name="f" args=["x"] bls=[BasicBlock (Name "entry") [
+UnName 1 := Alloca {allocatedType = FloatingPointType {floatingPointType = DoubleFP},
+ numElements = Nothing,
+ alignment = 0,
+ metadata = []},
+UnName 2 := Store {volatile = False,
+ address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+ value = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x"),
+ maybeAtomicity = Nothing,
+ alignment = 0,
+ metadata = []},
+UnName 3 := Load {volatile = False,
+ address = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1),
+ maybeAtomicity = Nothing,
+ alignment = 0,
+ metadata = []}] 
+(Do (Ret {returnOperand = Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 3)),
+ metadata' = []}))]
