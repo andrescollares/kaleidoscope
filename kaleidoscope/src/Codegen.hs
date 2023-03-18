@@ -18,14 +18,16 @@ import Control.Applicative
 
 import LLVM.AST
 import LLVM.AST.Global
-import qualified LLVM.AST as AST
+import qualified LLVM.AST as AST hiding (function)
 
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
+import qualified LLVM.AST.Instruction as I (function)
 import LLVM.AST.Type (ptr)
+import LLVM.AST.Type( Type( FunctionType ) )
 
 import Debug.Trace
 
@@ -51,7 +53,7 @@ define ::  Type -> B.ShortByteString -> [(Type, Name)] -> [BasicBlock] -> LLVM (
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
-  , parameters  = ([Parameter (ptr ty) nm [] | (ty, nm) <- argtys], False)
+  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = body
   }
@@ -236,7 +238,23 @@ global ::  Name -> C.Constant
 global = C.GlobalReference double
 
 externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference double
+externf = ConstantOperand . C.GlobalReference (ptr $ FunctionType {resultType = ptr double, argumentTypes = [IntegerType {typeBits = 64}], isVarArg = False})
+
+call2 :: Name -> [Operand] -> Codegen Operand
+call2 name args = instr $ Call { tailCallKind = Nothing
+                , I.function = Right (
+                  ConstantOperand (
+                    C.GlobalReference
+                      (ptr $ FunctionType {resultType = double, argumentTypes = [double], isVarArg = False})
+                      name
+                    )
+                  )
+                , AST.callingConvention = CC.C
+                , AST.returnAttributes = []
+                , arguments = toArgs args
+                , AST.functionAttributes = []
+                , AST.metadata = []
+                }
 
 -- Arithmetic and Constants
 fadd :: Operand -> Operand -> Codegen Operand

@@ -1,0 +1,8 @@
+PointerType {pointerReferent = FloatingPointType {floatingPointType = DoubleFP},
+pointerAddrSpace = AddrSpace 0}
+
+PointerType {pointerReferent = FunctionType {resultType = FloatingPointType {floatingPointType = DoubleFP},
+argumentTypes = [PointerType {pointerReferent = FloatingPointType {floatingPointType = DoubleFP},
+pointerAddrSpace = AddrSpace 0}],
+isVarArg = False},
+pointerAddrSpace = AddrSpace 0}
