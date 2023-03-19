@@ -14,7 +14,7 @@ import System.Console.Haskeline
 import qualified LLVM.AST as AST
 
 initModule :: AST.Module
-initModule = emptyModule $ stringToShortByteString "my cool jit"
+initModule = emptyModule $ stringToShortByteString "Kaleidoscope"
 
 process :: AST.Module -> String -> IO (Maybe AST.Module)
 process modo source = do

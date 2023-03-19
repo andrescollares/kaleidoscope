@@ -98,7 +98,7 @@ cgen (S.Var x) = getvar x >>= load
 cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args
-  call (externf (AST.Name $ StringUtils.stringToShortByteString fn)) largs
+  call (AST.Name $ StringUtils.stringToShortByteString fn) largs
 
 -------------------------------------------------------------------------------
 -- Compilation

@@ -27,6 +27,9 @@ import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
 import LLVM.AST.Type (ptr)
 
+import qualified LLVM.AST.Instruction as I (function)
+import LLVM.AST.Type (ptr)
+
 import Debug.Trace
 
 -------------------------------------------------------------------------------
@@ -161,6 +164,13 @@ instr ins = do
   modifyBlock (blk { stack = (ref := ins) : i } )
   return $ local ref
 
+instrStore :: Instruction -> Codegen ()
+instrStore ins = do
+  blk <- trace ("ins=" ++ show ins ++ "\n") current
+  let i = stack blk
+  modifyBlock (blk { stack = (Do ins) : i } )
+  -- return $ local ref
+
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
   blk <- current
@@ -235,6 +245,7 @@ local = LocalReference double
 global ::  Name -> C.Constant
 global = C.GlobalReference double
 
+-- not used atm, TODO: why?
 externf :: Name -> Operand
 externf = ConstantOperand . C.GlobalReference double
 
@@ -264,14 +275,31 @@ toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 -- Effects
-call :: Operand -> [Operand] -> Codegen Operand
-call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+-- call :: Operand -> [Operand] -> Codegen Operand
+-- call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+
+call :: Name -> [Operand] -> Codegen Operand
+call name args = instr $ Call { tailCallKind = Nothing
+                , I.function = Right (
+                  ConstantOperand (
+                    C.GlobalReference
+                    -- TODO: allow argumentTypes != double
+                      (ptr $ FunctionType {resultType = double, argumentTypes = (map (\x -> double) args), isVarArg = False})
+                      name
+                    )
+                  )
+                , AST.callingConvention = CC.C
+                , AST.returnAttributes = []
+                , arguments = toArgs args
+                , AST.functionAttributes = []
+                , AST.metadata = []
+                }
 
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
-store :: Operand -> Operand -> Codegen Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+store :: Operand -> Operand -> Codegen ()
+store ptr val = instrStore $ Store False ptr val Nothing 0 []
 
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
