@@ -26,6 +26,9 @@ import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
 
+import qualified LLVM.AST.Instruction as I (function)
+import LLVM.AST.Type (ptr)
+
 import Debug.Trace
 
 -------------------------------------------------------------------------------
@@ -241,8 +244,9 @@ local = LocalReference double
 global ::  Name -> C.Constant
 global = C.GlobalReference double
 
+-- not used atm, TODO: why?
 externf :: Name -> Operand
-externf = ConstantOperand
+externf = ConstantOperand . C.GlobalReference double
 
 -- Arithmetic and Constants
 fadd :: Operand -> Operand -> Codegen Operand
@@ -270,8 +274,25 @@ toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 -- Effects
-call :: Operand -> [Operand] -> Codegen Operand
-call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+-- call :: Operand -> [Operand] -> Codegen Operand
+-- call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+
+call :: Name -> [Operand] -> Codegen Operand
+call name args = instr $ Call { tailCallKind = Nothing
+                , I.function = Right (
+                  ConstantOperand (
+                    C.GlobalReference
+                    -- TODO: allow argumentTypes != double
+                      (ptr $ FunctionType {resultType = double, argumentTypes = (map (\x -> double) args), isVarArg = False})
+                      name
+                    )
+                  )
+                , AST.callingConvention = CC.C
+                , AST.returnAttributes = []
+                , arguments = toArgs args
+                , AST.functionAttributes = []
+                , AST.metadata = []
+                }
 
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
