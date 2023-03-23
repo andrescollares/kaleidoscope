@@ -17,6 +17,7 @@ import Control.Applicative
 import qualified Data.Map as Map
 
 import Codegen
+import Jit
 import qualified Syntax as S
 import qualified StringUtils as StringUtils
 
@@ -100,13 +101,24 @@ cgen (S.Call fn args) = do
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
+-- codegen :: AST.Module -> [S.Expr] -> IO AST.Module
+-- codegen mod fns = withContext $ \context ->
+--   -- liftError $ withModuleFromAST context newast $ \m -> do
+--   withModuleFromAST context newast $ \m -> do
+--     llstr <- moduleLLVMAssembly m
+--     putStrLn $ StringUtils.byteStringToString llstr
+--     return newast
+--   where
+--     modn    = trace ("modn. fns= " ++ show fns) (mapM codegenTop fns)
+--     newast  = runLLVM mod modn
+
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
-codegen mod fns = withContext $ \context ->
-  -- liftError $ withModuleFromAST context newast $ \m -> do
-  withModuleFromAST context newast $ \m -> do
-    llstr <- moduleLLVMAssembly m
-    putStrLn $ StringUtils.byteStringToString llstr
-    return newast
+codegen mod fns = do
+  res <- runJIT oldast
+  return res
+  -- case res  of
+    -- Right newast -> return newast
+    -- Left err     -> putStrLn err >> return oldast
   where
-    modn    = trace ("modn. fns= " ++ show fns) (mapM codegenTop fns)
-    newast  = runLLVM mod modn
+    modn    = mapM codegenTop fns
+    oldast  = runLLVM mod modn
