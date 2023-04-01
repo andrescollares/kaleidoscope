@@ -70,10 +70,12 @@ executable kaleidoscope-fing
 --   default-language:    Haskell2010
 
 library
-  build-depends: base ^>=4.14
+  exposed-modules:  Jit
+  other-modules:    Codegen, Lexer, Lib, ParserH, Syntax, Emit, StringUtils
   include-dirs:     src/cbits
   c-sources: src/cbits/putchard.c
---   other-modules:  Lib
---   install-includes: Lib_stub.h
+  hs-source-dirs: src
+  ghc-options: -Wall
+  build-depends: base ^>=4.14
   default-language: Haskell2010
 

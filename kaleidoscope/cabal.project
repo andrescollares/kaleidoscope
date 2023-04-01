@@ -6,4 +6,11 @@ source-repository-package
         llvm-hs
     tag: 423220bffac4990d019fc088c46c5f25310d5a33
 
+foreign-library putchard
+  type:                native-shared
+  lib-version-info:    1:0:0
+  hs-source-dirs:      src
+  c-sources:           cbits/putchard.c
+  default-language:    Haskell2010
+
 packages: ./kaleidoscope-fing.cabal
