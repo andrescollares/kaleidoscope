@@ -17,7 +17,7 @@ maintainer:         andres.collares@fing.edu.uy
 -- A copyright notice.
 -- copyright:
 -- category:
-extra-source-files: CHANGELOG.md src/cbits/putchard.c src/cbits/putchard.h
+extra-source-files: CHANGELOG.md
 
 common common-options
     build-depends:
@@ -25,7 +25,7 @@ common common-options
         , llvm-hs-pure  ^>=12.0
 
     ghc-options:
-        /usr/lib/putchard.so --make -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
+        /usr/lib/io.so --make -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
         -Wincomplete-record-updates -Wredundant-constraints
         -Wnoncanonical-monad-instances -threaded -lstdc++ -dynamic
 
@@ -56,35 +56,4 @@ executable kaleidoscope-fing
         , parsec >=3.1.0
         , mtl >=2.2
     extra-lib-dirs: src/cbits
-    extra-source-files: CHANGELOG.md src/cbits/putchard.c src/cbits/putchard.h
-    -- enable shared libraries
-    shared: True
-    executable-dynamic: True
-
--- foreign-library putchard
---   type:                native-shared
---   lib-version-info:    1:0:0
---   build-depends:       base ^>=4.14
---   hs-source-dirs:      src
---   c-sources:           src/cbits/libputchard.c
---   default-language:    Haskell2010
-
-library
-  import: common-options
-  build-depends:
-    , bytestring  >=0.10
-    , llvm-hs     ^>=12.0
-    , containers    >=0.6
-    , haskeline >=0.7
-    , parsec >=3.1.0
-    , mtl >=2.2
-  exposed-modules:  Jit
---   other-modules:    Codegen, Lexer, Lib, ParserH, Syntax, Emit, StringUtils
-  include-dirs:     src/cbits
-  c-sources: src/cbits/putchard.c
-  includes: src/cbits/putchard.h
-  hs-source-dirs: src
-  ghc-options: -Wall
-  build-depends: base ^>=4.14
-  default-language: Haskell2010
 

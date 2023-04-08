@@ -27,14 +27,14 @@ RUN cabal update
 # This keeps Cabal up to date
 RUN cabal install cabal-install
 
-# Compile the C sources (cabal can be set up to do this also, but it doesn't seem to work)
+# Compile the C sources
 WORKDIR /
 
-COPY /kaleidoscope/src/cbits/putchard.h /kaleidoscope/src/cbits/putchard.h
-COPY /kaleidoscope/src/cbits/putchard.c /kaleidoscope/src/cbits/putchard.c
+COPY /kaleidoscope/src/cbits/io.h /kaleidoscope/src/cbits/io.h
+COPY /kaleidoscope/src/cbits/io.c /kaleidoscope/src/cbits/io.c
 
 # put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
-RUN gcc -fPIC -shared /kaleidoscope/src/cbits/putchard.c -o /usr/lib/putchard.so
+RUN gcc -fPIC -shared /kaleidoscope/src/cbits/io.c -o /usr/lib/io.so
 
 WORKDIR /kaleidoscope
 
@@ -43,7 +43,6 @@ COPY /kaleidoscope/cabal.project /kaleidoscope/kaleidoscope-fing.cabal .
 # Docker will cache this command as a layer, freeing us up to
 # modify source code without re-installing dependencies
 # (unless the .cabal file changes!)
-RUN cabal configure --extra-lib-dirs=${pkgroot}/cbits
 
 RUN cabal build --only-dependencies -j8
 
