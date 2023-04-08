@@ -1,7 +1,0 @@
-FloatingPointType {floatingPointType = DoubleFP}
-
-PointerType {pointerReferent = FunctionType {
-    resultType = FloatingPointType {floatingPointType = DoubleFP},
-    argumentTypes = [FloatingPointType {floatingPointType = DoubleFP}],
-    isVarArg = False}, 
-    pointerAddrSpace = AddrSpace 0}

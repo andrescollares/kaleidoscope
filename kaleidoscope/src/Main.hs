@@ -1,20 +1,16 @@
 module Main where
 
-import ParserH
 import Codegen
-import Emit
-import StringUtils
-
 import Control.Monad.Trans
-
-import System.IO
-import System.Environment
-import System.Console.Haskeline
-
+import Data.String
+import Emit
 import qualified LLVM.AST as AST
+import ParserH
+import System.Console.Haskeline
+import System.Environment
 
 initModule :: AST.Module
-initModule = emptyModule $ stringToShortByteString "Kaleidoscope"
+initModule = emptyModule $ fromString "Kaleidoscope"
 
 process :: AST.Module -> String -> IO (Maybe AST.Module)
 process modo source = do
@@ -31,23 +27,23 @@ processFile fname = readFile fname >>= process initModule
 repl :: IO ()
 repl = runInputT defaultSettings (loop initModule)
   where
-  loop mod = do
-    minput <- getInputLine "ready> "
-    case minput of
-      Nothing -> outputStrLn "Goodbye."
-      Just input -> do
-        modn <- liftIO $ process mod input
-        case modn of
-          Just modn -> loop modn
-          Nothing -> loop mod
+    loop modl = do
+      minput <- getInputLine "ready> "
+      case minput of
+        Nothing -> outputStrLn "Goodbye."
+        Just input -> do
+          maybeModlName <- liftIO $ process modl input
+          case maybeModlName of
+            Just modlName -> loop modlName
+            Nothing -> loop modl
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    []      -> repl
+    [] -> repl
     [fname] -> processFile fname >> return ()
-
+    _ -> print "Usage: kaleidoscope [filename]"
 
 -- Imprimir el AST (chapter 2)
 printAST :: String -> IO ()
@@ -56,30 +52,3 @@ printAST line = do
   case res of
     Left err -> print err
     Right ex -> mapM_ print ex
-
-
-
-
-
--- module Main where
-
--- import ParserH
-
--- import Control.Monad.Trans
--- import System.Console.Haskeline
-
--- process :: String -> IO ()
--- process line = do
---   let res = parseToplevel line
---   case res of
---     Left err -> print err
---     Right ex -> mapM_ print ex
-
--- main :: IO ()
--- main = runInputT defaultSettings loop
---   where
---     loop = do
---       minput <- getInputLine "ready> "
---       case minput of
---         Nothing -> outputStrLn "Goodbye."
---         Just input -> liftIO (process input) >> loop

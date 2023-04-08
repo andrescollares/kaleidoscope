@@ -1,5 +1,6 @@
 module ParserH where
 
+import Data.Functor.Identity
 import Lexer
 import Syntax
 import Text.Parsec
@@ -7,8 +8,10 @@ import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
 
+binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
 binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
 
+table :: Ex.OperatorTable String () Identity Expr
 table =
   [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
@@ -40,22 +43,22 @@ function :: Parser Expr
 function = do
   reserved "def"
   name <- identifier
-  args <- parens $ many identifier
+  arguments <- parens $ many identifier
   body <- expr
-  return $ Function name args body
+  return $ Function name arguments body
 
 extern :: Parser Expr
 extern = do
   reserved "extern"
   name <- identifier
-  args <- parens $ many identifier
-  return $ Extern name args
+  arguments <- parens $ many identifier
+  return $ Extern name arguments
 
 call :: Parser Expr
 call = do
   name <- identifier
-  args <- parens $ commaSep expr
-  return $ Call name args
+  arguments <- parens $ commaSep expr
+  return $ Call name arguments
 
 factor :: Parser Expr
 factor =
