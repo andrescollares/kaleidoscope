@@ -24,12 +24,17 @@ RUN echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-12 main" \
 
 RUN cabal update
 
+# This keeps Cabal up to date
+RUN cabal install cabal-install
+
+# Compile the C sources (cabal can be set up to do this also, but it doesn't seem to work)
 WORKDIR /
 
-COPY /kaleidoscope/src/cbits/putchard.h /kaleidoscope/putchard.h
-COPY /kaleidoscope/src/cbits/putchard.c /kaleidoscope/putchard.c
+COPY /kaleidoscope/src/cbits/putchard.h /kaleidoscope/src/cbits/putchard.h
+COPY /kaleidoscope/src/cbits/putchard.c /kaleidoscope/src/cbits/putchard.c
 
-RUN gcc -fPIC -shared /kaleidoscope/putchard.c -o /usr/lib/putchard.so
+# put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
+RUN gcc -fPIC -shared /kaleidoscope/src/cbits/putchard.c -o /usr/lib/putchard.so
 
 WORKDIR /kaleidoscope
 
