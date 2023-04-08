@@ -23,12 +23,15 @@ Andrés Collares & Agustín Gazzano
 docker compose build
 docker compose up -d
 docker compose run project bash
-cabal repl
+cabal run kaleidoscope-fing
 ```
+
 ```
 docker build -t kaleidoscope .
 docker run -it kaleidoscope 
 cabal build
+
+
 ./dist-newstyle/build/aarch64-linux/ghc-8.10.7/kaleidoscope-fing-0.1.0.0/x/kaleidoscope-fing/build/kaleidoscope-fing/kaleidoscope-fing
 
 

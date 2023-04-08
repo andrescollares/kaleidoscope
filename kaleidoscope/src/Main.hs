@@ -13,6 +13,16 @@ import System.Console.Haskeline
 
 import qualified LLVM.AST as AST
 
+
+-- import Foreign
+-- import Foreign.C
+
+
+-- foreign import ccall unsafe "putchard.h putchard" cPutchard :: Double -> IO ()
+-- putchard :: Double -> IO ()
+-- putchard = do cPutchard
+
+
 initModule :: AST.Module
 initModule = emptyModule $ stringToShortByteString "Kaleidoscope"
 
@@ -43,6 +53,16 @@ repl = runInputT defaultSettings (loop initModule)
 
 main :: IO ()
 main = do
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
+  -- putchard 120
   args <- getArgs
   case args of
     []      -> repl

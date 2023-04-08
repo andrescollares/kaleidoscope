@@ -47,8 +47,8 @@ double putchard(double X) {
 - Establecer el path para que el sistema busque la libreria
 
 ```
-LD_LIBRARY_PATH=/Users/fing/kaleidoscope/kaleidoscope/src/lib
-DYLD_LIBRARY_PATH=/Users/fing/kaleidoscope/kaleidoscope/src/lib
+LD_LIBRARY_PATH=/Users/fing/kaleidoscope/kaleidoscope/src/cbits
+DYLD_LIBRARY_PATH=/Users/fing/kaleidoscope/kaleidoscope/src/cbits
 ```
 
 - Compilar con gcc

@@ -24,6 +24,13 @@ RUN echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-12 main" \
 
 RUN cabal update
 
+WORKDIR /
+
+COPY /kaleidoscope/src/cbits/putchard.h /kaleidoscope/putchard.h
+COPY /kaleidoscope/src/cbits/putchard.c /kaleidoscope/putchard.c
+
+RUN gcc -fPIC -shared /kaleidoscope/putchard.c -o /usr/lib/putchard.so
+
 WORKDIR /kaleidoscope
 
 # Add just the .cabal file to capture dependencies
@@ -31,6 +38,8 @@ COPY /kaleidoscope/cabal.project /kaleidoscope/kaleidoscope-fing.cabal .
 # Docker will cache this command as a layer, freeing us up to
 # modify source code without re-installing dependencies
 # (unless the .cabal file changes!)
+RUN cabal configure --extra-lib-dirs=${pkgroot}/cbits
+
 RUN cabal build --only-dependencies -j8
 
 COPY /kaleidoscope /kaleidoscope
