@@ -26,6 +26,15 @@ RUN echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-12 main" \
 RUN cabal update
 RUN cabal install cabal-install
 
+# Compile the C sources
+WORKDIR /
+
+COPY /kaleidoscope/src/cbits/io.h /kaleidoscope/src/cbits/io.h
+COPY /kaleidoscope/src/cbits/io.c /kaleidoscope/src/cbits/io.c
+
+# put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
+RUN gcc -fPIC -shared /kaleidoscope/src/cbits/io.c -o /usr/lib/io.so
+
 WORKDIR /kaleidoscope
 
 # Add just the .cabal file to capture dependencies
@@ -33,6 +42,7 @@ COPY /kaleidoscope/cabal.project /kaleidoscope/kaleidoscope-fing.cabal ./
 # Docker will cache this command as a layer, freeing us up to
 # modify source code without re-installing dependencies
 # (unless the .cabal file changes!)
+
 RUN cabal build --only-dependencies -j8
 
 COPY /kaleidoscope /kaleidoscope

@@ -1,64 +1,62 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module JIT
-  ( run,
-    runJIT,
-  )
-where
+module JIT where
+
+import Data.Int
+import Data.Word
+import Foreign.Ptr ( FunPtr, castFunPtr )
 
 import Control.Monad.Except
-import qualified Data.ByteString.Char8 as ByteString
-import qualified Data.Text.Lazy.IO as TIO
-import Foreign.Ptr
-  ( FunPtr,
-    castFunPtr,
-    castPtrToFunPtr,
-    wordPtrToPtr,
-  )
-import qualified LLVM.AST as AST
-import qualified LLVM.CodeGenOpt as CodeGenOpt
-import qualified LLVM.CodeModel as CodeModel
-import LLVM.Context
-import LLVM.Module as Mod
-import LLVM.OrcJIT
-import LLVM.PassManager
--- import LLVM.Pretty
-import qualified LLVM.Relocation as Reloc
+
 import LLVM.Target
+import LLVM.Context
+import LLVM.CodeModel
+import LLVM.Module as Mod
+import qualified LLVM.AST as AST
+
+import LLVM.PassManager
+import LLVM.Transforms
+import LLVM.Analysis
+
+import qualified StringUtils as StringUtils
+
+import qualified LLVM.ExecutionEngine as EE
 
 foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
 
 run :: FunPtr a -> IO Double
 run fn = haskFun (castFunPtr fn :: FunPtr (IO Double))
 
-passes :: PassSetSpec
-passes = defaultCuratedPassSetSpec {optLevel = Just 3}
+jit :: Context -> (EE.MCJIT -> IO a) -> IO a
+jit c = EE.withMCJIT c optlevel model ptrelim fastins
+  where
+    optlevel = Just 0  -- optimization level
+    model    = Nothing -- code model ( Default )
+    ptrelim  = Nothing -- frame pointer elimination
+    fastins  = Nothing -- fast instruction selection
 
-runJIT :: AST.Module -> IO AST.Module
-runJIT astMod = do
-  TIO.putStrLn "Original:"
-  -- TIO.putStrLn $ ppll astMod
+passes :: PassSetSpec
+passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
+
+runJIT :: AST.Module -> IO (AST.Module)
+runJIT mod = do
   withContext $ \context ->
-    withHostTargetMachine Reloc.PIC CodeModel.Default CodeGenOpt.Default $ \tm ->
-      withModuleFromAST context astMod $ \m -> do
-        optimized <- withPassManager passes $ flip runPassManager m
-        when optimized $ putStrLn "\nOptimized"
-        optmod <- moduleAST m
-        s <- moduleLLVMAssembly m
-        ByteString.putStrLn s
-        withExecutionSession $ \es -> do
-          let dylibName = "kaleidoscope"
-          dylib <- createJITDylib es dylibName
-          withClonedThreadSafeModule m $ \tsm -> do
-            ol <- createRTDyldObjectLinkingLayer es
-            il <- createIRCompileLayer es ol tm
-            addModule tsm dylib il
-            mainfn <- lookupSymbol es il dylib "main"
+    jit context $ \executionEngine ->
+      withModuleFromAST context mod $ \m ->
+        withPassManager passes $ \pm -> do
+          -- Optimization Pass
+          -- runPassManager pm m
+          optmod <- moduleAST m
+          s <- moduleLLVMAssembly m
+          putStrLn $ StringUtils.byteStringToString s
+
+          EE.withModuleInEngine executionEngine m $ \ee -> do
+            mainfn <- EE.getFunction ee (AST.Name $ StringUtils.stringToShortByteString "main")
             case mainfn of
-              Right (JITSymbol fPtr _) -> do
-                res <- haskFun (castPtrToFunPtr (wordPtrToPtr fPtr))
+              Just fn -> do
+                res <- run fn
                 putStrLn $ "Evaluated to: " ++ show res
-              Left (JITSymbolError msg) -> do
-                print msg
-            -- Return the optimized module
-            return optmod
+              Nothing -> return ()
+
+          -- Return the optimized module
+          return optmod

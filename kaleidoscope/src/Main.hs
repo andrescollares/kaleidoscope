@@ -9,6 +9,7 @@ import ParserH
 import System.Console.Haskeline
 import System.Environment
 
+
 initModule :: AST.Module
 initModule = emptyModule $ fromString "Kaleidoscope"
 

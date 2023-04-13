@@ -23,5 +23,5 @@ Andrés Collares & Agustín Gazzano
 docker compose build
 docker compose up -d
 docker compose run project bash
-cabal repl
+cabal run kaleidoscope-fing
 ```
