@@ -25,3 +25,9 @@ docker compose up -d
 docker compose run project bash
 cabal run kaleidoscope-fing
 ```
+### Running code samples
+
+```
+cabal run kaleidoscope-fing -- "programs/add_sub.k"
+```
+
