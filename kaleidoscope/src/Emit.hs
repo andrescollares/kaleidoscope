@@ -92,17 +92,6 @@ cgen _ = error "This shouldn't have matched here :thinking_emoji"
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
--- codegen :: AST.Module -> [S.Expr] -> IO AST.Module
--- codegen mod fns = withContext $ \context ->
---   -- liftError $ withModuleFromAST context newast $ \m -> do
---   withModuleFromAST context newast $ \m -> do
---     llstr <- moduleLLVMAssembly m
---     putStrLn $ StringUtils.byteStringToString llstr
---     return newast
---   where
---     modn    = trace ("modn. fns= " ++ show fns) (mapM codegenTop fns)
---     newast  = runLLVM mod modn
-
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
 codegen modl fns = do
   res <- runJIT oldAst

@@ -18,9 +18,8 @@ import LLVM.PassManager
 import LLVM.Transforms
 import LLVM.Analysis
 
-import qualified StringUtils as StringUtils
-
 import qualified LLVM.ExecutionEngine as EE
+import qualified Data.ByteString as BS
 
 foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
 
@@ -48,10 +47,10 @@ runJIT mod = do
           -- runPassManager pm m
           optmod <- moduleAST m
           s <- moduleLLVMAssembly m
-          putStrLn $ StringUtils.byteStringToString s
+          putStrLn $ map (toEnum . fromIntegral) (BS.unpack s)
 
           EE.withModuleInEngine executionEngine m $ \ee -> do
-            mainfn <- EE.getFunction ee (AST.Name $ StringUtils.stringToShortByteString "main")
+            mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
                 res <- run fn
