@@ -18,7 +18,8 @@ table =
     ],
     [ binary "+" Ex.AssocLeft,
       binary "-" Ex.AssocLeft
-    ]
+    ],
+    [binary "<" Ex.AssocLeft]
   ]
 
 int :: Parser Expr
@@ -60,6 +61,16 @@ call = do
   arguments <- parens $ commaSep expr
   return $ Call name arguments
 
+ifthen :: Parser Expr
+ifthen = do
+  reserved "if"
+  cond <- expr
+  reserved "then"
+  thenExpr <- expr
+  reserved "else"
+  elseExpr <- expr
+  return $ If cond thenExpr elseExpr
+
 factor :: Parser Expr
 factor =
   try floating
@@ -67,6 +78,7 @@ factor =
     <|> try extern
     <|> try function
     <|> try call
+    <|> try ifthen
     <|> variable
     <|> parens expr
 

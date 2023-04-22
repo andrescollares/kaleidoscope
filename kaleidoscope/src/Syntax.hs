@@ -12,4 +12,5 @@ data Expr
   | Extern Name [Name]
   | BinOp Name Expr Expr
   | UnaryOp Name Expr
+  | If Expr Expr Expr
   deriving stock (Eq, Ord, Show)

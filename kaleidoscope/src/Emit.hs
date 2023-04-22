@@ -78,6 +78,31 @@ cgen (S.BinOp op a b) = do
       cb <- cgen b
       f ca cb
     Nothing -> error "No such operator"
+cgen (S.If cond thenExpr elseExpr) = do
+  ifthen <- addBlock "if.then"
+  ifelse <- addBlock "if.else"
+  ifcont <- addBlock "if.cont"
+
+  -- %entry
+  ccond <- cgen cond
+  test <- fcmp FP.ONE (cons $ C.Float (F.Double 0.0)) ccond
+  _ <- cbr test ifthen ifelse
+
+  -- if.then
+  _ <- setBlock ifthen
+  thenval <- cgen thenExpr
+  _ <- br ifcont
+  ifthenCode <- getBlock
+
+  -- if.else
+  _ <- setBlock ifelse
+  elseval <- cgen elseExpr
+  _ <- br ifcont
+  ifelseCode <- getBlock
+
+  -- if.cont
+  _ <- setBlock ifcont
+  phi double [(thenval, ifthenCode), (elseval, ifelseCode)]
 cgen (S.Var x) = getvar (fromString x) >>= load
 cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
