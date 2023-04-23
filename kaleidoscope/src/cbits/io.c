@@ -12,7 +12,7 @@ double putchard(double d) {
 // print a double
 double printd(double d) {
   printf("%f\n", d);
-  return 0;
+  return d;
 }
 
 // write a double to a file
