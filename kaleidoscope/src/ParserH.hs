@@ -19,7 +19,9 @@ table =
     [ binary "+" Ex.AssocLeft,
       binary "-" Ex.AssocLeft
     ],
-    [binary "<" Ex.AssocLeft]
+    [ binary "<" Ex.AssocLeft,
+      binary ">" Ex.AssocLeft
+    ]
   ]
 
 int :: Parser Expr
