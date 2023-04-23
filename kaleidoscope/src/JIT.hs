@@ -7,6 +7,10 @@ import Data.Word
 import Foreign.Ptr ( FunPtr, castFunPtr )
 
 import Control.Monad.Except
+import Control.Monad.State
+import Control.Monad.Trans (lift)
+import Data.ByteString.Short
+import Data.String
 
 import LLVM.Target
 import LLVM.Context
@@ -37,8 +41,23 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
+type MainFuncState = Int
+
+increment :: StateT MainFuncState IO ()
+increment = modify (+1)
+
+getMainCount :: StateT MainFuncState IO MainFuncState
+getMainCount = get
+
+advanceMain :: StateT MainFuncState IO MainFuncState
+advanceMain = do
+  modify (+1)
+  current <- get
+  return current
+
 runJIT :: AST.Module -> IO (AST.Module)
 runJIT mod = do
+  let initialCount = 0
   withContext $ \context ->
     jit context $ \executionEngine ->
       withModuleFromAST context mod $ \m ->
@@ -50,7 +69,12 @@ runJIT mod = do
           putStrLn $ map (toEnum . fromIntegral) (BS.unpack s)
 
           EE.withModuleInEngine executionEngine m $ \ee -> do
-            mainfn <- EE.getFunction ee (AST.Name "main")
+            mainCount <- execStateT advanceMain initialCount
+            mainfn <- EE.getFunction ee (AST.Name $ fromString $ "main" ++ (show mainCount))
+            print mainCount
+            -- let mainName = case currentMain of
+            --   0 -> "main"
+            --   _ -> "main"
             case mainfn of
               Just fn -> do
                 res <- run fn
