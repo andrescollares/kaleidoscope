@@ -37,6 +37,8 @@ codegenTop (S.Extern name arguments) = do
     fnargs = toSig $ map fromString arguments
 codegenTop (S.BinaryDef name args body) =
   codegenTop $ S.Function ("binary" ++ name) args body
+codegenTop (S.UnaryDef name args body) =
+  codegenTop $ S.Function ("unary" ++ name) args body
 codegenTop expression = do
   define double "main" [] blks
   where
@@ -86,6 +88,8 @@ cgen (S.BinOp op a b) = do
       cb <- cgen b
       f ca cb
     Nothing -> cgen (S.Call ("binary" ++ op) [a,b])
+cgen (S.UnaryOp op a) = do
+  cgen $ S.Call ("unary" ++ op) [a]
 cgen (S.If cond thenExpr elseExpr) = do
   ifthen <- addBlock "if.then"
   ifelse <- addBlock "if.else"

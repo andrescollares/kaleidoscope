@@ -34,12 +34,23 @@ binarydef = do
   body <- expr
   return $ BinaryDef o args body
 
+unarydef :: Parser Expr
+unarydef = do
+  reserved "def"
+  reserved "unary"
+  o <- op
+  args <- parens $ many identifier
+  body <- expr
+  return $ UnaryDef o args body
+
 op :: Parser String
 op = do
   whitespace
   o <- operator
   whitespace
   return o
+
+unop = Ex.Prefix (UnaryOp <$> op)
 
 binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
@@ -54,7 +65,7 @@ floating = do
   return $ Float n
 
 expr :: Parser Expr
-expr = Ex.buildExpressionParser (binops ++ [[binop]]) factor
+expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
 
 variable :: Parser Expr
 variable = do
@@ -108,6 +119,7 @@ defn =
   try extern
     <|> try function
     <|> try binarydef
+    <|> try unarydef
     <|> expr
 
 contents :: Parser a -> Parser a
