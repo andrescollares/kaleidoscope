@@ -11,8 +11,8 @@ import qualified Text.Parsec.Token as Tok
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
 binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
 
-table :: Ex.OperatorTable String () Identity Expr
-table =
+binops :: Ex.OperatorTable String () Identity Expr
+binops =
   [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
@@ -23,6 +23,25 @@ table =
       binary ">" Ex.AssocLeft
     ]
   ]
+
+binarydef :: Parser Expr
+binarydef = do
+  reserved "def"
+  reserved "binary"
+  o <- op
+  prec <- int
+  args <- parens $ many identifier
+  body <- expr
+  return $ BinaryDef o args body
+
+op :: Parser String
+op = do
+  whitespace
+  o <- operator
+  whitespace
+  return o
+
+binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
 int :: Parser Expr
 int = do
@@ -35,7 +54,7 @@ floating = do
   return $ Float n
 
 expr :: Parser Expr
-expr = Ex.buildExpressionParser table factor
+expr = Ex.buildExpressionParser (binops ++ [[binop]]) factor
 
 variable :: Parser Expr
 variable = do
@@ -88,6 +107,7 @@ defn :: Parser Expr
 defn =
   try extern
     <|> try function
+    <|> try binarydef
     <|> expr
 
 contents :: Parser a -> Parser a

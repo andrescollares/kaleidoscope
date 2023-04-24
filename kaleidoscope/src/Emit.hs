@@ -35,6 +35,8 @@ codegenTop (S.Extern name arguments) = do
   external double (fromString name) fnargs
   where
     fnargs = toSig $ map fromString arguments
+codegenTop (S.BinaryDef name args body) =
+  codegenTop $ S.Function ("binary" ++ name) args body
 codegenTop expression = do
   define double "main" [] blks
   where
@@ -83,7 +85,7 @@ cgen (S.BinOp op a b) = do
       ca <- cgen a
       cb <- cgen b
       f ca cb
-    Nothing -> error "No such operator"
+    Nothing -> cgen (S.Call ("binary" ++ op) [a,b])
 cgen (S.If cond thenExpr elseExpr) = do
   ifthen <- addBlock "if.then"
   ifelse <- addBlock "if.else"
