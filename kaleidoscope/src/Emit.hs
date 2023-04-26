@@ -115,6 +115,12 @@ cgen (S.If cond thenExpr elseExpr) = do
   -- if.cont
   _ <- setBlock ifcont
   phi double [(thenval, ifthenCode), (elseval, ifelseCode)]
+cgen (S.Let a b c) = do
+  i <- alloca double
+  val <- cgen b
+  store i val
+  assign (fromString a) i
+  cgen c
 cgen (S.Var x) = getvar (fromString x) >>= load
 cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do

@@ -15,4 +15,5 @@ data Expr
   | BinaryDef Name [Name] Expr
   | UnaryDef Name [Name] Expr
   | If Expr Expr Expr
+  | Let Name Expr Expr
   deriving stock (Eq, Ord, Show)
