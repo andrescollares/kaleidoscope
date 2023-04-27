@@ -14,6 +14,11 @@ import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.FloatingPointPredicate as FP
 import qualified Syntax as S
 
+one = cons $ C.Float (F.Double 1.0)
+zero = cons $ C.Float (F.Double 0.0)
+false = zero
+true = one
+
 toSig :: [ShortByteString] -> [(AST.Type, AST.Name)]
 toSig = map (\x -> (double, AST.Name x))
 
@@ -115,6 +120,38 @@ cgen (S.If cond thenExpr elseExpr) = do
   -- if.cont
   _ <- setBlock ifcont
   phi double [(thenval, ifthenCode), (elseval, ifelseCode)]
+
+cgen (S.For ivar start cond step body) = do
+  forloop <- addBlock "for.loop"
+  forexit <- addBlock "for.exit"
+
+  -- %entry
+  ------------------
+  i <- alloca double
+  istart <- cgen start           -- Generate loop variable initial value
+  stepval <- cgen step           -- Generate loop variable step
+
+  store i istart                 -- Store the loop variable initial value
+  assign (fromString ivar) i                  -- Assign loop variable to the variable name
+  br forloop                     -- Branch to the loop body block
+
+  -- for.loop
+  ------------------
+  setBlock forloop
+  cgen body                      -- Generate the loop body
+  ival <- load i                 -- Load the current loop iteration
+  inext <- fadd ival stepval     -- Increment loop variable
+  store i inext
+
+  cond <- cgen cond              -- Generate the loop condition
+  test <- fcmp FP.ONE false cond -- Test if the loop condition is True ( 1.0 )
+  cbr test forloop forexit       -- Generate the loop condition
+
+  -- for.exit
+  ------------------
+  setBlock forexit
+  return zero
+
 cgen (S.Let a b c) = do
   i <- alloca double
   val <- cgen b
@@ -126,7 +163,7 @@ cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args
   call (externf (AST.Name $ fromString fn) largs) largs
-cgen _ = error "This shouldn't have matched here :thinking_emoji"
+cgen _ = error "This shouldn't have matched here :thinking_emoji:"
 
 -------------------------------------------------------------------------------
 -- Compilation

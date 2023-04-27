@@ -16,4 +16,5 @@ data Expr
   | UnaryDef Name [Name] Expr
   | If Expr Expr Expr
   | Let Name Expr Expr
+  | For Name Expr Expr Expr Expr
   deriving stock (Eq, Ord, Show)

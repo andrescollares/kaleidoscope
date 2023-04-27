@@ -13,7 +13,9 @@ binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
 
 binops :: Ex.OperatorTable String () Identity Expr
 binops =
-  [ [ binary "*" Ex.AssocLeft,
+  [ 
+    [ binary "=" Ex.AssocLeft],
+    [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
     [ binary "+" Ex.AssocLeft,
@@ -103,6 +105,20 @@ ifthen = do
   elseExpr <- expr
   return $ If cond thenExpr elseExpr
 
+for :: Parser Expr
+for = do
+  reserved "for"
+  var <- identifier
+  reservedOp "="
+  start <- expr
+  reservedOp ","
+  cond <- expr
+  reservedOp ","
+  step <- expr
+  reserved "in"
+  body <- expr
+  return $ For var start cond step body
+
 letins :: Parser Expr
 letins = do
   reserved "var"
@@ -123,6 +139,7 @@ factor =
     <|> try function
     <|> try call
     <|> try ifthen
+    <|> try for
     <|> try letins
     <|> variable
     <|> parens expr
