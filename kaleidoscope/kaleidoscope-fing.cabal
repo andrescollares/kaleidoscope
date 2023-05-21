@@ -57,3 +57,33 @@ executable kaleidoscope-fing
         , haskeline >=0.7
         , parsec >=3.1.0
 
+-- library kaleidoscope-fing-lib
+--     exposed-modules: ParserH
+--     hs-source-dirs: src
+--     build-depends: base ^>=4.14
+--     default-language: Haskell2010
+
+test-suite unit-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+      , src
+  other-modules: Codegen, Lexer, ParserH, Syntax, Emit, JIT
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    --   kaleidoscope-fing
+    base ^>=4.14
+    , tasty
+    , tasty-hunit
+    , bytestring  >=0.10
+    , llvm-hs     ^>=12.0
+    , llvm-hs-pure  ^>=12.0
+    , containers    >=0.6
+    , mtl >=2.2 && <2.3
+    , text ^>= 1.2
+    , haskeline >=0.7
+    , parsec >=3.1.0
+    -- , kaleidoscope-fing-lib
+  default-language: Haskell2010
+
