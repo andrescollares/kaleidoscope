@@ -18,8 +18,8 @@ process modo source = do
   let res = parseToplevel source
   case res of
     Left err -> print err >> return Nothing
-    Right ex -> do
-      ast <- codegen modo ex
+    Right expressions -> do
+      ast <- codegen modo expressions
       return $ Just ast
 
 processFile :: String -> IO (Maybe AST.Module)
