@@ -1,0 +1,1 @@
+[Function "pow" ["base","exponent"] (If (BinOp "<" (Var "exponent") (Float 1.0)) (Float 1.0) (BinOp "*" (Var "base") (Call "pow" [Var "base",BinOp "-" (Var "exponent") (Float 1.0)]))),Call "pow" [Float 4.0,Float 3.0]]

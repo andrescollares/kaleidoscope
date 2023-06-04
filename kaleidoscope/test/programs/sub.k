@@ -1,0 +1,1 @@
+def sub(x y) x - y; sub(9, 10);

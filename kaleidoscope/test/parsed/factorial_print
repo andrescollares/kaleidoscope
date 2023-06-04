@@ -1,0 +1,1 @@
+[Extern "printd" ["x"],Function "factorial" ["x"] (If (BinOp "<" (Var "x") (Float 1.0)) (Float 1.0) (BinOp "*" (Var "x") (Call "printd" [Call "factorial" [BinOp "-" (Var "x") (Float 1.0)]]))),Call "factorial" [Float 8.0]]

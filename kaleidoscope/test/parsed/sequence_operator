@@ -1,0 +1,1 @@
+[Extern "printd" ["x"],BinaryDef ":" ["x","y"] (Float 0.0),BinOp ":" (BinOp ":" (Call "printd" [Float 1.0]) (Call "printd" [Float 2.0])) (Call "printd" [Float 3.0])]

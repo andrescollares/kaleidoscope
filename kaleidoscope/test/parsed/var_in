@@ -1,0 +1,1 @@
+[Function "circlearea" ["r"] (Let "pi" (Float 3.14) (BinOp "*" (BinOp "*" (Var "pi") (Var "r")) (Var "r"))),Call "circlearea" [Float 2.0]]
