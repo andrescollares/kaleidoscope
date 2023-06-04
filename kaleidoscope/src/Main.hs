@@ -46,7 +46,7 @@ main = do
     [fname] -> processFile fname >> return ()
     _ -> print "Usage: kaleidoscope [filename]"
 
--- Imprimir el AST (chapter 2)
+-- Print AST (chapter 2)
 printAST :: String -> IO ()
 printAST line = do
   let res = parseToplevel line

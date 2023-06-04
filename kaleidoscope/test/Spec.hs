@@ -29,23 +29,21 @@ testProgram programName = do
   assertAST source expectedAST
 
 parserTests :: TestTree
-parserTests = testGroup "Parser Tests"
-  [
-    testCase "add" $ do testProgram "add"
-    , testCase "add_sub" $ do testProgram "add_sub"
-    , testCase "factorial_print" $ do testProgram "factorial_print"
-    , testCase "factorial" $ do testProgram "factorial"
-    , testCase "fib_iterative" $ do testProgram "fib_iterative"
-    , testCase "fib" $ do testProgram "fib"
-    , testCase "hello_world" $ do testProgram "hello_world"
-    , testCase "id" $ do testProgram "id"
-    , testCase "pow_operator" $ do testProgram "pow_operator"
-    , testCase "pow" $ do testProgram "pow"
-    , testCase "sequence_operator" $ do testProgram "sequence_operator"
-    , testCase "sub" $ do testProgram "sub"
-    , testCase "unary_minus" $ do testProgram "unary_minus"
-    , testCase "var_in" $ do testProgram "var_in"
-  ]
+parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram s) [
+  "add"
+  , "add_sub"
+  , "factorial_print"
+  , "factorial"
+  , "fib_iterative"
+  , "fib"
+  , "hello_world"
+  , "id"
+  , "pow_operator"
+  , "pow"
+  , "sequence_operator"
+  , "sub"
+  , "unary_minus"
+  , "var_in"]
 
 -- TODO: add RunJIT examples to compare llvm output
 -- TODO: add RunJIT examples to compare program result

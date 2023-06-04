@@ -173,9 +173,9 @@ liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
-codegen modl fns = do
+codegen modl expressions = do
   res <- runJIT oldAst
   return res
   where
-    modlName = mapM codegenTop fns
+    modlName = mapM codegenTop expressions
     oldAst = runLLVM modl modlName
