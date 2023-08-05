@@ -82,8 +82,8 @@ cgen :: S.Expr -> Codegen AST.Operand
 cgen (S.UnaryOp op a) = do
   cgen $ S.Call ("unary" ++ op) [a]
 cgen (S.BinOp "=" (S.Var var) val) = do
-  a <- getvar (fromString var)
   cval <- cgen val
+  a <- getOrAssignVar (fromString var) cval
   store a cval
   return cval
 cgen (S.BinOp op a b) = do

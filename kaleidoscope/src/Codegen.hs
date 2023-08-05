@@ -142,10 +142,10 @@ fresh = do
   modify $ \s -> s {count = 1 + i}
   return $ i + 1
 
-instr :: Instruction -> Codegen (Operand)
+instr :: Instruction -> Codegen Operand
 instr ins = do
   n <- fresh
-  let ref = (UnName n)
+  let ref = UnName n
   blk <- current
   let i = stack blk
   modifyBlock (blk {stack = (ref := ins) : i})
@@ -155,7 +155,7 @@ unnminstr :: Instruction -> Codegen ()
 unnminstr ins = do
   blk <- current
   let i = stack blk
-  modifyBlock (blk {stack = (Do ins) : i})
+  modifyBlock (blk {stack = Do ins : i})
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
@@ -223,6 +223,16 @@ getvar var = do
   case lookup var syms of
     Just x -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
+
+getOrAssignVar :: ShortByteString -> Operand -> Codegen Operand
+getOrAssignVar var x = do
+  syms <- gets symtab
+  case lookup var syms of
+    Just x -> return x
+    Nothing -> do
+      x <- alloca double
+      assign var x
+      return x
 
 -------------------------------------------------------------------------------
 
