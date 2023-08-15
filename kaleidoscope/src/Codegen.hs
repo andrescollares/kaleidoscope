@@ -17,9 +17,12 @@ import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.FloatingPointPredicate as FP
-import LLVM.AST.Global
+import qualified LLVM.AST.Float as F
+import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.Linkage as L
 import LLVM.AST.Type (ptr)
+
+import Debug.Trace
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -44,22 +47,45 @@ define retty label argtys body =
   addDefn $
     GlobalDefinition $
       functionDefaults
-        { name = Name label,
-          parameters = ([Parameter ty nm [] | (ty, nm) <- argtys], False),
-          returnType = retty,
-          basicBlocks = body
+        { G.name = Name label,
+          G.parameters = ([Parameter ty nm [] | (ty, nm) <- argtys], False),
+          G.returnType = retty,
+          G.basicBlocks = body
         }
+
+globalVariable :: Codegen Operand
+globalVariable = do
+  n <- fresh
+  let ref = UnName n
+  instrGlobal $
+    Alloca 
+      double 
+      (Just (ConstantOperand
+            (C.GlobalReference (ptr double)
+            ref
+      )))
+      0
+      []
+  -- addDefn $
+  --   GlobalDefinition $
+  --     globalVariableDefaults 
+  --     {
+  --         G.name = UnName 0,
+  --         G.type' = double
+  --         -- G.alignment = a,
+  --         -- G.section = s
+  --     }
 
 external :: Type -> ShortByteString -> [(Type, Name)] -> LLVM ()
 external retty label argtys =
   addDefn $
     GlobalDefinition $
       functionDefaults
-        { name = Name label,
-          linkage = L.External,
-          parameters = ([Parameter ty nm [] | (ty, nm) <- argtys], False),
-          returnType = retty,
-          basicBlocks = []
+        { G.name = Name label,
+          G.linkage = L.External,
+          G.parameters = ([Parameter ty nm [] | (ty, nm) <- argtys], False),
+          G.returnType = retty,
+          G.basicBlocks = []
         }
 
 ---------------------------------------------------------------------------------
@@ -130,6 +156,8 @@ entryBlockName = "entry"
 emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
+-- uno = cons $ C.Float (F.Double 1.0)
+
 emptyCodegen :: CodegenState
 emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
 
@@ -150,6 +178,15 @@ instr ins = do
   let i = stack blk
   modifyBlock (blk {stack = (ref := ins) : i})
   return $ local ref
+
+instrGlobal :: Instruction -> Codegen Operand
+instrGlobal ins = do
+  n <- fresh
+  let ref = UnName n
+  blk <- current
+  let i = stack blk
+  modifyBlock (blk {stack = (ref := ins) : i})
+  return $ cons $ global ref
 
 unnminstr :: Instruction -> Codegen ()
 unnminstr ins = do
@@ -221,6 +258,7 @@ getvar :: ShortByteString -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of
+    -- LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1)
     Just x -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
@@ -230,9 +268,11 @@ getOrAssignVar var x = do
   case lookup var syms of
     Just x -> return x
     Nothing -> do
-      x <- alloca double
+      -- globalVariable --"asdd"
+      x <- allocaGlobal double
       assign var x
-      return x
+      -- ConstantOperand (GlobalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1))
+      trace ("asdasd" ++ show x) $ return x
 
 -------------------------------------------------------------------------------
 
@@ -289,8 +329,11 @@ call fn fargs = instr $ Call Nothing CC.C [] (Right fn) (toArgs fargs) [] []
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
+allocaGlobal :: Type -> Codegen Operand
+allocaGlobal ty = instrGlobal $ Alloca ty Nothing 0 []
+
 store :: Operand -> Operand -> Codegen ()
-store pointer val = unnminstr $ Store False pointer val Nothing 0 []
+store pointer val = trace (show val) $ unnminstr $ Store False pointer val Nothing 0 []
 
 load :: Operand -> Codegen Operand
 load pointer = instr $ Load False pointer Nothing 0 []

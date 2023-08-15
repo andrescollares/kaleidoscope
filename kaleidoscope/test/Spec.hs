@@ -43,6 +43,7 @@ parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram 
   , "sequence_operator"
   , "sub"
   , "unary_minus"
+  , "global"
   , "var_in"]
 
 -- TODO: add RunJIT examples to compare llvm output
