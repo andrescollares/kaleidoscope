@@ -8,6 +8,7 @@ data Expr
   = Float Double
   | Var String
   | Call Name [Expr]
+  | Constant Name Expr
   | Function Name [Name] Expr
   | Extern Name [Name]
   | BinOp Name Expr Expr

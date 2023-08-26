@@ -13,8 +13,7 @@ binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
 
 binops :: Ex.OperatorTable String () Identity Expr
 binops =
-  [ 
-    [ binary "=" Ex.AssocLeft],
+  [ [binary "=" Ex.AssocLeft],
     [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
@@ -92,6 +91,7 @@ extern = do
 call :: Parser Expr
 call = do
   name <- identifier
+  -- parenthesis are optional for functions without arguments
   arguments <- parens $ commaSep expr
   return $ Call name arguments
 
@@ -131,6 +131,13 @@ letins = do
   body <- expr
   return $ foldr (uncurry Let) body defs
 
+constant :: Parser Expr
+constant = do
+  name <- identifier
+  reserved ":="
+  body <- expr
+  return $ Constant name body
+
 factor :: Parser Expr
 factor =
   try floating
@@ -148,6 +155,7 @@ defn :: Parser Expr
 defn =
   try extern
     <|> try function
+    <|> try constant
     <|> try binarydef
     <|> try unarydef
     <|> expr

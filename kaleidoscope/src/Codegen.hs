@@ -11,18 +11,17 @@ import Data.Function as F
 import qualified Data.List as L
 import qualified Data.Map as Map
 import Data.String
+import Debug.Trace
 import LLVM.AST
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.FloatingPointPredicate as FP
 import qualified LLVM.AST.Float as F
+import qualified LLVM.AST.FloatingPointPredicate as FP
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.Linkage as L
 import LLVM.AST.Type (ptr)
-
-import Debug.Trace
 
 -------------------------------------------------------------------------------
 -- Module Level
@@ -53,28 +52,40 @@ define retty label argtys body =
           G.basicBlocks = body
         }
 
-globalVariable :: Codegen Operand
-globalVariable = do
-  n <- fresh
-  let ref = UnName n
-  instrGlobal $
-    Alloca 
-      double 
-      (Just (ConstantOperand
-            (C.GlobalReference (ptr double)
-            ref
-      )))
-      0
-      []
-  -- addDefn $
-  --   GlobalDefinition $
-  --     globalVariableDefaults 
-  --     {
-  --         G.name = UnName 0,
-  --         G.type' = double
-  --         -- G.alignment = a,
-  --         -- G.section = s
-  --     }
+-- getOrAssignVar :: Type -> ShortByteString -> [BasicBlock] -> LLVM ()
+-- getOrAssignVar var x = do
+--   syms <- gets symtab
+--   case lookup var syms of
+--     Just x -> return x
+--     Nothing -> do
+--       -- globalVariable --"asdd"
+--       x <- allocaGlobal double
+--       assign var x
+--       -- ConstantOperand (GlobalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1))
+--       trace ("asdasd" ++ show x) $ return x
+
+-- globalVariable :: Codegen Operand
+-- globalVariable = do
+--   n <- fresh
+--   let ref = UnName n
+--   instrGlobal $
+--     Alloca
+--       double
+--       (Just (ConstantOperand
+--             (C.GlobalReference (ptr double)
+--             ref
+--       )))
+--       0
+--       []
+-- addDefn $
+--   GlobalDefinition $
+--     globalVariableDefaults
+--     {
+--         G.name = UnName 0,
+--         G.type' = double
+--         -- G.alignment = a,
+--         -- G.section = s
+--     }
 
 external :: Type -> ShortByteString -> [(Type, Name)] -> LLVM ()
 external retty label argtys =
@@ -179,14 +190,15 @@ instr ins = do
   modifyBlock (blk {stack = (ref := ins) : i})
   return $ local ref
 
-instrGlobal :: Instruction -> Codegen Operand
-instrGlobal ins = do
-  n <- fresh
-  let ref = UnName n
-  blk <- current
-  let i = stack blk
-  modifyBlock (blk {stack = (ref := ins) : i})
-  return $ cons $ global ref
+--
+-- instrGlobal :: Instruction -> Codegen Operand
+-- instrGlobal ins = do
+--   n <- fresh
+--   let ref = UnName n
+--   blk <- current
+--   let i = stack blk
+--   modifyBlock (blk {stack = (ref := ins) : i})
+--   return $ cons $ global ref
 
 unnminstr :: Instruction -> Codegen ()
 unnminstr ins = do
@@ -254,27 +266,31 @@ assign var x = do
   lcls <- gets symtab
   modify $ \s -> s {symtab = [(var, x)] ++ lcls}
 
-getvar :: ShortByteString -> Codegen Operand
-getvar var = do
+newtype MaybeT m a = MaybeT {runMaybeT :: m (Maybe a)}
+
+instance Monad m => Applicative (MaybeT m) where
+  pure = return
+  (<*>) = ap
+
+instance Monad m => Functor (MaybeT m) where
+  fmap = liftM
+
+instance (Monad m) => Monad (MaybeT m) where
+  return = MaybeT . return . Just
+  x >>= f = MaybeT $ do
+    v <- runMaybeT x
+    case v of
+      Nothing -> return Nothing
+      Just y -> runMaybeT (f y)
+
+getvar :: ShortByteString -> MaybeT Codegen Operand
+getvar var = MaybeT $ do
   syms <- gets symtab
   case lookup var syms of
     -- LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1)
-    Just x -> return x
-    Nothing -> error $ "Local variable not in scope: " ++ show var
-
-getOrAssignVar :: ShortByteString -> Operand -> Codegen Operand
-getOrAssignVar var x = do
-  syms <- gets symtab
-  case lookup var syms of
-    Just x -> return x
-    Nothing -> do
-      -- globalVariable --"asdd"
-      x <- allocaGlobal double
-      assign var x
-      -- ConstantOperand (GlobalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1))
-      trace ("asdasd" ++ show x) $ return x
-
--------------------------------------------------------------------------------
+    Just x -> return $ Just x
+    Nothing -> return Nothing -- error $ "Local variable not in scope: " ++ show var -- call (externf (AST.Name var) []) []
+    -------------------------------------------------------------------------------
 
 -- References
 local :: Name -> Operand
@@ -329,8 +345,9 @@ call fn fargs = instr $ Call Nothing CC.C [] (Right fn) (toArgs fargs) [] []
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
-allocaGlobal :: Type -> Codegen Operand
-allocaGlobal ty = instrGlobal $ Alloca ty Nothing 0 []
+--
+-- allocaGlobal :: Type -> Codegen Operand
+-- allocaGlobal ty = instrGlobal $ Alloca ty Nothing 0 []
 
 store :: Operand -> Operand -> Codegen ()
 store pointer val = trace (show val) $ unnminstr $ Store False pointer val Nothing 0 []
