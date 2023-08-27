@@ -20,6 +20,7 @@ import LLVM.Analysis
 
 import qualified LLVM.ExecutionEngine as EE
 import qualified Data.ByteString as BS
+import GHC.Base (Double)
 
 foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
 
@@ -37,8 +38,8 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
 
-runJIT :: AST.Module -> IO (AST.Module)
-runJIT mod = do
+optimizeModule :: AST.Module -> IO (AST.Module)
+optimizeModule mod = do
   withContext $ \context ->
     jit context $ \executionEngine ->
       withModuleFromAST context mod $ \m ->
@@ -49,13 +50,19 @@ runJIT mod = do
           s <- moduleLLVMAssembly m
           putStrLn $ map (toEnum . fromIntegral) (BS.unpack s)
 
+          -- Return the optimized module
+          return optmod
+
+runJIT :: AST.Module -> IO Double
+runJIT mod = do
+    withContext $ \context ->
+      jit context $ \executionEngine ->
+        withModuleFromAST context mod $ \m ->
           EE.withModuleInEngine executionEngine m $ \ee -> do
             mainfn <- EE.getFunction ee (AST.Name "main")
             case mainfn of
               Just fn -> do
-                res <- run fn
-                putStrLn $ "Evaluated to: " ++ show res
-              Nothing -> return ()
-
-          -- Return the optimized module
-          return optmod
+                result <- run fn
+                putStrLn $ "Evaluated to: " ++ show result
+                return result
+              Nothing -> return 0

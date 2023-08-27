@@ -187,7 +187,8 @@ liftError = runExceptT >=> either fail return
 
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
 codegen modl expressions = do
-  res <- runJIT oldAst
+  res <- optimizeModule oldAst
+  runJIT oldAst
   return res
   where
     modlName = mapM codegenTop expressions

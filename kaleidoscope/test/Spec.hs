@@ -6,12 +6,21 @@ module Main where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import LLVM.AST
+import Data.String
+
 import ParserH
+import JIT
+import Emit
+import Codegen
 
 import Debug.Trace
 
 main :: IO ()
-main = defaultMain parserTests
+main = defaultMain tests
+
+tests :: TestTree
+tests = testGroup "Tests" [parserTests, jitTests]
 
 assertAST :: String -> String -> Assertion
 assertAST code ast = do
@@ -46,5 +55,37 @@ parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram 
   , "constant"
   , "var_in"]
 
--- TODO: add RunJIT examples to compare llvm output
--- TODO: add RunJIT examples to compare program result
+
+testProgramJIT :: String -> Double -> IO ()
+testProgramJIT programName expectedValue = do
+  source <- readFile $ "./test/programs/" ++ programName ++ ".k"
+  let res = parseToplevel source
+  case res of
+    Left err -> print err
+    Right expressions -> do
+      result <- runJIT oldAst -- expressions
+      result @?= expectedValue
+      where
+        modlName = mapM codegenTop expressions
+        oldAst = runLLVM (defaultModule {moduleName = (fromString "kaleidoscope-test")}) modlName
+
+jitTests :: TestTree
+jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue) -> testCase s $ do testProgramJIT s expectedValue) [
+  ("add", 19)
+  , ("add_sub", 15)
+  -- , ("factorial_print", 40320.0) fails bacuase it uses external :(
+  , ("factorial", 120)
+  -- , ("fib_iterative", 0)
+  , ("fib", 8)
+  -- , ("hello_world", 0)
+  , ("id", 900)
+  , ("pow_operator", 32)
+  , ("pow", 64)
+  -- , ("sequence_operator", 0)
+  , ("sub", -1)
+  , ("unary_minus", -40)
+  , ("constant", 13)
+  , ("var_in", 12.56)
+  ]
+
+-- TODO: compare llvm output
