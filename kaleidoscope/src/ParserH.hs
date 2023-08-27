@@ -134,7 +134,7 @@ letins = do
 constant :: Parser Expr
 constant = do
   name <- identifier
-  reserved ":="
+  reservedOp ":="
   body <- expr
   return $ Constant name body
 
