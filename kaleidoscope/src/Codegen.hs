@@ -39,6 +39,7 @@ emptyModule label = defaultModule {moduleName = label}
 addDefn :: Definition -> LLVM ()
 addDefn d = do
   defs <- gets moduleDefinitions
+  -- TODO: find out if the definition already exists and replace
   modify $ \s -> s {moduleDefinitions = defs ++ [d]}
 
 define :: Type -> ShortByteString -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
