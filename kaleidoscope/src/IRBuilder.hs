@@ -4,15 +4,18 @@
 module IRBuilder where
 
 import Data.ByteString.Short
+
 import LLVM.AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import LLVM.AST.Float
 import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.IntegerPredicate as P
 import LLVM.AST.Type as AST
+
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Module
 import LLVM.IRBuilder.Monad
+import LLVM.IRBuilder.Constant as Con
 
 simple :: Module
 simple = buildModule "exampleModule" $ do
@@ -63,14 +66,11 @@ globalDef :: Module
 globalDef = buildModule "variable_test" $ do
   x <- global "x" AST.double (C.Float (Double 50.0))
 
-  -- function "f" [] AST.i32 $ \[] -> do
-  --   entry <- block `named` "entry"
-  --   r <- add x1 (ConstantOperand (C.Int 32 1))
-  --   ret r
-
   function "main" [] AST.double $ \[] -> do
     entry <- block `named` "entry"
-    -- x1 <- load x 64
-    r <- fadd (ConstantOperand (C.Float (Double 1.0))) (ConstantOperand (C.Float (Double 1.0)))
+    x1 <- load x 0
+    r <- fadd x1 (ConstantOperand (C.Float (Double 1.0)))
     -- res <- call (ConstantOperand (C.GlobalReference (ptr (FunctionType AST.i32 [] False)) (Name "f"))) []
     ret r
+
+-- Next objective, implement a recursive way to generate the AST Module

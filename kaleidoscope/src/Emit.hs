@@ -105,8 +105,6 @@ cgen (S.BinOp op a b) = do
       cb <- cgen b
       f ca cb
     Nothing -> cgen (S.Call ("binary" ++ op) [a, b])
-cgen (S.UnaryOp op a) = do
-  cgen $ S.Call ("unary" ++ op) [a]
 cgen (S.If cond thenExpr elseExpr) = do
   ifthen <- addBlock "if.then"
   ifelse <- addBlock "if.else"
