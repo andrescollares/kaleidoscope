@@ -29,7 +29,7 @@ simple = buildModule "exampleModule" $ do
 
 conditional :: Module
 conditional = buildModule "conditionModule" $ do
-  -- Breaks SSA Principle: https://stackoverflow.com/a/70901888
+  -- This breaks the SSA Principle: https://stackoverflow.com/a/70901888
   -- f <- function "f" [(AST.i32, "a")] AST.i32 $ \[a] -> mdo
   --   cond <- icmp P.EQ a (ConstantOperand (C.Int 32 0))
   --   condBr cond ifThen ifElse
@@ -93,6 +93,9 @@ globalDef = buildModule "variable_test" $ do
 genOptimizedMainModuleIR :: IO Module
 genOptimizedMainModuleIR = genModule [SFloat 5.0]
 
+genSimpleFunction :: IO Module
+genSimpleFunction = genModule [SFunction "plus" ["x", "y"] (SFloat 5.0)]
+
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
@@ -117,4 +120,4 @@ genTopLevel expression = do
 
 -- Generates the Operands that codegenTop needs.
 genOperand :: Expr -> [ParameterName] -> ([Operand] -> IRBuilderT ModuleBuilder ())
-genOperand (SFloat n) [] = \_ -> ret $ ConstantOperand (C.Float (F.Double n))
+genOperand (SFloat n) _ = \_ -> ret $ ConstantOperand (C.Float (F.Double n))
