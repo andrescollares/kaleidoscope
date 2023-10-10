@@ -1,21 +1,25 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
 
 module IRBuilder where
 
 import Data.ByteString.Short
-
+import JIT
 import LLVM.AST hiding (function)
 import qualified LLVM.AST.Constant as C
-import LLVM.AST.Float
 import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.IntegerPredicate as P
 import LLVM.AST.Type as AST
-
+import LLVM.IRBuilder.Constant as Con
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Module
 import LLVM.IRBuilder.Monad
-import LLVM.IRBuilder.Constant as Con
+
+data Expr
+  = SFloat Double
+  | SFunction Name [ParameterName] Expr
+  deriving stock (Eq, Ord, Show)
 
 simple :: Module
 simple = buildModule "exampleModule" $ do
@@ -52,7 +56,7 @@ conditional = buildModule "conditionModule" $ do
     -- SSA
     r <- phi [(trVal, ifThen), (flVal, ifElse)]
     ret r
-  
+
   function "main" [] AST.i32 $ \[] -> mdo
     -- the empty array are the parameter attributes: https://hackage.haskell.org/package/llvm-hs-pure-9.0.0/docs/LLVM-AST-ParameterAttribute.html
     r <- call f [(ConstantOperand (C.Int 32 0), [])]
@@ -78,26 +82,39 @@ arithmetrics = buildModule "arithmetrics" $ do
 
 globalDef :: Module
 globalDef = buildModule "variable_test" $ do
-  x <- global "x" AST.double (C.Float (Double 50.0))
+  x <- global "x" AST.double (C.Float (F.Double 50.0))
 
   function "main" [] AST.double $ \[] -> do
     x1 <- load x 0
-    r <- fadd x1 (ConstantOperand (C.Float (Double 1.0)))
+    r <- fadd x1 (ConstantOperand (C.Float (F.Double 1.0)))
     -- res <- call (ConstantOperand (C.GlobalReference (ptr (FunctionType AST.i32 [ ] False)) (Name "f")) ) [ ]
     ret r
 
--- Next objective, implement a recursive way to generate the AST Module
+genOptimizedMainModuleIR :: IO Module
+genOptimizedMainModuleIR = genModule [SFloat 5.0]
 
--- Generates functions, constants, externs, definitions and a main function otherwise
--- The result is a ModuleBuilder monad
--- codegenTop
-
--- Generates the Operands that codegenTop needs.
--- The intermediate result is an IRBuilder monad
--- cgen
-
--- Generates the Module from the Existing module + the new expressions
+-- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
--- codegen
+genModule :: [Expr] -> IO Module
+genModule expressions = do
+  res <- optimizeModule unoptimizedAst
+  runJIT res
+  return res
+  where
+    -- use old state and new expressions to generate the new state
+    modlState = mapM genTopLevel expressions
+    unoptimizedAst = buildModule "kaleidoscope" modlState
+
+-- Generates functions, constants, externs, definitions and a main function otherwise
+-- The result is a ModuleBuilder monad
+genTopLevel :: Expr -> ModuleBuilder Operand
+genTopLevel (SFunction name args body) = do
+  function name (map (\x -> (AST.double, x)) args) AST.double (genOperand body args)
+genTopLevel expression = do
+  function "main" [] AST.double (genOperand expression [])
+
+-- Generates the Operands that codegenTop needs.
+genOperand :: Expr -> [ParameterName] -> ([Operand] -> IRBuilderT ModuleBuilder ())
+genOperand (SFloat n) [] = \_ -> ret $ ConstantOperand (C.Float (F.Double n))
