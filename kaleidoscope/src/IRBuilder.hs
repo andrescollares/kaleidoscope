@@ -20,45 +20,59 @@ import LLVM.IRBuilder.Constant as Con
 simple :: Module
 simple = buildModule "exampleModule" $ do
   function "plus" [(AST.i32, "x"), (AST.i32, "y")] AST.i32 $ \[x, y] -> do
-    _entry <- block `named` "entry2"
     r <- add x y
     ret r
 
-condition :: Module
-condition = buildModule "conditionModule" $ do
-  function "f" [(AST.i32, "a")] AST.i32 $ \[a] -> mdo
-    _entry <- block `named` "entry"
+conditional :: Module
+conditional = buildModule "conditionModule" $ do
+  -- Breaks SSA Principle: https://stackoverflow.com/a/70901888
+  -- f <- function "f" [(AST.i32, "a")] AST.i32 $ \[a] -> mdo
+  --   cond <- icmp P.EQ a (ConstantOperand (C.Int 32 0))
+  --   condBr cond ifThen ifElse
+  --   ifThen <- block `named` "if.then"
+  --   trVal <- add a (ConstantOperand (C.Int 32 0))
+  --   ret trVal
+  --   -- br ifExit
+  --   ifElse <- block `named` "if.else"
+  --   flVal <- add a (ConstantOperand (C.Int 32 0))
+  --   ret flVal
+
+  f <- function "f" [(AST.i32, "a")] AST.i32 $ \[a] -> mdo
     cond <- icmp P.EQ a (ConstantOperand (C.Int 32 0))
     condBr cond ifThen ifElse
-    ifThen <- block
+    ifThen <- block `named` "if.then"
     trVal <- add a (ConstantOperand (C.Int 32 0))
+    ret trVal
     br ifExit
     ifElse <- block `named` "if.else"
     flVal <- add a (ConstantOperand (C.Int 32 0))
+    ret flVal
     br ifExit
     ifExit <- block `named` "if.exit"
+    -- SSA
     r <- phi [(trVal, ifThen), (flVal, ifElse)]
+    ret r
+  
+  function "main" [] AST.i32 $ \[] -> mdo
+    -- the empty array are the parameter attributes: https://hackage.haskell.org/package/llvm-hs-pure-9.0.0/docs/LLVM-AST-ParameterAttribute.html
+    r <- call f [(ConstantOperand (C.Int 32 0), [])]
     ret r
 
 arithmetrics :: Module
 arithmetrics = buildModule "arithmetrics" $ do
   function "+" [(AST.i32, "x"), (AST.i32, "y")] AST.i32 $ \[x, y] -> do
-    entry <- block `named` "entry"
     r <- add x y
     ret r
 
   function "-" [(AST.i32, "x"), (AST.i32, "y")] AST.i32 $ \[x, y] -> do
-    entry <- block `named` "entry2"
     r <- sub x y
     ret r
 
   function "*" [(AST.i32, "x"), (AST.i32, "y")] AST.i32 $ \[x, y] -> do
-    entry <- block `named` "entry3"
     r <- mul x y
     ret r
 
   function "/" [(AST.i32, "x"), (AST.i32, "y")] AST.i32 $ \[x, y] -> do
-    entry <- block `named` "entry4"
     r <- sdiv x y
     ret r
 
@@ -67,10 +81,23 @@ globalDef = buildModule "variable_test" $ do
   x <- global "x" AST.double (C.Float (Double 50.0))
 
   function "main" [] AST.double $ \[] -> do
-    entry <- block `named` "entry"
     x1 <- load x 0
     r <- fadd x1 (ConstantOperand (C.Float (Double 1.0)))
-    -- res <- call (ConstantOperand (C.GlobalReference (ptr (FunctionType AST.i32 [] False)) (Name "f"))) []
+    -- res <- call (ConstantOperand (C.GlobalReference (ptr (FunctionType AST.i32 [ ] False)) (Name "f")) ) [ ]
     ret r
 
 -- Next objective, implement a recursive way to generate the AST Module
+
+-- Generates functions, constants, externs, definitions and a main function otherwise
+-- The result is a ModuleBuilder monad
+-- codegenTop
+
+-- Generates the Operands that codegenTop needs.
+-- The intermediate result is an IRBuilder monad
+-- cgen
+
+-- Generates the Module from the Existing module + the new expressions
+-- Has to optimize the module
+-- Has to execute the module
+-- Has to update the module state
+-- codegen

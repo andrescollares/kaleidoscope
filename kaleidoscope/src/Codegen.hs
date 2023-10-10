@@ -31,7 +31,7 @@ newtype LLVM a = LLVM (State AST.Module a)
   deriving newtype (Functor, Applicative, Monad, MonadState AST.Module)
 
 runLLVM :: AST.Module -> LLVM a -> AST.Module
-runLLVM modl (LLVM m) = execState m modl
+runLLVM modl (LLVM mState) = execState mState modl
 
 emptyModule :: ShortByteString -> AST.Module
 emptyModule label = defaultModule {moduleName = label}

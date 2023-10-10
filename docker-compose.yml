@@ -3,5 +3,6 @@ services:
   project:
     build: .
     tty: true
+    stdin_open: true
     volumes:
       - ./kaleidoscope:/kaleidoscope

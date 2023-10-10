@@ -185,9 +185,12 @@ liftError = runExceptT >=> either fail return
 
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
 codegen modl expressions = do
-  res <- optimizeModule oldAst
-  runJIT oldAst
+  res <- optimizeModule unoptimizedAst
+  runJIT res
   return res
   where
-    modlName = mapM codegenTop expressions
-    oldAst = runLLVM modl modlName
+    -- modlState is an LLVM monad of [S.Expr]
+    modlState = mapM codegenTop expressions
+    -- unoptimizedAst is the final state of the LLVM monad after applying the
+    -- computation of the new modules
+    unoptimizedAst = runLLVM modl modlState
