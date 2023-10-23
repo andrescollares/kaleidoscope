@@ -25,6 +25,18 @@ docker compose up -d
 docker compose run project bash
 cabal run kaleidoscope-fing
 ```
+
+### Loading modules in ghci
+
+
+```
+cabal exec ghci
+:cd src
+:load IRBuilder.hs JIT.hs
+
+*IRBuilder> simple
+```
+
 ### Running code samples
 
 ```

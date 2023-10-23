@@ -8,7 +8,7 @@ import qualified LLVM.AST as AST
 import ParserH
 import System.Console.Haskeline
 import System.Environment
-
+import IRBuilder
 
 initModule :: AST.Module
 initModule = emptyModule $ fromString "Kaleidoscope"
@@ -19,7 +19,7 @@ process modo source = do
   case res of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      ast <- codegen modo expressions
+      ast <- genModule expressions
       return $ Just ast
 
 processFile :: String -> IO (Maybe AST.Module)

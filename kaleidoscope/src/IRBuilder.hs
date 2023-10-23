@@ -15,11 +15,13 @@ import LLVM.IRBuilder.Constant as Con
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Module
 import LLVM.IRBuilder.Monad
+import qualified Syntax as S
+import Data.String
 
-data Expr
-  = SFloat Double
-  | SFunction Name [ParameterName] Expr
-  deriving stock (Eq, Ord, Show)
+-- data Expr
+--   = SFloat Double
+--   | SFunction Name [ParameterName] Expr
+--   deriving stock (Eq, Ord, Show)
 
 simple :: Module
 simple = buildModule "exampleModule" $ do
@@ -91,16 +93,16 @@ globalDef = buildModule "variable_test" $ do
     ret r
 
 genOptimizedMainModuleIR :: IO Module
-genOptimizedMainModuleIR = genModule [SFloat 5.0]
+genOptimizedMainModuleIR = genModule [S.Float 5.0]
 
 genSimpleFunction :: IO Module
-genSimpleFunction = genModule [SFunction "plus" ["x", "y"] (SFloat 5.0)]
+genSimpleFunction = genModule [S.Function "plus" ["x", "y"] (S.Float 5.0)]
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Expr] -> IO Module
+genModule :: [S.Expr] -> IO Module
 genModule expressions = do
   res <- optimizeModule unoptimizedAst
   runJIT res
@@ -112,12 +114,20 @@ genModule expressions = do
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
-genTopLevel :: Expr -> ModuleBuilder Operand
-genTopLevel (SFunction name args body) = do
-  function name (map (\x -> (AST.double, x)) args) AST.double (genOperand body args)
+genTopLevel :: S.Expr -> ModuleBuilder Operand
+genTopLevel (S.Function name args body) = do
+  function (fromString name) (map (\x -> (AST.double, fromString x)) args) AST.double (genOperand body (map fromString args))
 genTopLevel expression = do
   function "main" [] AST.double (genOperand expression [])
 
 -- Generates the Operands that codegenTop needs.
-genOperand :: Expr -> [ParameterName] -> ([Operand] -> IRBuilderT ModuleBuilder ())
-genOperand (SFloat n) _ = \_ -> ret $ ConstantOperand (C.Float (F.Double n))
+genOperand :: S.Expr -> [ParameterName] -> ([Operand] -> IRBuilderT ModuleBuilder ())
+genOperand (S.Float n) _ = \_ -> ret $ ConstantOperand (C.Float (F.Double n))
+
+
+
+-- interpret
+
+
+
+
