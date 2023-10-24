@@ -26,6 +26,10 @@ RUN echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-12 main" \
 RUN cabal update
 RUN cabal install cabal-install
 
+# Install Haskell Language Server
+RUN wget https://github.com/haskell/haskell-language-server/releases/download/2.2.0.0/haskell-language-server-2.2.0.0-x86_64-linux-deb10.tar.xz && tar xf haskell-language-server-2.2.0.0-x86_64-linux-deb10.tar.xz
+RUN cd haskell-language-server-2.2.0.0 && make && make install
+
 # Compile the C sources
 WORKDIR /
 
