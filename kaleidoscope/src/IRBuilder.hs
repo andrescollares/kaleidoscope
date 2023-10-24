@@ -22,8 +22,10 @@ import LLVM.AST.Constant (Constant(GlobalReference))
 import Data.String
 import Data.Maybe
 import qualified Data.Map.Strict as M
-import Control.Monad.RWS (gets, MonadTrans, MonadState (state), MonadReader (local))
-import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate(ULT, UGT))
+-- import Control.Monad.RWS (MonadTrans, MonadState (state, get), MonadReader (local))
+import Control.Monad.State.Strict
+import Control.Monad.State.Class
+import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate(ULT, UGT, UEQ, UNE, ULE, UGE, ONE))
 
 simple :: Module
 simple = buildModule "exampleModule" $ do
@@ -114,18 +116,29 @@ genFunctionCall = genModule [
   IRBuilder.Call "one" []
   ]
 
+genIfFalse :: IO Module
+genIfFalse = genModule [IRBuilder.If (BinOp ">" (Float 0.0) (Float 1.0)) (Float 8.0) (Float 2.0)]
+
+genIfTrue :: IO Module
+genIfTrue = genModule [IRBuilder.If (Float 1.0) (Float 5.0) (Float 2.0)]
+
+genRecursive :: IO Module
+genRecursive = genModule [
+  IRBuilder.Function "rec" ["x", "y"] (If (BinOp "<" (Var "x") (Float 1.0)) (Var "y") (IRBuilder.Call "rec" [BinOp "-" (Var "x") (Float 1.0), BinOp "+" (Var "y") (Var "x")])),
+  IRBuilder.Call "rec" [Float 5.0, Float 0.0]
+  ]
+
 -- Syntax
 data Expr
   = Float Double
+  | Let Name Expr Expr
   | Var Name
   | Call Name [Expr]
   | Function Name [ParameterName] Expr
   | Extern Name [Name]
-  | UnaryOp Name Expr
-  | BinOp Name Expr Expr
+  | UnaryOp ShortByteString Expr
+  | BinOp ShortByteString Expr Expr
   | If Expr Expr Expr
-  | Let Name Expr Expr
-  | For Name Expr Expr Expr Expr
   deriving stock (Eq, Ord, Show)
 
 -- Generates the Module from the previous module and the new expressions
@@ -147,6 +160,8 @@ genModule expressions = do
 genTopLevel :: Expr -> ModuleBuilder Operand
 genTopLevel (IRBuilder.Function name args body) = do
   function name (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
+genTopLevel (IRBuilder.Extern name args) = do
+  extern name (map (const ASTType.double) args) ASTType.double
 genTopLevel expression = do
   function "main" [] ASTType.double (genLevel expression)
 
@@ -161,41 +176,74 @@ genOperand (IRBuilder.Call fn args) localVars = do
   largs <- mapM (`genOperand` localVars) args 
   call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) args) False)) fn)) (map (\x -> (x, [])) largs)
 
--- genOperand (Var (Name n)) localVars = ret $ do
---   usedNames <- liftIRState gets builderUsedNames
+genOperand (UnaryOp oper a) localVars = do
+  op <- genOperand a localVars
+  case M.lookup oper unops of
+    Just f -> f op
+    Nothing -> error "This shouldn't have matched here, unary operand doesn't exist."
+  where
+    unops :: M.Map ShortByteString (Operand -> IRBuilderT ModuleBuilder Operand)
+    unops =
+      M.fromList
+        [ ("-", fneg) ]
+
+genOperand (BinOp oper a b) localVars = do
+  opA <- genOperand a localVars
+  opB <- genOperand b localVars
+  case M.lookup oper binops of
+    Just f -> f opA opB
+    Nothing -> error "This shouldn't have matched here, binary operand doesn't exist."
+  where
+    binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
+    binops =
+      M.fromList
+        [ ("+", fadd),
+          ("-", fsub),
+          ("*", fmul),
+          ("/", fdiv),
+          ("<", fcmp ULT),
+          (">", fcmp UGT),
+          ("==", fcmp UEQ),
+          ("!=", fcmp UNE),
+          ("<=", fcmp ULE),
+          (">=", fcmp UGE)
+          ]
+  
+genOperand (If cond thenExpr elseExpr) localVars = mdo
+  computedCond <- genOperand cond localVars
+  -- test <- fcmp ONE computedCond (ConstantOperand (C.Float (F.Double 0.0)))
+  condBr computedCond ifThen ifElse
+  ifThen <- block `named` "if.then"
+  computedThen <- genOperand thenExpr localVars
+  br ifExit
+  ifElse <- block `named` "if.else"
+  computedElse <- genOperand elseExpr localVars
+  br ifExit
+  ifExit <- block `named` "if.exit"
+  phi [(computedThen, ifThen), (computedElse, ifElse)]
+
+genOperand (Let (Name varName) value body) localVars = do
+  var <- alloca ASTType.double Nothing 0
+  computedValue <- genOperand value localVars
+  store var 0 computedValue
+  genOperand body (var : localVars)
+
+genOperand(Var (Name n)) localVars = do
+  return $ LocalReference ASTType.double (Name $ n <> "_0") 
+
+-- genOperand (Var (Name n)) localVars = do
+--   s <- get 
 --   let
+--     usedNames = builderUsedNames s
 --     nameCount = fromMaybe 0 $ M.lookup n usedNames
 --     usedName = n <> fromString ("_" <> show (nameCount - 1))
 --   case getLocalVar usedName localVars of
---     Just x -> ret x
---     Nothing -> ret $ ConstantOperand (GlobalReference (ASTType.ptr ASTType.double) (Name n))
+--     Just x -> return x
+--     Nothing -> return $ ConstantOperand (GlobalReference (ASTType.ptr ASTType.double) (Name n))
 --   where
 --     getLocalVar :: ShortByteString -> [Operand] -> Maybe Operand
 --     getLocalVar n vars = case filter (\(LocalReference _ (Name name)) -> name == n) vars of
 --       x:xs -> Just x
 --       _ -> Nothing
-
--- genOperand (UnaryOp (Name op) a) localVars = do
---   operand <- genOperand a localVars
---   genOperand (IRBuilder.Call (Name ("unary_" <> op)) [operand]) localVars
-
--- genOperand (BinOp (Name op) a b) localVars = do
---   opA <- genOperand a localVars
---   res <- case M.lookup op binops of
---     Just f -> f () (genOperand b localVars)
---     Nothing -> error "This shouldn't have matched here, binary operand doesn't exist."
---   ret res
---   -- genOperand (IRBuilder.Call (Name ("binary_" <> op)) [a, b]) localVars
---   where
---     binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
---     binops =
---       M.fromList
---         [ ("+", fadd),
---           ("-", fsub),
---           ("*", fmul),
---           ("/", fdiv),
---           ("<", fcmp ULT),
---           (">", fcmp UGT)
---         ]
 
 genOperand _ _ = error "This shouldn't have matched here :thinking_emoji:"
