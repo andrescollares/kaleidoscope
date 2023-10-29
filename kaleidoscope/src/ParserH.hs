@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module ParserH where
 
 import Data.Functor.Identity
@@ -7,9 +9,12 @@ import Text.Parsec
 import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
+import qualified LLVM.IRBuilder.Module as M
+import Data.String
+import Data.ByteString.Short
 
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
-binary s assoc = Ex.Infix (reservedOp s >> return (BinOp s)) assoc
+binary s assoc = Ex.Infix (reservedOp s >> return (BinOp (fromString s))) assoc
 
 binops :: Ex.OperatorTable String () Identity Expr
 binops =
@@ -33,7 +38,7 @@ binarydef = do
   prec <- int
   args <- parens $ many identifier
   body <- expr
-  return $ BinaryDef o args body
+  return $ BinaryDef o (map fromString args) body
 
 unarydef :: Parser Expr
 unarydef = do
@@ -42,14 +47,14 @@ unarydef = do
   o <- op
   args <- parens $ many identifier
   body <- expr
-  return $ UnaryDef o args body
+  return $ UnaryDef o (map fromString args) body
 
-op :: Parser String
+op :: Parser ShortByteString
 op = do
   whitespace
   o <- operator
   whitespace
-  return o
+  return (fromString o)
 
 unop = Ex.Prefix (UnaryOp <$> op)
 
@@ -71,7 +76,7 @@ expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
 variable :: Parser Expr
 variable = do
   var <- identifier
-  return $ Var var
+  return $ Var (fromString var)
 
 function :: Parser Expr
 function = do
@@ -79,21 +84,21 @@ function = do
   name <- identifier
   arguments <- parens $ many identifier
   body <- expr
-  return $ Function name arguments body
+  return $ Function (fromString name) (map (\x -> M.ParameterName $ fromString x) arguments) body
 
 extern :: Parser Expr
 extern = do
   reserved "extern"
   name <- identifier
   arguments <- parens $ many identifier
-  return $ Extern name arguments
+  return $ Extern (fromString name) (map fromString arguments)
 
 call :: Parser Expr
 call = do
   name <- identifier
   -- parenthesis are optional for functions without arguments
   arguments <- parens $ commaSep expr
-  return $ Call name arguments
+  return $ Call (fromString name) arguments
 
 ifthen :: Parser Expr
 ifthen = do
@@ -105,19 +110,19 @@ ifthen = do
   elseExpr <- expr
   return $ If cond thenExpr elseExpr
 
-for :: Parser Expr
-for = do
-  reserved "for"
-  var <- identifier
-  reservedOp "="
-  start <- expr
-  reservedOp ","
-  cond <- expr
-  reservedOp ","
-  step <- expr
-  reserved "in"
-  body <- expr
-  return $ For var start cond step body
+-- for :: Parser Expr
+-- for = do
+--   reserved "for"
+--   var <- identifier
+--   reservedOp "="
+--   start <- expr
+--   reservedOp ","
+--   cond <- expr
+--   reservedOp ","
+--   step <- expr
+--   reserved "in"
+--   body <- expr
+--   return $ For var start cond step body
 
 letins :: Parser Expr
 letins = do
@@ -129,14 +134,14 @@ letins = do
     return (var, val)
   reserved "in"
   body <- expr
-  return $ foldr (uncurry Let) body defs
+  return $ foldr (uncurry Let) body (map (\(x, y) -> (fromString x, y)) defs)
 
-constant :: Parser Expr
-constant = do
-  name <- identifier
-  reservedOp ":="
-  body <- expr
-  return $ Constant name body
+-- constant :: Parser Expr
+-- constant = do
+--   name <- identifier
+--   reservedOp ":="
+--   body <- expr
+--   return $ Constant name body
 
 factor :: Parser Expr
 factor =
@@ -146,7 +151,7 @@ factor =
     <|> try function
     <|> try call
     <|> try ifthen
-    <|> try for
+    -- <|> try for
     <|> try letins
     <|> variable
     <|> parens expr
@@ -155,7 +160,7 @@ defn :: Parser Expr
 defn =
   try extern
     <|> try function
-    <|> try constant
+    -- <|> try constant
     <|> try binarydef
     <|> try unarydef
     <|> expr

@@ -3,11 +3,12 @@ module Main where
 import Codegen
 import Control.Monad.Trans
 import Data.String
-import Emit
+-- import Emit
 import qualified LLVM.AST as AST
 import ParserH
 import System.Console.Haskeline
 import System.Environment
+import IRBuilder (genModule)
 
 
 initModule :: AST.Module
@@ -19,7 +20,7 @@ process modo source = do
   case res of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      ast <- codegen modo expressions
+      ast <- genModule expressions
       return $ Just ast
 
 processFile :: String -> IO (Maybe AST.Module)

@@ -26,6 +26,7 @@ import qualified Data.Map.Strict as M
 import Control.Monad.State.Strict
 import Control.Monad.State.Class
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate(ULT, UGT, UEQ, UNE, ULE, UGE, ONE))
+import Syntax as S
 
 simple :: Module
 simple = buildModule "exampleModule" $ do
@@ -105,41 +106,41 @@ genOptimizedMainModuleIR :: IO Module
 genOptimizedMainModuleIR = genModule [Float 5.0]
 
 genSimpleFunction :: IO Module
-genSimpleFunction = genModule [IRBuilder.Function "plus" ["x", "y"] (Float 5.0)]
+genSimpleFunction = genModule [S.Function "plus" ["x", "y"] (Float 5.0)]
 
 genNotSoSimpleFunction :: IO Module
-genNotSoSimpleFunction = genModule [IRBuilder.Function "id" ["x"] (Var "x")]
+genNotSoSimpleFunction = genModule [S.Function "id" ["x"] (Var "x")]
 
 genFunctionCall :: IO Module
 genFunctionCall = genModule [ 
-  IRBuilder.Function "one" [] (Float 1.0), 
-  IRBuilder.Call "one" []
+  S.Function "one" [] (Float 1.0), 
+  S.Call "one" []
   ]
 
 genIfFalse :: IO Module
-genIfFalse = genModule [IRBuilder.If (BinOp ">" (Float 0.0) (Float 1.0)) (Float 8.0) (Float 2.0)]
+genIfFalse = genModule [S.If (BinOp ">" (Float 0.0) (Float 1.0)) (Float 8.0) (Float 2.0)]
 
 genIfTrue :: IO Module
-genIfTrue = genModule [IRBuilder.If (Float 1.0) (Float 5.0) (Float 2.0)]
+genIfTrue = genModule [S.If (Float 1.0) (Float 5.0) (Float 2.0)]
 
 genRecursive :: IO Module
 genRecursive = genModule [
-  IRBuilder.Function "rec" ["x", "y"] (If (BinOp "<" (Var "x") (Float 1.0)) (Var "y") (IRBuilder.Call "rec" [BinOp "-" (Var "x") (Float 1.0), BinOp "+" (Var "y") (Var "x")])),
-  IRBuilder.Call "rec" [Float 5.0, Float 0.0]
+  S.Function "rec" ["x", "y"] (If (BinOp "<" (Var "x") (Float 1.0)) (Var "y") (S.Call "rec" [BinOp "-" (Var "x") (Float 1.0), BinOp "+" (Var "y") (Var "x")])),
+  S.Call "rec" [Float 5.0, Float 0.0]
   ]
 
 -- Syntax
-data Expr
-  = Float Double
-  | Let Name Expr Expr
-  | Var Name
-  | Call Name [Expr]
-  | Function Name [ParameterName] Expr
-  | Extern Name [Name]
-  | UnaryOp ShortByteString Expr
-  | BinOp ShortByteString Expr Expr
-  | If Expr Expr Expr
-  deriving stock (Eq, Ord, Show)
+-- data Expr
+--   = Float Double
+--   | Let Name Expr Expr
+--   | Var Name
+--   | Call Name [Expr]
+--   | Function Name [ParameterName] Expr
+--   | Extern Name [Name]
+--   | UnaryOp ShortByteString Expr
+--   | BinOp ShortByteString Expr Expr
+--   | If Expr Expr Expr
+--   deriving stock (Eq, Ord, Show)
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -158,9 +159,9 @@ genModule expressions = do
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
-genTopLevel (IRBuilder.Function name args body) = do
+genTopLevel (S.Function name args body) = do
   function name (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
-genTopLevel (IRBuilder.Extern name args) = do
+genTopLevel (S.Extern name args) = do
   extern name (map (const ASTType.double) args) ASTType.double
 genTopLevel expression = do
   function "main" [] ASTType.double (genLevel expression)
@@ -172,7 +173,7 @@ genLevel e localVars = genOperand e localVars >>= ret
 genOperand :: Expr -> [Operand] -> IRBuilderT ModuleBuilder Operand
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 
-genOperand (IRBuilder.Call fn args) localVars = do
+genOperand (S.Call fn args) localVars = do
   largs <- mapM (`genOperand` localVars) args 
   call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) args) False)) fn)) (map (\x -> (x, [])) largs)
 
