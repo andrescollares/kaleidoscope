@@ -33,7 +33,7 @@ data Expr
   | Extern Name [Name]
   | UnaryOp ShortByteString Expr
   | BinOp ShortByteString Expr Expr
-  | UnaryDef ShortByteString [Name] Expr -- TODO: adapt to new syntax
-  | BinaryDef ShortByteString [Name] Expr -- TODO: adapt to new syntax
+  | UnaryDef ShortByteString [ParameterName] Expr -- TODO: adapt to new syntax
+  | BinaryDef ShortByteString [ParameterName] Expr -- TODO: adapt to new syntax
   | If Expr Expr Expr
   deriving stock (Eq, Ord, Show)
