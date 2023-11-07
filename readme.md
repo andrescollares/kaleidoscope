@@ -31,3 +31,9 @@ cabal run kaleidoscope-fing
 cabal run kaleidoscope-fing -- "programs/add_sub.k"
 ```
 
+### Running ghci through Cabal
+
+```
+cabal exec ghci
+```
+

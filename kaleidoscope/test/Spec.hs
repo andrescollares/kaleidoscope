@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 -- Run this test with the command:
@@ -11,8 +13,11 @@ import Data.String
 
 import ParserH
 import JIT
-import Emit
+-- import Emit
+import IRBuilder
+import LLVM.IRBuilder.Module (buildModule)
 import Codegen
+import Control.Monad (void)
 
 import Debug.Trace
 
@@ -63,11 +68,11 @@ testProgramJIT programName expectedValue = do
   case res of
     Left err -> print err
     Right expressions -> do
-      result <- runJIT oldAst -- expressions
+      result <- runJIT unoptimizedAst -- expressions
       result @?= expectedValue
       where
-        modlName = mapM codegenTop expressions
-        oldAst = runLLVM (defaultModule {moduleName = (fromString "kaleidoscope-test")}) modlName
+        modlState = mapM genTopLevel expressions
+        unoptimizedAst = buildModule "kaleidoscope" modlState
 
 jitTests :: TestTree
 jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue) -> testCase s $ do testProgramJIT s expectedValue) [
