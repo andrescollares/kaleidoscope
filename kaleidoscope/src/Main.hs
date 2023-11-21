@@ -4,39 +4,39 @@ import Codegen
 import Control.Monad.Trans
 import Data.String
 -- import Emit
+
+import IRBuilder (genModule)
 import qualified LLVM.AST as AST
 import ParserH
 import System.Console.Haskeline
 import System.Environment
-import IRBuilder (genModule)
-
 
 initModule :: AST.Module
 initModule = emptyModule $ fromString "Kaleidoscope"
 
-process :: AST.Module -> String -> IO (Maybe AST.Module)
-process modo source = do
+process :: [AST.Definition] -> String -> IO (Maybe (AST.Module, [AST.Definition]))
+process oldDefs source = do
   let res = parseToplevel source
   case res of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      ast <- genModule expressions
-      return $ Just ast
+      x <- genModule oldDefs expressions
+      return $ Just x
 
-processFile :: String -> IO (Maybe AST.Module)
-processFile fname = readFile fname >>= process initModule
+processFile :: String -> IO (Maybe (AST.Module, [AST.Definition]))
+processFile fname = readFile fname >>= process []
 
 repl :: IO ()
-repl = runInputT defaultSettings (loop initModule)
+repl = runInputT defaultSettings (loop [])
   where
     loop modl = do
       minput <- getInputLine "ready> "
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
-          maybeModlName <- liftIO $ process modl input
-          case maybeModlName of
-            Just modlName -> loop modlName
+          maybeModl <- liftIO $ process modl input
+          case maybeModl of
+            Just (_, defs) -> loop defs
             Nothing -> loop modl
 
 main :: IO ()
