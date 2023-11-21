@@ -14,16 +14,16 @@ import System.Environment
 initModule :: AST.Module
 initModule = emptyModule $ fromString "Kaleidoscope"
 
-process :: [AST.Definition] -> String -> IO (Maybe (AST.Module, [AST.Definition]))
+process :: [AST.Definition] -> String -> IO (Maybe [AST.Definition])
 process oldDefs source = do
   let res = parseToplevel source
   case res of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      x <- genModule oldDefs expressions
-      return $ Just x
+      defs <- genModule oldDefs expressions
+      return $ Just defs 
 
-processFile :: String -> IO (Maybe (AST.Module, [AST.Definition]))
+processFile :: String -> IO (Maybe [AST.Definition])
 processFile fname = readFile fname >>= process []
 
 repl :: IO ()
@@ -34,9 +34,9 @@ repl = runInputT defaultSettings (loop [])
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
-          maybeModl <- liftIO $ process modl input
-          case maybeModl of
-            Just (_, defs) -> loop defs
+          maybeDefs <- liftIO $ process modl input
+          case maybeDefs of
+            Just defs -> loop defs
             Nothing -> loop modl
 
 main :: IO ()

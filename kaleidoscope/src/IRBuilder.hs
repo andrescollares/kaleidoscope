@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
 
@@ -20,36 +21,44 @@ import LLVM.AST.Constant (Constant (GlobalReference))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (ONE, UEQ, UGE, UGT, ULE, ULT, UNE))
+import LLVM.AST.Global (Global (name))
 import qualified LLVM.AST.IntegerPredicate as P
 import qualified LLVM.AST.ParameterAttribute as PA
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Constant as Con
 import LLVM.IRBuilder.Instruction
-import LLVM.IRBuilder.Module ( extern, function, ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), ModuleBuilderT (ModuleBuilderT), execModuleBuilder )
+import LLVM.IRBuilder.Internal.SnocList
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), ModuleBuilderT (ModuleBuilderT), execModuleBuilder, extern, function)
 import LLVM.IRBuilder.Monad
 import Syntax as S
-import LLVM.IRBuilder.Internal.SnocList
 
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
   where
-    oldModl = ModuleBuilderState { builderDefs = SnocList prevDefs, builderTypeDefs = mempty }
+    oldModl = ModuleBuilderState {builderDefs = SnocList prevDefs, builderTypeDefs = mempty}
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> IO (Module, [Definition])
+genModule :: [Definition] -> [Expr] -> IO [Definition]
 genModule oldDefs expressions = do
   res <- optimizeModule unoptimizedAst
   _ <- runJIT res
-  return (res, definitions)
+  return definitions
   where
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
-    definitions = buildModuleWithDefinitions oldDefs modlState
+    oldDefsWithoutMain =
+      filter
+        ( \case
+            GlobalDefinition AST.Function {name = Name "main"} -> False
+            _ -> True
+        )
+        oldDefs
+    definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
-    mkModule ds = defaultModule { moduleName = "kaleidoscope", moduleDefinitions = ds }
+    mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
