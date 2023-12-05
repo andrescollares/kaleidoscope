@@ -5,47 +5,32 @@
 
 module IRBuilder where
 
-import Control.Monad (liftM)
--- import Control.Monad.RWS (MonadTrans, MonadState (state, get), MonadReader (local))
-
-import Control.Monad.State.Class
-import Control.Monad.State.Strict
 import Data.ByteString.Short
 import qualified Data.Map.Strict as M
-import Data.Maybe
+-- import Data.Maybe
 import Data.String
-import Debug.Trace
 import JIT
 import LLVM.AST as AST hiding (function)
-import LLVM.AST.Constant (Constant (GlobalReference))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
-import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (ONE, UEQ, UGE, UGT, ULE, ULT, UNE))
+import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
 import LLVM.AST.Global (Global (name))
-import qualified LLVM.AST.IntegerPredicate as P
-import qualified LLVM.AST.ParameterAttribute as PA
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Constant as Con
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), ModuleBuilderT (ModuleBuilderT), execModuleBuilder, extern, function)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
-
-buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
-buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
-  where
-    oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> IO [Definition]
+genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
-  res <- optimizeModule unoptimizedAst
-  _ <- runJIT res
-  return definitions
+  optMod <- optimizeModule unoptimizedAst
+  res <- runJIT optMod
+  return (res, definitions)
   where
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
@@ -65,15 +50,23 @@ genModule oldDefs expressions = do
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
 
+buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
+buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
+  where
+    oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
+
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
--- Function definition
-genTopLevel (S.Function name args body) = do
-  function name (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
 -- Extern definition
 genTopLevel (S.Extern name args) = do
   extern name (map (const ASTType.double) args) ASTType.double
+-- Function definition
+genTopLevel (S.Function name args body) = do
+  function name (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
+-- Constant definition
+genTopLevel (S.Constant name value) = do
+  global name ASTType.double (C.Float (F.Double value))
 -- Unary operator definition
 genTopLevel (S.UnaryDef name args body) = do
   function (Name ("unary_" <> name)) (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
@@ -96,12 +89,9 @@ genOperand (Var (Name n)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
-  traceM $ "localVars: " <> show localVars
-  traceM $ "n: " <> show n
-  traceM $ "a_0: " <> show (removeEnding "a_0")
   case getLocalVarName n localVars of
     Just localVar -> return localVar
-    Nothing -> return $ ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))
+    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
   where
     getLocalVarName :: ShortByteString -> [Operand] -> Maybe Operand
     getLocalVarName n vars = findLast (\(LocalReference _ (Name varName)) -> removeEnding varName == n) vars Nothing
@@ -158,7 +148,6 @@ genOperand (BinOp oper a b) localVars = do
 -- If
 genOperand (If cond thenExpr elseExpr) localVars = mdo
   computedCond <- genOperand cond localVars
-  -- test <- fcmp ONE computedCond (ConstantOperand (C.Float (F.Double 0.0)))
   condBr computedCond ifThen ifElse
   ifThen <- block `named` "if.then"
   computedThen <- genOperand thenExpr localVars
@@ -170,9 +159,9 @@ genOperand (If cond thenExpr elseExpr) localVars = mdo
   phi [(computedThen, ifThen), (computedElse, ifElse)]
 
 -- Let in
-genOperand (Let (Name varName) value body) localVars = do
-  var <- alloca ASTType.double Nothing 0
-  computedValue <- genOperand value localVars
-  store var 0 computedValue
-  genOperand body (var : localVars)
+-- genOperand (Let (Name varName) value body) localVars = do
+--   var <- alloca ASTType.double Nothing 0
+--   computedValue <- genOperand value localVars
+--   store var 0 computedValue
+--   genOperand body (var : localVars)
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x

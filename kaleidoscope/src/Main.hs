@@ -10,34 +10,51 @@ import qualified LLVM.AST as AST
 import ParserH
 import System.Console.Haskeline
 import System.Environment
+import Data.Text (strip, unpack, pack)
 
 initModule :: AST.Module
 initModule = emptyModule $ fromString "Kaleidoscope"
 
-process :: [AST.Definition] -> String -> IO (Maybe [AST.Definition])
+process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))
 process oldDefs source = do
-  let res = parseToplevel source
-  case res of
+  let parsedSrc = parseToplevel source
+  case parsedSrc of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      defs <- genModule oldDefs expressions
-      return $ Just defs 
+      traceM $ "expressions: " ++ show expressions
+      (res, defs) <- genModule oldDefs expressions
+      return $ Just (res, defs)
 
 processFile :: String -> IO (Maybe [AST.Definition])
-processFile fname = readFile fname >>= process []
+processFile fname = do
+  file <- readFile fname
+  result <- process [] file
+  return $ snd <$> result
 
 repl :: IO ()
-repl = runInputT defaultSettings (loop [])
+repl = runInputT defaultSettings (loop 0 [])
   where
-    loop oldDefs = do
+    loop prevRes oldDefs = do
+      traceM $ "prevRes: " ++ show prevRes
       minput <- getInputLine "ready> "
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
-          maybeDefs <- liftIO $ process oldDefs input
-          case maybeDefs of
-            Just defs -> loop defs
-            Nothing -> loop oldDefs
+          case unpack $ strip $ pack input of
+            ('=':rest) -> do
+              maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";")
+              case maybeDefs of
+                Just (_, defs) -> loop prevRes defs
+                Nothing -> loop prevRes oldDefs
+            _ -> do
+              maybeDefs <- liftIO $ process oldDefs input
+              case maybeDefs of
+                Just (res, defs) -> loop res defs
+                Nothing -> loop prevRes oldDefs
+    removeLast :: String -> String
+    removeLast [] = []
+    removeLast [_] = []
+    removeLast (x:xs) = x : removeLast xs
 
 main :: IO ()
 main = do

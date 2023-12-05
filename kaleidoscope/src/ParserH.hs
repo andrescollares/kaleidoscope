@@ -12,14 +12,14 @@ import qualified Text.Parsec.Token as Tok
 import qualified LLVM.IRBuilder.Module as M
 import Data.String
 import Data.ByteString.Short
+import qualified Data.Bifunctor
 
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
-binary s assoc = Ex.Infix (reservedOp s >> return (BinOp (fromString s))) assoc
+binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
 
 binops :: Ex.OperatorTable String () Identity Expr
 binops =
-  [ [binary "=" Ex.AssocLeft],
-    [ binary "*" Ex.AssocLeft,
+  [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
     [ binary "+" Ex.AssocLeft,
@@ -35,10 +35,9 @@ binarydef = do
   reserved "def"
   reserved "binary"
   o <- op
-  prec <- int
+  _ <- int
   args <- parens $ many identifier
-  body <- expr
-  return $ BinaryDef o (map fromString args) body
+  BinaryDef o (map fromString args) <$> expr
 
 unarydef :: Parser Expr
 unarydef = do
@@ -46,8 +45,7 @@ unarydef = do
   reserved "unary"
   o <- op
   args <- parens $ many identifier
-  body <- expr
-  return $ UnaryDef o (map fromString args) body
+  UnaryDef o (map fromString args) <$> expr
 
 op :: Parser ShortByteString
 op = do
@@ -56,35 +54,26 @@ op = do
   whitespace
   return (fromString o)
 
+unop :: Ex.Operator String () Identity Expr
 unop = Ex.Prefix (UnaryOp <$> op)
 
+binop :: Ex.Operator String () Identity Expr
 binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
 int :: Parser Expr
-int = do
-  n <- integer
-  return $ Float (fromInteger n)
+int =
+  Float . fromInteger <$> integer
 
 floating :: Parser Expr
-floating = do
-  n <- float
-  return $ Float n
+floating =
+  Float <$> float
 
 expr :: Parser Expr
 expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
 
 variable :: Parser Expr
-variable = do
-  var <- identifier
-  return $ Var (fromString var)
-
-function :: Parser Expr
-function = do
-  reserved "def"
-  name <- identifier
-  arguments <- parens $ many identifier
-  body <- expr
-  return $ Function (fromString name) (map (\x -> M.ParameterName $ fromString x) arguments) body
+variable =
+  Var . fromString <$> identifier
 
 extern :: Parser Expr
 extern = do
@@ -92,6 +81,21 @@ extern = do
   name <- identifier
   arguments <- parens $ many identifier
   return $ Extern (fromString name) (map fromString arguments)
+
+function :: Parser Expr
+function = do
+  reserved "def"
+  name <- identifier
+  arguments <- parens $ many identifier
+  Function (fromString name) (map (M.ParameterName . fromString) arguments) <$> expr
+
+constant :: Parser Expr
+constant = do
+  reservedOp "const"
+  name <- identifier
+  value <- try float <|> try (fromInteger <$> integer)
+  return $ Constant (fromString name) value
+
 
 call :: Parser Expr
 call = do
@@ -107,22 +111,7 @@ ifthen = do
   reserved "then"
   thenExpr <- expr
   reserved "else"
-  elseExpr <- expr
-  return $ If cond thenExpr elseExpr
-
--- for :: Parser Expr
--- for = do
---   reserved "for"
---   var <- identifier
---   reservedOp "="
---   start <- expr
---   reservedOp ","
---   cond <- expr
---   reservedOp ","
---   step <- expr
---   reserved "in"
---   body <- expr
---   return $ For var start cond step body
+  If cond thenExpr <$> expr
 
 letins :: Parser Expr
 letins = do
@@ -134,14 +123,7 @@ letins = do
     return (var, val)
   reserved "in"
   body <- expr
-  return $ foldr (uncurry Let) body (map (\(x, y) -> (fromString x, y)) defs)
-
--- constant :: Parser Expr
--- constant = do
---   name <- identifier
---   reservedOp ":="
---   body <- expr
---   return $ Constant name body
+  return $ foldr (uncurry Let . Data.Bifunctor.first fromString) body defs
 
 factor :: Parser Expr
 factor =
@@ -151,7 +133,6 @@ factor =
     <|> try function
     <|> try call
     <|> try ifthen
-    -- <|> try for
     <|> try letins
     <|> variable
     <|> parens expr
@@ -160,7 +141,7 @@ defn :: Parser Expr
 defn =
   try extern
     <|> try function
-    -- <|> try constant
+    <|> try constant
     <|> try binarydef
     <|> try unarydef
     <|> expr
@@ -179,7 +160,7 @@ toplevel = many $ do
   return def
 
 parseExpr :: String -> Either ParseError Expr
-parseExpr s = parse (contents expr) "<stdin>" s
+parseExpr = parse (contents expr) "<stdin>"
 
 parseToplevel :: String -> Either ParseError [Expr]
-parseToplevel s = parse (contents toplevel) "<stdin>" s
+parseToplevel = parse (contents toplevel) "<stdin>"

@@ -8,8 +8,8 @@ import qualified Text.Parsec.Token as Tok
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
   where
-    ops = ["+", "*", "-", "/", ";", ",", "<", ">", "=", "|",":",":="]
-    names = ["def", "extern", "if", "then", "else", "binary", "unary", "in", "for"]
+    ops = ["+", "*", "-", "/", ";", ",", "<", ">", "|", ":"]
+    names = ["const", "def", "extern", "if", "then", "else", "binary", "unary", "in", "for"]
     style =
       emptyDef
         { Tok.commentLine = "#",

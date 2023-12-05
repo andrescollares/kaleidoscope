@@ -2,26 +2,18 @@
 
 module JIT where
 
-import Control.Monad.Except
 import qualified Data.ByteString as BS
-import Data.Int
-import Data.Word
 import Foreign.Ptr (FunPtr, castFunPtr)
-import GHC.Base (Double)
 import qualified LLVM.AST as AST
-import LLVM.Analysis
-import LLVM.CodeModel
 import LLVM.Context
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
 import LLVM.PassManager
-import LLVM.Target
-import LLVM.Transforms
 
-foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
+foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
 
-run :: FunPtr a -> IO Double
-run fn = haskFun (castFunPtr fn :: FunPtr (IO Double))
+run :: FunPtr a -> Double
+run fn = haskFun (castFunPtr fn :: FunPtr Double)
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -34,20 +26,23 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec {optLevel = Just 3}
 
-optimizeModule :: AST.Module -> IO (AST.Module)
+optimizeModule :: AST.Module -> IO AST.Module
 optimizeModule mod = do
   withContext $ \context ->
-    jit context $ \executionEngine ->
+    jit context $ \_ ->
       withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
-          -- runPassManager pm m
+          _ <- runPassManager pm m
           optmod <- moduleAST m
-          s <- moduleLLVMAssembly m
-          putStrLn $ map (toEnum . fromIntegral) (BS.unpack s)
-
+          modBS <- moduleLLVMAssembly m
+          -- Print the optimized module as LLVM assembly to stdout
+          putStrLn "Optimized LLVM assembly:"
+          putStrLn $ modBSToString modBS
           -- Return the optimized module
           return optmod
+          where
+            modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
 runJIT :: AST.Module -> IO Double
 runJIT mod = do
@@ -58,7 +53,8 @@ runJIT mod = do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of
             Just fn -> do
-              result <- run fn
               putStrLn $ "Evaluated to: " ++ show result
               return result
+              where
+                result = run fn
             Nothing -> return 0
