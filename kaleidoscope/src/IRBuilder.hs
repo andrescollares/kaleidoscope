@@ -35,7 +35,7 @@ import Syntax as S
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
   where
-    oldModl = ModuleBuilderState {builderDefs = SnocList prevDefs, builderTypeDefs = mempty}
+    oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -50,12 +50,17 @@ genModule oldDefs expressions = do
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
     oldDefsWithoutMain =
-      filter
+      filterFst
         ( \case
-            GlobalDefinition AST.Function {name = Name "main"} -> False
-            _ -> True
+            GlobalDefinition AST.Function {name = Name "main"} -> True
+            _ -> False
         )
         oldDefs
+    filterFst _ [] = []
+    filterFst p (x : xs)
+      | p x = xs
+      | otherwise = x : filterFst p xs
+
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
@@ -86,6 +91,30 @@ genLevel e localVars = genOperand e localVars >>= ret
 genOperand :: Expr -> [Operand] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
+-- Variables
+genOperand (Var (Name n)) localVars = do
+  -- if localVars has it then it's a local reference otherwise mark it as a global reference
+  -- local variable names end in "_number" so we need to take that into consideration
+  -- also local variable names can have "_"
+  traceM $ "localVars: " <> show localVars
+  traceM $ "n: " <> show n
+  traceM $ "a_0: " <> show (removeEnding "a_0")
+  case getLocalVarName n localVars of
+    Just localVar -> return localVar
+    Nothing -> return $ ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))
+  where
+    getLocalVarName :: ShortByteString -> [Operand] -> Maybe Operand
+    getLocalVarName n vars = findLast (\(LocalReference _ (Name varName)) -> removeEnding varName == n) vars Nothing
+    findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
+    findLast p (x : xs) res
+      | p x = findLast p xs (Just x)
+      | otherwise = findLast p xs res
+    findLast _ [] res = res
+    -- TODO: Rework this function later, don't use show
+    -- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
+    removeEnding :: ShortByteString -> ShortByteString
+    removeEnding n = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show n)
+
 -- Call
 genOperand (S.Call fn args) localVars = do
   largs <- mapM (`genOperand` localVars) args
@@ -146,24 +175,4 @@ genOperand (Let (Name varName) value body) localVars = do
   computedValue <- genOperand value localVars
   store var 0 computedValue
   genOperand body (var : localVars)
-
--- Variables
-genOperand (Var (Name n)) localVars = do
-  return $ LocalReference ASTType.double (Name $ n <> "_0")
-
--- genOperand (Var (Name n)) localVars = do
---   s <- get
---   let
---     usedNames = builderUsedNames s
---     nameCount = fromMaybe 0 $ M.lookup n usedNames
---     usedName = n <> fromString ("_" <> show (nameCount - 1))
---   case getLocalVar usedName localVars of
---     Just x -> return x
---     Nothing -> return $ ConstantOperand (GlobalReference (ASTType.ptr ASTType.double) (Name n))
---   where
---     getLocalVar :: ShortByteString -> [Operand] -> Maybe Operand
---     getLocalVar n vars = case filter (\(LocalReference _ (Name name)) -> name == n) vars of
---       x:xs -> Just x
---       _ -> Nothing
-
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x

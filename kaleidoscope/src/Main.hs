@@ -29,15 +29,15 @@ processFile fname = readFile fname >>= process []
 repl :: IO ()
 repl = runInputT defaultSettings (loop [])
   where
-    loop modl = do
+    loop oldDefs = do
       minput <- getInputLine "ready> "
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
-          maybeDefs <- liftIO $ process modl input
+          maybeDefs <- liftIO $ process oldDefs input
           case maybeDefs of
             Just defs -> loop defs
-            Nothing -> loop modl
+            Nothing -> loop oldDefs
 
 main :: IO ()
 main = do
