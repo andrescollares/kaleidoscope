@@ -1,1 +1,1 @@
-[Extern "printd" ["x"],Function "factorial" ["x"] (If (BinOp "<" (Var "x") (Float 1.0)) (Float 1.0) (BinOp "*" (Var "x") (Call "printd" [Call "factorial" [BinOp "-" (Var "x") (Float 1.0)]]))),Call "factorial" [Float 8.0]]
+[Extern (Name "printd") [Name "x"],Function (Name "factorial") [ParameterName "x"] (If (BinOp "<" (Var (Name "x")) (Float 1.0)) (Float 1.0) (BinOp "*" (Var (Name "x")) (Call (Name "printd") [Call (Name "factorial") [BinOp "-" (Var (Name "x")) (Float 1.0)]]))),Call (Name "factorial") [Float 8.0]]

@@ -1,1 +1,1 @@
-[Function "fib" ["x"] (If (BinOp "<" (Var "x") (Float 3.0)) (Float 1.0) (BinOp "+" (Call "fib" [BinOp "-" (Var "x") (Float 1.0)]) (Call "fib" [BinOp "-" (Var "x") (Float 2.0)]))),Call "fib" [Float 6.0]]
+[Function (Name "fib") [ParameterName "x"] (If (BinOp "<" (Var (Name "x")) (Float 3.0)) (Float 1.0) (BinOp "+" (Call (Name "fib") [BinOp "-" (Var (Name "x")) (Float 1.0)]) (Call (Name "fib") [BinOp "-" (Var (Name "x")) (Float 2.0)]))),Call (Name "fib") [Float 6.0]]

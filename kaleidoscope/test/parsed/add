@@ -1,1 +1,1 @@
-[Function "add" ["x","y"] (BinOp "+" (Var "x") (Var "y")),Call "add" [Float 9.0,Float 10.0]]
+[Function (Name "add") [ParameterName "x",ParameterName "y"] (BinOp "+" (Var (Name "x")) (Var (Name "y"))),Call (Name "add") [Float 9.0,Float 10.0]]
