@@ -32,6 +32,7 @@ genModule oldDefs expressions = do
   res <- runJIT optMod
   return (res, definitions)
   where
+    -- TODO: Remove old duplicate functions
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
     oldDefsWithoutMain =

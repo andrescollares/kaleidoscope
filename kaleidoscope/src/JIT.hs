@@ -18,7 +18,7 @@ run fn = haskFun (castFunPtr fn :: FunPtr Double)
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
   where
-    optlevel = Just 0 -- optimization level
+    optlevel = Just 3 -- optimization level
     model = Nothing -- code model ( Default )
     ptrelim = Nothing -- frame pointer elimination
     fastins = Nothing -- fast instruction selection
@@ -41,8 +41,8 @@ optimizeModule mod = do
           putStrLn $ modBSToString modBS
           -- Return the optimized module
           return optmod
-          where
-            modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
+  where
+    modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
 runJIT :: AST.Module -> IO Double
 runJIT mod = do

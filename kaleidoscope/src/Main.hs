@@ -21,7 +21,6 @@ process oldDefs source = do
   case parsedSrc of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      traceM $ "expressions: " ++ show expressions
       (res, defs) <- genModule oldDefs expressions
       return $ Just (res, defs)
 
@@ -35,7 +34,6 @@ repl :: IO ()
 repl = runInputT defaultSettings (loop 0 [])
   where
     loop prevRes oldDefs = do
-      traceM $ "prevRes: " ++ show prevRes
       minput <- getInputLine "ready> "
       case minput of
         Nothing -> outputStrLn "Goodbye."
