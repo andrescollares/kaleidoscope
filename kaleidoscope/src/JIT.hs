@@ -33,7 +33,7 @@ optimizeModule mod = do
       withModuleFromAST context mod $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
-          _ <- runPassManager pm m
+          -- _ <- runPassManager pm m
           optmod <- moduleAST m
           modBS <- moduleLLVMAssembly m
           -- Print the optimized module as LLVM assembly to stdout

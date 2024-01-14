@@ -21,6 +21,9 @@ import LLVM.IRBuilder.Internal.SnocList
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
+import qualified Data.Text as T
+
+import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -78,11 +81,24 @@ genTopLevel (S.BinaryDef name args body) = do
 genTopLevel expression = do
   function "main" [] ASTType.double (genLevel expression)
 
+
+-- we don't have a way to name variables within the llvm ir, they are named by numbers
+-- so we need to keep track of the variables ourselves
+-- we do this by keeping a list of local variables
+-- with their respective "alias" a.k.a the name that the user gave them
+-- variable context used in:
+-- - let in
+
+type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
+
 genLevel :: Expr -> [Operand] -> IRBuilderT ModuleBuilder ()
-genLevel e localVars = genOperand e localVars >>= ret
+genLevel e localVars = genOperand e (localVarsFallback localVars) >>= ret
+
+localVarsFallback :: [Operand] -> [LocalVar]
+localVarsFallback = map (\operand -> (Nothing, operand))
 
 -- Generates the Operands that codegenTop needs.
-genOperand :: Expr -> [Operand] -> IRBuilderT ModuleBuilder Operand
+genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Variables
@@ -91,11 +107,15 @@ genOperand (Var (Name n)) localVars = do
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
   case getLocalVarName n localVars of
-    Just localVar -> return localVar
-    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
+    Just (alias, localVar) -> trace ("\tvariable reference: " ++ show n) $ return localVar
+    Nothing -> trace ("\tfailed: global: " ++ show n) $ load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
   where
-    getLocalVarName :: ShortByteString -> [Operand] -> Maybe Operand
-    getLocalVarName n vars = findLast (\(LocalReference _ (Name varName)) -> removeEnding varName == n) vars Nothing
+    getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
+    getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
+    matchName :: LocalVar -> ShortByteString -> Bool
+    matchName (Just varName, _) n = varName == n
+    matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
+    matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == show n
     findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
     findLast p (x : xs) res
       | p x = findLast p xs (Just x)
@@ -104,7 +124,9 @@ genOperand (Var (Name n)) localVars = do
     -- TODO: Rework this function later, don't use show
     -- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
     removeEnding :: ShortByteString -> ShortByteString
-    removeEnding n = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show n)
+    removeEnding n
+      | T.isInfixOf "_" (T.pack $ show n) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show n)
+      | otherwise = n
 
 -- Call
 genOperand (S.Call fn args) localVars = do
@@ -128,7 +150,7 @@ genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
   case M.lookup oper binops of
-    Just f -> f opA opB
+    Just f -> trace ("\tbinopA: " ++ show opA ++ "\n\tbinopB: " ++ show opB) $ f opA opB
     Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
     binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
@@ -160,9 +182,11 @@ genOperand (If cond thenExpr elseExpr) localVars = mdo
   phi [(computedThen, ifThen), (computedElse, ifElse)]
 
 -- Let in
--- genOperand (Let (Name varName) value body) localVars = do
---   var <- alloca ASTType.double Nothing 0
---   computedValue <- genOperand value localVars
---   store var 0 computedValue
---   genOperand body (var : localVars)
+genOperand (Let (Name varName) value body) localVars = do
+  var <- alloca ASTType.double Nothing 0
+  computedValue <- genOperand value localVars
+  trace ("\tlet var: " ++ show var ++ " = " ++ show computedValue) $ store var 0 computedValue
+  -- genOperand body (LocalReference ASTType.float (Name varName) : localVars)
+  genOperand body ((Just varName, var) : localVars)
+
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
