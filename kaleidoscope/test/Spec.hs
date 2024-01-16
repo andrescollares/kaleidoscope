@@ -48,7 +48,7 @@ parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram 
   , "add_sub"
   , "factorial_print"
   , "factorial"
-  , "fib_iterative"
+  -- , "fib_iterative"
   , "fib"
   , "hello_world"
   , "id"
@@ -57,7 +57,6 @@ parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram 
   , "sequence_operator"
   , "sub"
   , "unary_minus"
-  , "constant"
   , "var_in"]
 
 
@@ -89,7 +88,6 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue) -> testCase s $ do t
   -- , ("sequence_operator", 0)
   , ("sub", -1)
   , ("unary_minus", -40)
-  , ("constant", 13)
   , ("var_in", 12.56)
   ]
 

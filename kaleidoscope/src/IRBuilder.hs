@@ -186,7 +186,8 @@ genOperand (Let (Name varName) value body) localVars = do
   var <- alloca ASTType.double Nothing 0
   computedValue <- genOperand value localVars
   trace ("\tlet var: " ++ show var ++ " = " ++ show computedValue) $ store var 0 computedValue
-  -- genOperand body (LocalReference ASTType.float (Name varName) : localVars)
-  genOperand body ((Just varName, var) : localVars)
+  loadedVar <- load var 0
+  -- TODO: alloca -> store -> load: there's probably a better way to do this
+  genOperand body ((Just varName, loadedVar) : localVars)
 
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
