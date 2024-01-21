@@ -107,8 +107,8 @@ genOperand (Var (Name n)) localVars = do
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
   case getLocalVarName n localVars of
-    Just (alias, localVar) -> trace ("\tvariable reference: " ++ show n) $ return localVar
-    Nothing -> trace ("\tfailed: global: " ++ show n) $ load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
+    Just (alias, localVar) -> return localVar
+    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
   where
     getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
     getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
@@ -150,7 +150,7 @@ genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
   case M.lookup oper binops of
-    Just f -> trace ("\tbinopA: " ++ show opA ++ "\n\tbinopB: " ++ show opB) $ f opA opB
+    Just f -> f opA opB
     Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
     binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
@@ -185,7 +185,7 @@ genOperand (If cond thenExpr elseExpr) localVars = mdo
 genOperand (Let (Name varName) value body) localVars = do
   var <- alloca ASTType.double Nothing 0
   computedValue <- genOperand value localVars
-  trace ("\tlet var: " ++ show var ++ " = " ++ show computedValue) $ store var 0 computedValue
+  store var 0 computedValue
   loadedVar <- load var 0
   -- TODO: alloca -> store -> load: there's probably a better way to do this
   genOperand body ((Just varName, loadedVar) : localVars)

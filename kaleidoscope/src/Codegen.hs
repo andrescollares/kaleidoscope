@@ -350,7 +350,7 @@ alloca ty = instr $ Alloca ty Nothing 0 []
 -- allocaGlobal ty = instrGlobal $ Alloca ty Nothing 0 []
 
 store :: Operand -> Operand -> Codegen ()
-store pointer val = trace (show val) $ unnminstr $ Store False pointer val Nothing 0 []
+store pointer val = unnminstr $ Store False pointer val Nothing 0 []
 
 load :: Operand -> Codegen Operand
 load pointer = instr $ Load False pointer Nothing 0 []

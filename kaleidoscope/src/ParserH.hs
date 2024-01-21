@@ -115,7 +115,7 @@ ifthen = do
 
 letins :: Parser Expr
 letins = do
-  reserved "var"
+  reserved "let"
   defs <- commaSep $ do
     var <- identifier
     reservedOp "="

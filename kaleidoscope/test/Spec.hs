@@ -31,7 +31,7 @@ assertAST :: String -> String -> Assertion
 assertAST code ast = do
   let res = parseToplevel code
   case res of
-      Left err -> 1 @?= 0
+      Left err -> assertFailure ("***\nTEST PARSE ERROR:\n" ++ show err ++ "\n***")
       Right ex -> do
         expressions <- mapM_ print ex
         show ex @?= ast
@@ -57,7 +57,9 @@ parserTests = testGroup "Parser Tests" $ map (\s -> testCase s $ do testProgram 
   , "sequence_operator"
   , "sub"
   , "unary_minus"
-  , "var_in"]
+  , "let_in"
+  , "let_in_multiple"
+  ]
 
 
 testProgramJIT :: String -> Double -> IO ()
@@ -65,7 +67,7 @@ testProgramJIT programName expectedValue = do
   source <- readFile $ "./test/programs/" ++ programName ++ ".k"
   let res = parseToplevel source
   case res of
-    Left err -> print err
+    Left err -> assertFailure ("***\nTEST PARSE ERROR:\n" ++ show err ++ "\n***")
     Right expressions -> do
       result <- runJIT unoptimizedAst -- expressions
       result @?= expectedValue
@@ -88,7 +90,9 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue) -> testCase s $ do t
   -- , ("sequence_operator", 0)
   , ("sub", -1)
   , ("unary_minus", -40)
-  , ("var_in", 12.56)
+  , ("let_in", 12.56)
+  , ("let_in_multiple", 6)
   ]
 
 -- TODO: compare llvm output
+-- TODO: REPL features tests
