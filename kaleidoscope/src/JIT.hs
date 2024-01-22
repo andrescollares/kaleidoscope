@@ -27,13 +27,13 @@ passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec {optLevel = Just 3}
 
 optimizeModule :: AST.Module -> IO AST.Module
-optimizeModule mod = do
+optimizeModule astModule = do
   withContext $ \context ->
     jit context $ \_ ->
-      withModuleFromAST context mod $ \m ->
+      withModuleFromAST context astModule $ \m ->
         withPassManager passes $ \pm -> do
           -- Optimization Pass
-          -- _ <- runPassManager pm m
+          _ <- runPassManager pm m
           optmod <- moduleAST m
           modBS <- moduleLLVMAssembly m
           -- Print the optimized module as LLVM assembly to stdout
@@ -43,12 +43,12 @@ optimizeModule mod = do
           return optmod
   where
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
-
+-- a
 runJIT :: AST.Module -> IO Double
-runJIT mod = do
+runJIT astModule = do
   withContext $ \context ->
     jit context $ \executionEngine ->
-      withModuleFromAST context mod $ \m ->
+      withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of

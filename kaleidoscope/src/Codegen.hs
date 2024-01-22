@@ -10,7 +10,6 @@ import Data.Function as F
 import qualified Data.List as L
 import qualified Data.Map as Map
 import Data.String
-import Debug.Trace
 import LLVM.AST
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Attribute as A
@@ -51,41 +50,6 @@ define retty label argtys body =
           G.returnType = retty,
           G.basicBlocks = body
         }
-
--- getOrAssignVar :: Type -> ShortByteString -> [BasicBlock] -> LLVM ()
--- getOrAssignVar var x = do
---   syms <- gets symtab
---   case lookup var syms of
---     Just x -> return x
---     Nothing -> do
---       -- globalVariable --"asdd"
---       x <- allocaGlobal double
---       assign var x
---       -- ConstantOperand (GlobalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1))
---       trace ("asdasd" ++ show x) $ return x
-
--- globalVariable :: Codegen Operand
--- globalVariable = do
---   n <- fresh
---   let ref = UnName n
---   instrGlobal $
---     Alloca
---       double
---       (Just (ConstantOperand
---             (C.GlobalReference (ptr double)
---             ref
---       )))
---       0
---       []
--- addDefn $
---   GlobalDefinition $
---     globalVariableDefaults
---     {
---         G.name = UnName 0,
---         G.type' = double
---         -- G.alignment = a,
---         -- G.section = s
---     }
 
 external :: Type -> ShortByteString -> [(Type, Name)] -> LLVM ()
 external retty label argtys =
@@ -365,5 +329,6 @@ cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 phi :: Type -> [(Operand, Name)] -> Codegen Operand
 phi ty incoming = instr $ Phi ty incoming []
 
+--a 
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []

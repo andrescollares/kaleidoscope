@@ -47,4 +47,5 @@ operator = do
   cs <- many $ Tok.opLetter emptyDef
   return (c:cs)
 
+whitespace :: Parser ()
 whitespace = Tok.whiteSpace lexer

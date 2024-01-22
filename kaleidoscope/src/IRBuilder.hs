@@ -23,8 +23,6 @@ import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.Text as T
 
-import Debug.Trace
-
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
@@ -63,20 +61,20 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
 -- Extern definition
-genTopLevel (S.Extern name args) = do
-  extern name (map (const ASTType.double) args) ASTType.double
+genTopLevel (S.Extern externName externArgs) = do
+  extern externName (map (const ASTType.double) externArgs) ASTType.double
 -- Function definition
-genTopLevel (S.Function name args body) = do
-  function name (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
+genTopLevel (S.Function functionName functionArgs body) = do
+  function functionName (map (\x -> (ASTType.double, x)) functionArgs) ASTType.double (genLevel body)
 -- Constant definition
-genTopLevel (S.Constant name value) = do
-  global name ASTType.double (C.Float (F.Double value))
+genTopLevel (S.Constant constantName constantValue) = do
+  global constantName ASTType.double (C.Float (F.Double constantValue))
 -- Unary operator definition
-genTopLevel (S.UnaryDef name args body) = do
-  function (Name ("unary_" <> name)) (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
+genTopLevel (S.UnaryDef unaryOpName unaryArgs body) = do
+  function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (genLevel body)
 -- Binary operator definition
-genTopLevel (S.BinaryDef name args body) = do
-  function (Name ("binary_" <> name)) (map (\x -> (ASTType.double, x)) args) ASTType.double (genLevel body)
+genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
+  function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
 -- Any expression
 genTopLevel expression = do
   function "main" [] ASTType.double (genLevel expression)
@@ -102,13 +100,13 @@ genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Variables
-genOperand (Var (Name n)) localVars = do
+genOperand (Var (Name nameString)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
-  case getLocalVarName n localVars of
-    Just (alias, localVar) -> return localVar
-    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name n))) 0
+  case getLocalVarName nameString localVars of
+    Just (_, localVar) -> return localVar
+    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name nameString))) 0
   where
     getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
     getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
@@ -116,6 +114,7 @@ genOperand (Var (Name n)) localVars = do
     matchName (Just varName, _) n = varName == n
     matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
     matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == show n
+    matchName _ _ = False
     findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
     findLast p (x : xs) res
       | p x = findLast p xs (Just x)
@@ -124,14 +123,14 @@ genOperand (Var (Name n)) localVars = do
     -- TODO: Rework this function later, don't use show
     -- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
     removeEnding :: ShortByteString -> ShortByteString
-    removeEnding n
-      | T.isInfixOf "_" (T.pack $ show n) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show n)
-      | otherwise = n
+    removeEnding variableName
+      | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)
+      | otherwise = variableName
 
 -- Call
-genOperand (S.Call fn args) localVars = do
-  largs <- mapM (`genOperand` localVars) args
-  call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) args) False)) fn)) (map (\x -> (x, [])) largs)
+genOperand (S.Call fn functionArgs) localVars = do
+  largs <- mapM (`genOperand` localVars) functionArgs
+  call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) functionArgs) False)) fn)) (map (\x -> (x, [])) largs)
 
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
@@ -182,9 +181,9 @@ genOperand (If cond thenExpr elseExpr) localVars = mdo
   phi [(computedThen, ifThen), (computedElse, ifElse)]
 
 -- Let in
-genOperand (Let (Name varName) value body) localVars = do
+genOperand (Let (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.double Nothing 0
-  computedValue <- genOperand value localVars
+  computedValue <- genOperand variableValue localVars
   store var 0 computedValue
   loadedVar <- load var 0
   -- TODO: alloca -> store -> load: there's probably a better way to do this

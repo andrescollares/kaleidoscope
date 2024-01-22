@@ -5,7 +5,6 @@ import Data.ByteString.Short (ShortByteString)
 import LLVM.IRBuilder.Module
 import LLVM.AST.Name
 
-
 data Expr
   = Float Double
   | Let Name Expr Expr
