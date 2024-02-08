@@ -7,6 +7,7 @@ import LLVM.AST.Name
 
 data Expr
   = Float Double
+  | Integer Integer
   | Let Name Expr Expr
   | Var Name
   | Call Name [Expr]

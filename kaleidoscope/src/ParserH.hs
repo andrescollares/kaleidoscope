@@ -62,7 +62,7 @@ binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
 int :: Parser Expr
 int =
-  Float . fromInteger <$> integer
+  Integer <$> integer
 
 floating :: Parser Expr
 floating =

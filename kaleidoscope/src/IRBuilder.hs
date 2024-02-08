@@ -22,6 +22,9 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.Text as T
+import Types
+
+import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -77,7 +80,12 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
 -- Any expression
 genTopLevel expression = do
-  function "main" [] ASTType.double (genLevel expression)
+
+  trace (show expression) $ function "main" [] expressionType (genLevel expression)
+  where
+    -- expressionType = ASTType.double
+    expressionType = getExpressionType expression
+
 
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
@@ -90,7 +98,9 @@ genTopLevel expression = do
 type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 
 genLevel :: Expr -> [Operand] -> IRBuilderT ModuleBuilder ()
-genLevel e localVars = genOperand e (localVarsFallback localVars) >>= ret
+genLevel e localVars = do
+  generated <- genOperand e (localVarsFallback localVars)
+  trace (show generated ) $ ret generated
 
 localVarsFallback :: [Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
@@ -99,6 +109,9 @@ localVarsFallback = map (\operand -> (Nothing, operand))
 genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
+-- Integer
+genOperand (Integer n) _ = return $ ConstantOperand (C.Int 32 n)
+
 -- Variables
 genOperand (Var (Name nameString)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
