@@ -11,7 +11,6 @@ import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
 import LLVM.PassManager
 import Debug.Trace
-import Types
 
 foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
 

@@ -11,8 +11,10 @@ import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
 import qualified LLVM.IRBuilder.Module as M
 import Data.String
-import Data.ByteString.Short
+import Data.Bifunctor (second)
 import qualified Data.Bifunctor
+import LLVM.AST (Name (Name))
+import Data.ByteString.Short (ShortByteString)
 
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
 binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
@@ -35,7 +37,7 @@ binarydef = do
   reserved "def"
   reserved "binary"
   o <- op
-  _ <- int
+  _ <- ParserH.int
   args <- parens $ many identifier
   BinaryDef o (map fromString args) <$> expr
 
@@ -60,13 +62,32 @@ unop = Ex.Prefix (UnaryOp <$> op)
 binop :: Ex.Operator String () Identity Expr
 binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
+tp :: Parser Syntax.Type
+tp = do
+  try double
+    <|> try integer
+    <|> try boolean
+
+double :: Parser Syntax.Type
+double = reserved "double" >> return Double
+
+integer :: Parser Syntax.Type
+integer = reserved "integer" >> return Integer
+
+boolean :: Parser Syntax.Type
+boolean = reserved "boolean" >> return Boolean
+
 int :: Parser Expr
 int =
-  Integer <$> integer
+  Int <$> Lexer.int
 
 floating :: Parser Expr
 floating =
   Float <$> float
+
+bool :: Parser Expr
+bool =
+  Bool <$> Lexer.bool
 
 expr :: Parser Expr
 expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
@@ -79,22 +100,24 @@ extern :: Parser Expr
 extern = do
   reserved "extern"
   name <- identifier
-  arguments <- parens $ many identifier
-  return $ Extern (fromString name) (map fromString arguments)
+  arguments <- parens $ many argument
+  Extern (fromString name) (second fromString <$> arguments) <$> tp
 
 function :: Parser Expr
 function = do
   reserved "def"
   name <- identifier
-  arguments <- parens $ many identifier
-  Function (fromString name) (map (M.ParameterName . fromString) arguments) <$> expr
+  arguments <- parens $ many argument
+  retType <- tp
+  Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
 constant :: Parser Expr
 constant = do
   reservedOp "const"
+  tpi <- tp
   name <- identifier
-  value <- try float <|> try (fromInteger <$> integer)
-  return $ Constant (fromString name) value
+  value <- try floating <|> try ParserH.int <|> try ParserH.bool
+  return $ Constant tpi (fromString name) value
 
 
 call :: Parser Expr
@@ -117,18 +140,19 @@ letins :: Parser Expr
 letins = do
   reserved "let"
   defs <- commaSep $ do
+    tpi <- tp
     var <- identifier
     reservedOp "="
     val <- expr
-    return (var, val)
+    return (tpi, fromString var, val)
   reserved "in"
   body <- expr
-  return $ foldr (uncurry Let . Data.Bifunctor.first fromString) body defs
+  return $ foldr (\(t, n, v) -> Let t n v) body defs
 
 factor :: Parser Expr
 factor =
   try floating
-    <|> try int
+    <|> try ParserH.int
     <|> try extern
     <|> try function
     <|> try call

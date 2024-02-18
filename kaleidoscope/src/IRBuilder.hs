@@ -22,9 +22,9 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.Text as T
-import Types
 
 import Debug.Trace
+import Data.Bifunctor (first)
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -64,14 +64,26 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
 -- Extern definition
-genTopLevel (S.Extern externName externArgs) = do
-  extern externName (map (const ASTType.double) externArgs) ASTType.double
+genTopLevel (S.Extern externName externArgs Double) = do
+  extern externName (map (getASTType . fst) externArgs) ASTType.double
+genTopLevel (S.Extern externName externArgs Integer) = do
+  extern externName (map (getASTType . fst) externArgs) ASTType.i32
+genTopLevel (S.Extern externName externArgs Boolean) = do
+  extern externName (map (getASTType . fst) externArgs) ASTType.i1
 -- Function definition
-genTopLevel (S.Function functionName functionArgs body) = do
-  function functionName (map (\x -> (ASTType.double, x)) functionArgs) ASTType.double (genLevel body)
+genTopLevel (S.Function functionName functionArgs Double body) = do
+  function functionName (first getASTType <$> functionArgs) ASTType.double (genLevel body)
+genTopLevel (S.Function functionName functionArgs Integer body) = do
+  function functionName (first getASTType <$> functionArgs) ASTType.i32 (genLevel body)
+genTopLevel (S.Function functionName functionArgs Boolean body) = do
+  function functionName (first getASTType <$> functionArgs) ASTType.i1 (genLevel body)
 -- Constant definition
-genTopLevel (S.Constant constantName constantValue) = do
-  global constantName ASTType.double (C.Float (F.Double constantValue))
+genTopLevel (S.Constant Double constantName (Float val)) = do
+  global constantName ASTType.double (C.Float (F.Double val))
+genTopLevel (S.Constant Integer constantName (Int val)) = do
+  global constantName ASTType.i32 (C.Int 32 val)
+genTopLevel (S.Constant Boolean constantName (Bool val)) = do
+  global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
 -- Unary operator definition
 genTopLevel (S.UnaryDef unaryOpName unaryArgs body) = do
   function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (genLevel body)
@@ -80,13 +92,26 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
 -- Any expression
 genTopLevel expression = do
-
   trace (show expression) $ function "main" [] expressionType (genLevel expression)
   where
     -- expressionType = ASTType.double
     expressionType = getExpressionType expression
+  
+getExpressionType :: Expr -> AST.Type
+getExpressionType (Int _) = ASTType.i32
+getExpressionType (Float _) = ASTType.double
+getExpressionType (Bool _) = ASTType.i1
+getExpressionType (Constant Double _ _) = ASTType.double
+getExpressionType (Constant Integer _ _) = ASTType.i32
+getExpressionType (Constant Boolean _ _) = ASTType.i1
+getExpressionType (S.Call _ _) = ASTType.double -- TODO!!
+getExpressionType (Var _) = ASTType.double -- TODO!!
+getExpressionType _ = ASTType.double
 
-
+getASTType :: S.Type -> AST.Type
+getASTType Double = ASTType.double
+getASTType Integer = ASTType.i32
+getASTType Boolean = ASTType.i1
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -110,7 +135,9 @@ genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Integer
-genOperand (Integer n) _ = return $ ConstantOperand (C.Int 32 n)
+genOperand (Int n) _ = return $ ConstantOperand (C.Int 32 n)
+-- Bool
+genOperand (Bool b) _ = return $ ConstantOperand (C.Int 1 (if b then 1 else 0))
 
 -- Variables
 genOperand (Var (Name nameString)) localVars = do
@@ -194,12 +221,24 @@ genOperand (If cond thenExpr elseExpr) localVars = mdo
   phi [(computedThen, ifThen), (computedElse, ifElse)]
 
 -- Let in
-genOperand (Let (Name varName) variableValue body) localVars = do
+genOperand (Let Double (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.double Nothing 0
   computedValue <- genOperand variableValue localVars
   store var 0 computedValue
   loadedVar <- load var 0
   -- TODO: alloca -> store -> load: there's probably a better way to do this
+  genOperand body ((Just varName, loadedVar) : localVars)
+genOperand (Let Integer (Name varName) variableValue body) localVars = do
+  var <- alloca ASTType.i32 Nothing 0
+  computedValue <- genOperand variableValue localVars
+  store var 0 computedValue
+  loadedVar <- load var 0
+  genOperand body ((Just varName, loadedVar) : localVars)
+genOperand (Let Boolean (Name varName) variableValue body) localVars = do
+  var <- alloca ASTType.i1 Nothing 0
+  computedValue <- genOperand variableValue localVars
+  store var 0 computedValue
+  loadedVar <- load var 0
   genOperand body ((Just varName, loadedVar) : localVars)
 
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x

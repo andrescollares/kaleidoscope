@@ -1,9 +1,10 @@
 module Lexer where
 
-import Text.Parsec.Prim (many)
+import Text.Parsec.Prim (many, (<|>))
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
+import Syntax
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
@@ -17,14 +18,32 @@ lexer = Tok.makeTokenParser style
           Tok.reservedNames = names
         }
 
-integer :: Parser Integer
-integer = Tok.integer lexer
+int :: Parser Integer
+int = Tok.integer lexer
 
 float :: Parser Double
 float = Tok.float lexer
 
+bool :: Parser Bool
+bool = Tok.lexeme lexer $ (True <$ Tok.symbol lexer "true") <|> (False <$ Tok.symbol lexer "false")
+
 identifier :: Parser String
 identifier = Tok.identifier lexer
+
+type' :: Parser Type
+type' = do
+  t <- identifier
+  case t of
+    "double" -> return Double
+    "integer" -> return Integer
+    "boolean" -> return Boolean
+    _ -> fail "unknown type"
+
+argument :: Parser (Type, String)
+argument = do
+  t <- type'
+  n <- identifier
+  return (t, n)
 
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer

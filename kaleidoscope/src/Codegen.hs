@@ -15,7 +15,6 @@ import qualified LLVM.AST as AST
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.FloatingPointPredicate as FP
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.Linkage as L
