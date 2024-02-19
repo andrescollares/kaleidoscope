@@ -22,10 +22,10 @@ int32_t printi(int32_t i) {
 }
 
 // print a boolean (int1)
-int8_t printb(int8_t b) {
-  printf("%s\n", b ? "true" : "false");
-  return b;
-}
+// int8_t printb(int8_t b) {
+//   printf("%s\n", b ? "true" : "false");
+//   return b;
+// }
 
 // write a double to a file
 double writed(double d) {
