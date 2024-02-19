@@ -14,7 +14,7 @@ import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
-import LLVM.AST.Global (Global (name))
+import LLVM.AST.Global (Global (name, returnType))
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
@@ -23,6 +23,7 @@ import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.Text as T
 import Types
+import Control.Monad
 
 import Debug.Trace
 
@@ -33,7 +34,7 @@ import Debug.Trace
 genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
   optMod <- optimizeModule unoptimizedAst
-  res <- runJIT optMod
+  res <- trace ("MAIN =>" ++ show moduleMainFn) $ runJIT optMod moduleMainFnType
   return (res, definitions)
   where
     -- TODO: Remove old duplicate functions
@@ -54,6 +55,13 @@ genModule oldDefs expressions = do
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
+    moduleMainFn = filter (\case 
+        GlobalDefinition AST.Function {name = Name "main"} -> True;
+        _ -> False
+      ) definitions
+    moduleMainFnType = case moduleMainFn of
+      [GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}] -> ASTType.i32
+      _ -> ASTType.double
 
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
@@ -81,9 +89,8 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
 -- Any expression
 genTopLevel expression = do
 
-  trace (show expression) $ function "main" [] expressionType (genLevel expression)
+  trace ("main expression =>" ++ show expression) $ function "main" [] expressionType (genLevel expression)
   where
-    -- expressionType = ASTType.double
     expressionType = getExpressionType expression
 
 
