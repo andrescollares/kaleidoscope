@@ -5,27 +5,27 @@
 
 module IRBuilder where
 
+-- import Data.Maybe
+
+import Control.Monad.RWS (gets)
+import Data.Bifunctor (first)
 import Data.ByteString.Short
 import qualified Data.Map.Strict as M
--- import Data.Maybe
 import Data.String
+import qualified Data.Text as T
 import JIT
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
-import LLVM.AST.Global (Global (name))
+import LLVM.AST.Global (Global (name), parameters, returnType)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), execModuleBuilder, extern, function, global, MonadModuleBuilder (liftModuleState))
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
-import qualified Data.Text as T
-
-import Debug.Trace ( trace )
-import Data.Bifunctor (first)
-import Control.Monad.RWS (get, gets)
+import LLVM.AST.Type (ptr)
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -97,7 +97,7 @@ genTopLevel expression = do
   where
     -- expressionType = ASTType.double
     expressionType = getExpressionType expression
-  
+
 getExpressionType :: Expr -> AST.Type
 getExpressionType (Int _) = ASTType.i32
 getExpressionType (Float _) = ASTType.double
@@ -139,7 +139,6 @@ genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 genOperand (Int n) _ = return $ ConstantOperand (C.Int 32 n)
 -- Bool
 genOperand (Bool b) _ = return $ ConstantOperand (C.Int 1 (if b then 1 else 0))
-
 -- Variables
 genOperand (Var (Name nameString)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
@@ -171,8 +170,19 @@ genOperand (Var (Name nameString)) localVars = do
 -- Call
 genOperand (S.Call fn functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  oldDefs <- liftModuleState $ gets builderDefs
-  trace (show oldDefs) $ call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) functionArgs) False)) fn)) (map (\x -> (x, [])) largs)
+  currentDefs <- liftModuleState $ gets builderDefs
+  let maybeDef = getFunctionFromDefs currentDefs fn
+  case maybeDef of
+    Just def -> do
+      case def of
+        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getOperand fn retT params) (map (\x -> (x, [])) largs)
+        _ -> error $ "Function " <> show fn <> " not found."
+    Nothing -> error $ "Function " <> show fn <> " not found."
+
+-- SnocList {
+--   unSnocList = [
+--     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = ConstantOperand (Int {integerBits = 32, integerValue = 1}), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []}), 
+--     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") [], Parameter (IntegerType {typeBits = 32}) (Name "b_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = LocalReference (IntegerType {typeBits = 32}) (Name "b_0"), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []})]}
 
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
@@ -242,5 +252,19 @@ genOperand (Let Boolean (Name varName) variableValue body) localVars = do
   store var 0 computedValue
   loadedVar <- load var 0
   genOperand body ((Just varName, loadedVar) : localVars)
-
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
+
+getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
+getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
+  where
+    matchName :: Definition -> Name -> Bool
+    matchName (GlobalDefinition AST.Function {name = n}) name = n == name
+    matchName _ _ = False
+    find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
+    find p (SnocList (x : xs)) res
+      | p x = Just x
+      | otherwise = find p (SnocList xs) res
+    find _ (SnocList []) res = res
+
+getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
+getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn

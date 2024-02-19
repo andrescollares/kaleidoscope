@@ -9,7 +9,7 @@ import Syntax
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
   where
-    ops = ["+", "*", "-", "/", ";", ",", "<", ">", "|", ":"]
+    ops = ["+", "*", "-", "/", ":", ";", ",", "<", ">", "|", "->"]
     names = ["const", "def", "extern", "if", "then", "else", "binary", "unary", "in", "for"]
     style =
       emptyDef
@@ -35,8 +35,8 @@ type' = do
   t <- identifier
   case t of
     "double" -> return Double
-    "integer" -> return Integer
-    "boolean" -> return Boolean
+    "int" -> return Integer
+    "bool" -> return Boolean
     _ -> fail "unknown type"
 
 argument :: Parser (Type, String)

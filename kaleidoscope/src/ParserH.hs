@@ -72,10 +72,10 @@ double :: Parser Syntax.Type
 double = reserved "double" >> return Double
 
 integer :: Parser Syntax.Type
-integer = reserved "integer" >> return Integer
+integer = reserved "int" >> return Integer
 
 boolean :: Parser Syntax.Type
-boolean = reserved "boolean" >> return Boolean
+boolean = reserved "bool" >> return Boolean
 
 int :: Parser Expr
 int =
@@ -100,15 +100,18 @@ extern :: Parser Expr
 extern = do
   reserved "extern"
   name <- identifier
-  arguments <- parens $ many argument
+  arguments <- parens $ commaSep argument
+  reserved "->"
   Extern (fromString name) (second fromString <$> arguments) <$> tp
 
 function :: Parser Expr
 function = do
   reserved "def"
   name <- identifier
-  arguments <- parens $ many argument
+  arguments <- parens $ commaSep argument
+  reserved "->"
   retType <- tp
+  reserved ":"
   Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
 constant :: Parser Expr
