@@ -1,6 +1,5 @@
 module Main where
 
-import Codegen
 import Control.Monad.Trans
 import Data.String
 -- import Emit
@@ -13,7 +12,7 @@ import System.Environment
 import Data.Text (strip, unpack, pack)
 
 initModule :: AST.Module
-initModule = emptyModule $ fromString "Kaleidoscope"
+initModule = AST.defaultModule {AST.moduleName = fromString "Kaleidoscope"} 
 
 process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))
 process oldDefs source = do

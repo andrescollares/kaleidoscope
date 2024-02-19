@@ -153,6 +153,7 @@ factor :: Parser Expr
 factor =
   try floating
     <|> try ParserH.int
+    <|> try ParserH.bool
     <|> try extern
     <|> try function
     <|> try call

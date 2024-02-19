@@ -10,13 +10,11 @@ import LLVM.Context
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
 import LLVM.PassManager
-import Debug.Trace
 
-foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
+foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double 
 
-run :: FunPtr a -> ASTType.Type -> Double
-run fn fnType = haskFun (castFunPtr fn :: FunPtr fnType)
-
+run :: FunPtr a -> Double
+run fn = haskFun (castFunPtr fn :: FunPtr Double)
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -56,9 +54,8 @@ runJIT astModule = do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of
             Just fn -> do
-              trace ("main func: " ++ show mainfn) $ putStrLn $ "Evaluated to: " ++ show result
+              putStrLn $ "Evaluated to: " ++ show result
               return result
               where
-                result = run fn ASTType.i32
-                -- fnType = getExpressionType mainfn
+                result = run fn
             Nothing -> return 0

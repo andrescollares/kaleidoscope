@@ -15,6 +15,18 @@ double printd(double d) {
   return d;
 }
 
+// print an int32
+int32_t printi(int32_t i) {
+  printf("%d\n", i);
+  return i;
+}
+
+// print a boolean (int1)
+int8_t printb(int8_t b) {
+  printf("%s\n", b ? "true" : "false");
+  return b;
+}
+
 // write a double to a file
 double writed(double d) {
   FILE *fptr;

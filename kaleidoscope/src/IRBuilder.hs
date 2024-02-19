@@ -18,13 +18,14 @@ import LLVM.AST.Global (Global (name))
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), execModuleBuilder, extern, function, global)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), execModuleBuilder, extern, function, global, MonadModuleBuilder (liftModuleState))
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.Text as T
 
-import Debug.Trace
+import Debug.Trace ( trace )
 import Data.Bifunctor (first)
+import Control.Monad.RWS (get, gets)
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -64,10 +65,10 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
 -- Extern definition
-genTopLevel (S.Extern externName externArgs Double) = do
-  extern externName (map (getASTType . fst) externArgs) ASTType.double
 genTopLevel (S.Extern externName externArgs Integer) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i32
+genTopLevel (S.Extern externName externArgs Double) = do
+  extern externName (map (getASTType . fst) externArgs) ASTType.double
 genTopLevel (S.Extern externName externArgs Boolean) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 -- Function definition
@@ -92,7 +93,7 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
 -- Any expression
 genTopLevel expression = do
-  trace (show expression) $ function "main" [] expressionType (genLevel expression)
+  function "main" [] expressionType (genLevel expression)
   where
     -- expressionType = ASTType.double
     expressionType = getExpressionType expression
@@ -125,12 +126,12 @@ type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 genLevel :: Expr -> [Operand] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
   generated <- genOperand e (localVarsFallback localVars)
-  trace (show generated ) $ ret generated
+  ret generated
 
 localVarsFallback :: [Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
 
--- Generates the Operands that codegenTop needs.
+-- Generates the Operands that genTopLevel needs.
 genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
@@ -170,7 +171,8 @@ genOperand (Var (Name nameString)) localVars = do
 -- Call
 genOperand (S.Call fn functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) functionArgs) False)) fn)) (map (\x -> (x, [])) largs)
+  oldDefs <- liftModuleState $ gets builderDefs
+  trace (show oldDefs) $ call (ConstantOperand (C.GlobalReference (ASTType.ptr (FunctionType ASTType.double (map (const ASTType.double) functionArgs) False)) fn)) (map (\x -> (x, [])) largs)
 
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
