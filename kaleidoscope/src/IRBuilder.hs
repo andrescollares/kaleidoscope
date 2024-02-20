@@ -18,6 +18,7 @@ import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
+import qualified LLVM.AST.IntegerPredicate as IP
 import LLVM.AST.Global (Global (name), parameters, returnType)
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
@@ -39,7 +40,7 @@ import Debug.Trace
 genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
   optMod <- optimizeModule unoptimizedAst
-  res <- trace ("MAIN =>" ++ show moduleMainFn) $ runJIT optMod moduleMainFnType
+  res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
     -- TODO: Remove old duplicate functions
@@ -196,11 +197,6 @@ genOperand (S.Call fn functionArgs) localVars = do
         _ -> error $ "Function " <> show fn <> " not found."
     Nothing -> error $ "Function " <> show fn <> " not found."
 
--- SnocList {
---   unSnocList = [
---     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = ConstantOperand (Int {integerBits = 32, integerValue = 1}), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []}),
---     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") [], Parameter (IntegerType {typeBits = 32}) (Name "b_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = LocalReference (IntegerType {typeBits = 32}) (Name "b_0"), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []})]}
-
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
   op <- genOperand a localVars
@@ -224,17 +220,19 @@ genOperand (BinOp oper a b) localVars = do
     binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
     binops =
       M.fromList
-        [ ("+", typedAdd a b),
-          ("-", fsub),
-          ("*", fmul),
-          ("/", fdiv),
-          ("<", fcmp ULT),
-          (">", fcmp UGT),
-          ("==", fcmp UEQ),
-          ("!=", fcmp UNE),
-          ("<=", fcmp ULE),
-          (">=", fcmp UGE)
+        [ ("+", eitherType add fadd),
+          ("-", eitherType sub fsub),
+          ("*", eitherType mul fmul),
+          ("/", eitherType udiv fdiv),
+          ("<", eitherType (icmp IP.ULT) (fcmp ULT)),
+          (">", eitherType (icmp IP.UGT) (fcmp UGT)),
+          ("==", eitherType (icmp IP.EQ) (fcmp UEQ)),
+          ("!=", eitherType (icmp IP.NE) (fcmp UNE)),
+          ("<=", eitherType (icmp IP.ULE) (fcmp ULE)),
+          (">=", eitherType (icmp IP.UGE) (fcmp UGE))
         ]
+      where
+        eitherType = typedInstruction a b
 
 -- If
 genOperand (If cond thenExpr elseExpr) localVars = mdo
@@ -286,21 +284,24 @@ getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
 getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
 getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
 
--- Typed add
-typedAdd :: Expr -> Expr -> (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
-typedAdd a b = do
+type BinOpInstruction = (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
+
+typedInstruction :: Expr -> Expr -> BinOpInstruction -> BinOpInstruction -> BinOpInstruction
+typedInstruction a b wholeInstr floatingInstr = do
   let aType = getExpressionType a
-  let bType = getExpressionType b 
+  let bType = getExpressionType b
+  -- TODO: make this a case statement :/
+  -- "Qualified name in binding position: ASTType.double"
   if aType == ASTType.i32 && bType == ASTType.i32
-    then add
+    then wholeInstr
   else if aType == ASTType.double && bType == ASTType.double
-    then fadd
+    then floatingInstr
   else if aType == ASTType.i32 && bType == ASTType.double
     then \x y -> do
       x' <- sitofp x ASTType.double
-      fadd x' y
+      floatingInstr x' y
   else if aType == ASTType.double && bType == ASTType.i32
     then \x y -> do
       y' <- uitofp y ASTType.double
-      fadd x y'
+      floatingInstr x y'
   else error "Invalid types for addition"

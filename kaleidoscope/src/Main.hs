@@ -15,7 +15,6 @@ import LLVM.AST.Global
 
 stdLibrary :: [Definition]
 stdLibrary = [
-    -- GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, AST.callingConvention = C, AST.returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "printi", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "") []],False), AST.functionAttributes = [], section = Nothing, comdat = Nothing, AST.alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [], personalityFunction = Nothing, AST.metadata = []})
     GlobalDefinition functionDefaults {
       name = Name (fromString "printi"),
       parameters = ([Parameter (IntegerType 32) (Name (fromString "i")) []], False),
