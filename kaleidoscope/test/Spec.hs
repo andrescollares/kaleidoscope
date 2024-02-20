@@ -16,7 +16,6 @@ import JIT
 -- import Emit
 import IRBuilder
 import LLVM.IRBuilder.Module (buildModule)
-import Codegen
 import Control.Monad (void)
 
 import Debug.Trace

@@ -25,7 +25,7 @@ common common-options
         , llvm-hs-pure  ^>=12.0
 
     ghc-options:
-        /usr/lib/io.so --make -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
+        /usr/lib/io.so -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
         -Wincomplete-record-updates -Wredundant-constraints
         -Wnoncanonical-monad-instances -threaded -lstdc++ -dynamic
 
@@ -69,7 +69,7 @@ test-suite unit-test
   hs-source-dirs:
       test
       , src
-  other-modules: Lexer, ParserH, Syntax, JIT
+  other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     --   kaleidoscope-fing

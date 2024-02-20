@@ -19,6 +19,7 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
 import LLVM.AST.Global (Global (name), parameters, returnType)
+import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
@@ -192,7 +193,7 @@ genOperand (S.Call fn functionArgs) localVars = do
 
 -- SnocList {
 --   unSnocList = [
---     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = ConstantOperand (Int {integerBits = 32, integerValue = 1}), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []}), 
+--     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = ConstantOperand (Int {integerBits = 32, integerValue = 1}), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []}),
 --     GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "f", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "a_0") [], Parameter (IntegerType {typeBits = 32}) (Name "b_0") []], False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (UnName 0) [UnName 1 := FAdd {fastMathFlags = FastMathFlags {allowReassoc = False, noNaNs = False, noInfs = False, noSignedZeros = False, allowReciprocal = False, allowContract = False, approxFunc = False}, operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "a_0"), operand1 = LocalReference (IntegerType {typeBits = 32}) (Name "b_0"), metadata = []}] (Do (Ret {returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), metadata' = []}))], personalityFunction = Nothing, metadata = []})]}
 
 -- Unary Operands
@@ -278,4 +279,3 @@ getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
     find _ (SnocList []) res = res
 
 getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
-getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
