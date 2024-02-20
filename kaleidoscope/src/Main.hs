@@ -10,9 +10,32 @@ import ParserH
 import System.Console.Haskeline
 import System.Environment
 import Data.Text (strip, unpack, pack)
+import LLVM.AST
+import LLVM.AST.Global
 
-initModule :: AST.Module
-initModule = AST.defaultModule {AST.moduleName = fromString "Kaleidoscope"} 
+stdLibrary :: [Definition]
+stdLibrary = [
+    -- GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, AST.callingConvention = C, AST.returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "printi", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "") []],False), AST.functionAttributes = [], section = Nothing, comdat = Nothing, AST.alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [], personalityFunction = Nothing, AST.metadata = []})
+    GlobalDefinition functionDefaults {
+      name = Name (fromString "printi"),
+      parameters = ([Parameter (IntegerType 32) (Name (fromString "i")) []], False),
+      returnType = IntegerType 32,
+      basicBlocks = []
+    },
+    GlobalDefinition functionDefaults {
+      name = Name (fromString "printd"),
+      parameters = ([Parameter (FloatingPointType DoubleFP) (Name (fromString "d")) []], False),
+      returnType = VoidType,
+      basicBlocks = []
+    },
+    GlobalDefinition functionDefaults {
+      name = Name (fromString "printb"),
+      parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
+      returnType = VoidType,
+      basicBlocks = []
+    }
+   ]
+
 
 process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))
 process oldDefs source = do
@@ -30,7 +53,7 @@ processFile fname = do
   return $ snd <$> result
 
 repl :: IO ()
-repl = runInputT defaultSettings (loop 0 [])
+repl = runInputT defaultSettings (loop 0 stdLibrary)
   where
     loop prevRes oldDefs = do
       minput <- getInputLine "ready> "
