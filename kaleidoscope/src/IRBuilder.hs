@@ -26,6 +26,10 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import LLVM.AST.Type (ptr)
+import qualified Data.Text as T
+import Control.Monad
+
+import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -34,7 +38,7 @@ import LLVM.AST.Type (ptr)
 genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
   optMod <- optimizeModule unoptimizedAst
-  res <- runJIT optMod
+  res <- trace ("MAIN =>" ++ show moduleMainFn) $ runJIT optMod moduleMainFnType
   return (res, definitions)
   where
     -- TODO: Remove old duplicate functions
@@ -55,6 +59,14 @@ genModule oldDefs expressions = do
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
+    -- TODO: This is a hack, we should find a better way to do this
+    moduleMainFn = filter (\case 
+        GlobalDefinition AST.Function {name = Name "main"} -> True;
+        _ -> False
+      ) definitions
+    moduleMainFnType = case moduleMainFn of
+      [GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}] -> ASTType.i32
+      _ -> ASTType.double
 
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
@@ -95,7 +107,6 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
 genTopLevel expression = do
   function "main" [] expressionType (genLevel expression)
   where
-    -- expressionType = ASTType.double
     expressionType = getExpressionType expression
 
 getExpressionType :: Expr -> AST.Type
