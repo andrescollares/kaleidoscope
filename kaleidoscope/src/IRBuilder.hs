@@ -119,7 +119,12 @@ getExpressionType (Constant Integer _ _) = ASTType.i32
 getExpressionType (Constant Boolean _ _) = ASTType.i1
 getExpressionType (S.Call _ _) = ASTType.double -- TODO!!
 getExpressionType (Var _) = ASTType.double -- TODO!!
+getExpressionType (UnaryOp _ _) = ASTType.double -- TODO!!
+getExpressionType (BinOp _ a b) = if getExpressionType a == ASTType.double || getExpressionType b == ASTType.double 
+  then ASTType.double 
+  else getExpressionType a
 getExpressionType _ = ASTType.double
+
 
 getASTType :: S.Type -> AST.Type
 getASTType Double = ASTType.double
@@ -219,7 +224,7 @@ genOperand (BinOp oper a b) localVars = do
     binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
     binops =
       M.fromList
-        [ ("+", fadd),
+        [ ("+", typedAdd a b),
           ("-", fsub),
           ("*", fmul),
           ("/", fdiv),
@@ -279,3 +284,23 @@ getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
     find _ (SnocList []) res = res
 
 getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
+getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
+
+-- Typed add
+typedAdd :: Expr -> Expr -> (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
+typedAdd a b = do
+  let aType = getExpressionType a
+  let bType = getExpressionType b 
+  if aType == ASTType.i32 && bType == ASTType.i32
+    then add
+  else if aType == ASTType.double && bType == ASTType.double
+    then fadd
+  else if aType == ASTType.i32 && bType == ASTType.double
+    then \x y -> do
+      x' <- sitofp x ASTType.double
+      fadd x' y
+  else if aType == ASTType.double && bType == ASTType.i32
+    then \x y -> do
+      y' <- uitofp y ASTType.double
+      fadd x y'
+  else error "Invalid types for addition"
