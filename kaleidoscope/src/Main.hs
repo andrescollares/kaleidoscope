@@ -1,7 +1,6 @@
 module Main where
 
 import Control.Monad.Trans
-import Data.String
 -- import Emit
 
 import IRBuilder (genModule)
@@ -10,30 +9,8 @@ import ParserH
 import System.Console.Haskeline
 import System.Environment
 import Data.Text (strip, unpack, pack)
-import LLVM.AST
-import LLVM.AST.Global
 
-stdLibrary :: [Definition]
-stdLibrary = [
-    GlobalDefinition functionDefaults {
-      name = Name (fromString "printi"),
-      parameters = ([Parameter (IntegerType 32) (Name (fromString "i")) []], False),
-      returnType = IntegerType 32,
-      basicBlocks = []
-    },
-    GlobalDefinition functionDefaults {
-      name = Name (fromString "printd"),
-      parameters = ([Parameter (FloatingPointType DoubleFP) (Name (fromString "d")) []], False),
-      returnType = VoidType,
-      basicBlocks = []
-    },
-    GlobalDefinition functionDefaults {
-      name = Name (fromString "printb"),
-      parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
-      returnType = VoidType,
-      basicBlocks = []
-    }
-   ]
+import StdLibrary
 
 
 process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))

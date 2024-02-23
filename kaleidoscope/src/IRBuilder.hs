@@ -14,6 +14,8 @@ import qualified Data.Map.Strict as M
 import Data.String
 import qualified Data.Text as T
 import JIT
+import Types
+import Instructions
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
@@ -27,11 +29,6 @@ import LLVM.IRBuilder.Internal.SnocList
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
-import LLVM.AST.Type (ptr)
-import qualified Data.Text as T
-import Control.Monad
-
-import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -110,27 +107,6 @@ genTopLevel expression = do
   function "main" [] expressionType (genLevel expression)
   where
     expressionType = getExpressionType expression
-
-getExpressionType :: Expr -> AST.Type
-getExpressionType (Int _) = ASTType.i32
-getExpressionType (Float _) = ASTType.double
-getExpressionType (Bool _) = ASTType.i1
-getExpressionType (Constant Double _ _) = ASTType.double
-getExpressionType (Constant Integer _ _) = ASTType.i32
-getExpressionType (Constant Boolean _ _) = ASTType.i1
-getExpressionType (S.Call _ _) = ASTType.double -- TODO!!
-getExpressionType (Var _) = ASTType.double -- TODO!!
-getExpressionType (UnaryOp _ _) = ASTType.double -- TODO!!
-getExpressionType (BinOp _ a b) = if getExpressionType a == ASTType.double || getExpressionType b == ASTType.double 
-  then ASTType.double 
-  else getExpressionType a
-getExpressionType _ = ASTType.double
-
-
-getASTType :: S.Type -> AST.Type
-getASTType Double = ASTType.double
-getASTType Integer = ASTType.i32
-getASTType Boolean = ASTType.i1
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -283,25 +259,3 @@ getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
 
 getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
 getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
-
-type BinOpInstruction = (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
-
-typedInstruction :: Expr -> Expr -> BinOpInstruction -> BinOpInstruction -> BinOpInstruction
-typedInstruction a b wholeInstr floatingInstr = do
-  let aType = getExpressionType a
-  let bType = getExpressionType b
-  -- TODO: make this a case statement :/
-  -- "Qualified name in binding position: ASTType.double"
-  if aType == ASTType.i32 && bType == ASTType.i32
-    then wholeInstr
-  else if aType == ASTType.double && bType == ASTType.double
-    then floatingInstr
-  else if aType == ASTType.i32 && bType == ASTType.double
-    then \x y -> do
-      x' <- sitofp x ASTType.double
-      floatingInstr x' y
-  else if aType == ASTType.double && bType == ASTType.i32
-    then \x y -> do
-      y' <- uitofp y ASTType.double
-      floatingInstr x y'
-  else error "Invalid types for addition"

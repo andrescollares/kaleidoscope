@@ -21,7 +21,7 @@ int32_t printi(int32_t i) {
   return i;
 }
 
-print a boolean (int1)
+// print a boolean (int1)
 int8_t printb(int8_t b) {
   printf("%s\n", b ? "true" : "false");
   return b;
