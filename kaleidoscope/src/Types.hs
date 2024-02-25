@@ -11,8 +11,8 @@ getExpressionType (Bool _) = ASTType.i1
 getExpressionType (Constant Double _ _) = ASTType.double
 getExpressionType (Constant Integer _ _) = ASTType.i32
 getExpressionType (Constant Boolean _ _) = ASTType.i1
-getExpressionType (S.Call _ _) = ASTType.double -- TODO!!
-getExpressionType (Var _) = ASTType.double -- TODO!!
+-- getExpressionType (S.Call _ _) = We can't infer this without context
+-- getExpressionType (Var _) = We can't infer this without context
 getExpressionType (UnaryOp _ _) = ASTType.double -- TODO!!
 getExpressionType (BinOp _ a b) = if getExpressionType a == ASTType.double || getExpressionType b == ASTType.double 
   then ASTType.double 

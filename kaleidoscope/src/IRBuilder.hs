@@ -29,6 +29,7 @@ import LLVM.IRBuilder.Internal.SnocList
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
+import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -59,7 +60,7 @@ genModule oldDefs expressions = do
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
     -- TODO: This is a hack, we should find a better way to do this
-    moduleMainFn = filter (\case 
+    moduleMainFn = filter (\case
         GlobalDefinition AST.Function {name = Name "main"} -> True;
         _ -> False
       ) definitions
@@ -104,9 +105,21 @@ genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
 -- Any expression
 genTopLevel expression = do
-  function "main" [] expressionType (genLevel expression)
-  where
-    expressionType = getExpressionType expression
+  eType <- expressionType
+  function "main" [] eType (genLevel expression)
+    -- expressionType = getExpressionType expression
+    where
+      expressionType = case expression of
+        (S.Call fn _) -> do
+          currentDefs <- liftModuleState $ gets builderDefs
+          let maybeDef = getFunctionFromDefs currentDefs fn
+          case maybeDef of
+            Just def -> do
+              case def of
+                (GlobalDefinition AST.Function {returnType = retT}) -> return retT
+                _ -> error $ "Function " <> show fn <> " not found."
+            Nothing -> error $ "Function " <> show fn <> " not found."
+        _ -> return $ getExpressionType expression
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -139,7 +152,9 @@ genOperand (Var (Name nameString)) localVars = do
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
   case getLocalVarName nameString localVars of
-    Just (_, localVar) -> return localVar
+    Just (_, localVar) -> do
+      _ <- trace ("localVar____: " ++ show localVar) $ return ()
+      return localVar
     Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name nameString))) 0
   where
     getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
@@ -169,7 +184,7 @@ genOperand (S.Call fn functionArgs) localVars = do
   case maybeDef of
     Just def -> do
       case def of
-        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getOperand fn retT params) (map (\x -> (x, [])) largs)
+        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> trace ("globaldef" ++ show def) $ call (getOperand fn retT params) (map (\x -> (x, [])) largs)
         _ -> error $ "Function " <> show fn <> " not found."
     Nothing -> error $ "Function " <> show fn <> " not found."
 
@@ -189,12 +204,14 @@ genOperand (UnaryOp oper a) localVars = do
 genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
-  case M.lookup oper binops of
-    Just f -> f opA opB
+  case M.lookup oper $ binops opA opB of
+    Just f -> do
+      _ <- trace ("opA: " ++ show opA) $ return ()
+      f opA opB
     Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
-    binops :: M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
-    binops =
+    binops :: Operand -> Operand -> M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
+    binops firstOp secondOp =
       M.fromList
         [ ("+", eitherType add fadd),
           ("-", eitherType sub fsub),
@@ -208,7 +225,13 @@ genOperand (BinOp oper a b) localVars = do
           (">=", eitherType (icmp IP.UGE) (fcmp UGE))
         ]
       where
-        eitherType = typedInstruction a b
+        eitherType = case (firstOp, secondOp) of
+          (LocalReference FloatingPointType {floatingPointType = DoubleFP} _, _) -> floatInstruction
+          (_, LocalReference FloatingPointType {floatingPointType = DoubleFP} _) -> floatInstruction
+          (LocalReference IntegerType {typeBits = 32} _, LocalReference IntegerType {typeBits = 32} _) -> intInstruction
+          _ -> typedInstruction a b
+        intInstruction i _ = i
+        floatInstruction _ f = f
 
 -- If
 genOperand (If cond thenExpr elseExpr) localVars = mdo
