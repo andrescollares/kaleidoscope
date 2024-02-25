@@ -225,13 +225,7 @@ genOperand (BinOp oper a b) localVars = do
           (">=", eitherType (icmp IP.UGE) (fcmp UGE))
         ]
       where
-        eitherType = case (firstOp, secondOp) of
-          (LocalReference FloatingPointType {floatingPointType = DoubleFP} _, _) -> floatInstruction
-          (_, LocalReference FloatingPointType {floatingPointType = DoubleFP} _) -> floatInstruction
-          (LocalReference IntegerType {typeBits = 32} _, LocalReference IntegerType {typeBits = 32} _) -> intInstruction
-          _ -> typedInstruction a b
-        intInstruction i _ = i
-        floatInstruction _ f = f
+        eitherType = typedOperandInstruction firstOp secondOp
 
 -- If
 genOperand (If cond thenExpr elseExpr) localVars = mdo

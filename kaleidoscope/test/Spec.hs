@@ -83,7 +83,8 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("expr_add_int_float", 2, ASTType.double)
   , ("expr_add_int_int", 2, ASTType.i32)
   , ("fn_add_int_int", 3, ASTType.i32)
-  , ("fn_add_float_int", 3, ASTType.double) -- TODO: failing!
+  , ("fn_add_float_int", 3, ASTType.double)
+  , ("fn_add_float_float", 3, ASTType.double)
 
 
   -- , ("add_sub", 15)
