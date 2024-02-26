@@ -26,7 +26,7 @@ import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, ParameterName (ParameterName))
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import Debug.Trace
@@ -73,6 +73,16 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
   where
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
+functionLocalVar :: [Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
+functionLocalVar operands functionParameters (Name name) t = localVarsFallback operands ++ [(Just name, getOperand (Name name) t (functionLocalVarParameters functionParameters, False))]
+functionLocalVar _ _ _ _ = error "Function lacks a name."
+
+functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
+functionLocalVarParameters = map (\(t, (ParameterName n)) -> Parameter (getASTType t) (Name n) [])
+
+localVarsFallback :: [Operand] -> [LocalVar]
+localVarsFallback = map (\operand -> (Nothing, operand))
+
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
@@ -85,11 +95,14 @@ genTopLevel (S.Extern externName externArgs Boolean) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 -- Function definition
 genTopLevel (S.Function functionName functionArgs Double body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.double (genLevel body)
+  function functionName (first getASTType <$> functionArgs) ASTType.double (\ops -> 
+    genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double)
 genTopLevel (S.Function functionName functionArgs Integer body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.i32 (genLevel body)
+  function functionName (first getASTType <$> functionArgs) ASTType.i32 (\ops -> 
+    genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32)
 genTopLevel (S.Function functionName functionArgs Boolean body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.i1 (genLevel body)
+  function functionName (first getASTType <$> functionArgs) ASTType.i1 (\ops -> 
+    genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1)
 -- Constant definition
 genTopLevel (S.Constant Double constantName (Float val)) = do
   global constantName ASTType.double (C.Float (F.Double val))
@@ -99,14 +112,14 @@ genTopLevel (S.Constant Boolean constantName (Bool val)) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
 -- Unary operator definition
 genTopLevel (S.UnaryDef unaryOpName unaryArgs body) = do
-  function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (genLevel body)
+  function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
 -- Binary operator definition
 genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
-  function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (genLevel body)
+  function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
 -- Any expression
 genTopLevel expression = do
   eType <- expressionType
-  function "main" [] eType (genLevel expression)
+  function "main" [] eType (\_ -> genLevel expression [])
     -- expressionType = getExpressionType expression
     where
       expressionType = case expression of
@@ -130,13 +143,29 @@ genTopLevel expression = do
 
 type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 
-genLevel :: Expr -> [Operand] -> IRBuilderT ModuleBuilder ()
-genLevel e localVars = do
-  generated <- genOperand e (localVarsFallback localVars)
-  ret generated
+getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
+getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
+findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
+findLast p (x : xs) res
+  | p x = findLast p xs (Just x)
+  | otherwise = findLast p xs res
+findLast _ [] res = res
+matchName :: LocalVar -> ShortByteString -> Bool
+matchName (Just varName, _) n = varName == n
+matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
+matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == show n
+matchName _ _ = False
+-- TODO: Rework this function later, don't use show
+-- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
+removeEnding :: ShortByteString -> ShortByteString
+removeEnding variableName
+  | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)
+  | otherwise = variableName
 
-localVarsFallback :: [Operand] -> [LocalVar]
-localVarsFallback = map (\operand -> (Nothing, operand))
+genLevel :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genLevel e localVars = do
+  generated <- genOperand e localVars
+  ret generated
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
@@ -152,41 +181,28 @@ genOperand (Var (Name nameString)) localVars = do
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
   case getLocalVarName nameString localVars of
-    Just (_, localVar) -> do
-      _ <- trace ("localVar____: " ++ show localVar) $ return ()
-      return localVar
+    Just (_, localVar) -> return localVar
     Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name nameString))) 0
-  where
-    getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
-    getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
-    matchName :: LocalVar -> ShortByteString -> Bool
-    matchName (Just varName, _) n = varName == n
-    matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
-    matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == show n
-    matchName _ _ = False
-    findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
-    findLast p (x : xs) res
-      | p x = findLast p xs (Just x)
-      | otherwise = findLast p xs res
-    findLast _ [] res = res
-    -- TODO: Rework this function later, don't use show
-    -- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
-    removeEnding :: ShortByteString -> ShortByteString
-    removeEnding variableName
-      | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)
-      | otherwise = variableName
+    -- possible Exception: EncodeException "reference to undefined global: Name \"a\""
 
 -- Call
-genOperand (S.Call fn functionArgs) localVars = do
+genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
   currentDefs <- liftModuleState $ gets builderDefs
-  let maybeDef = getFunctionFromDefs currentDefs fn
+  let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
   case maybeDef of
     Just def -> do
       case def of
-        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> trace ("globaldef" ++ show def) $ call (getOperand fn retT params) (map (\x -> (x, [])) largs)
-        _ -> error $ "Function " <> show fn <> " not found."
-    Nothing -> error $ "Function " <> show fn <> " not found."
+        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
+        _ -> error $ "Function " <> show fnName <> " not found."
+    Nothing -> do
+      let functionDefinition = getLocalVarName fnName localVars
+      case functionDefinition of
+        Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
+        Nothing -> error $ "Function " <> show fnName <> " not found."
+
+-- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
+-- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
 
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
@@ -205,9 +221,7 @@ genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
   case M.lookup oper $ binops opA opB of
-    Just f -> do
-      _ <- trace ("opA: " ++ show opA) $ return ()
-      f opA opB
+    Just f -> f opA opB
     Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
     binops :: Operand -> Operand -> M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
