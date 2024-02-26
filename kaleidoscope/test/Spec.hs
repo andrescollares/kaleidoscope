@@ -82,9 +82,13 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("expr_add_float_int", 2, ASTType.double)
   , ("expr_add_int_float", 2, ASTType.double)
   , ("expr_add_int_int", 2, ASTType.i32)
+  , ("expr_div_float_int", 2.5, ASTType.double)
+  , ("expr_div_int_int", 2, ASTType.i32)
   , ("fn_add_int_int", 3, ASTType.i32)
   , ("fn_add_float_int", 3, ASTType.double)
   , ("fn_add_float_float", 3, ASTType.double)
+  , ("fn_nested", 9, ASTType.i32)
+  , ("recursive_sum", 12345, ASTType.i32) -- TODO: recursion is broken atm
 
 
   -- , ("add_sub", 15)
