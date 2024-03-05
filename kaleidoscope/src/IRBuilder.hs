@@ -30,6 +30,7 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import Debug.Trace
+import qualified Data.List as DL
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -59,7 +60,6 @@ genModule oldDefs expressions = do
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
-    -- TODO: This is a hack, we should find a better way to do this
     moduleMainFn = filter (\case
         GlobalDefinition AST.Function {name = Name "main"} -> True;
         _ -> False
@@ -74,7 +74,7 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
 functionLocalVar :: [Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
-functionLocalVar operands functionParameters (Name name) t = localVarsFallback operands ++ [(Just name, getOperand (Name name) t (functionLocalVarParameters functionParameters, False))]
+functionLocalVar operands functionParameters (Name name) t = localVarsFallback operands ++ [(Just name, getFunctionOperand (Name name) t (functionLocalVarParameters functionParameters, False))]
 functionLocalVar _ _ _ _ = error "Function lacks a name."
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
@@ -144,7 +144,7 @@ genTopLevel expression = do
 type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
-getLocalVarName n vars = findLast (\localVar -> matchName localVar n) vars Nothing
+getLocalVarName n vars = DL.find (\localVar -> matchName localVar n) vars
 findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
 findLast p (x : xs) res
   | p x = findLast p xs (Just x)
@@ -191,9 +191,11 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
   currentDefs <- liftModuleState $ gets builderDefs
   let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
   case maybeDef of
+    -- TODO: preguntar primero por la local y luego por la global
+    -- por si queiro re-definir la funcion y es recursiva.
     Just def -> do
       case def of
-        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
+        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
         _ -> error $ "Function " <> show fnName <> " not found."
     Nothing -> do
       let functionDefinition = getLocalVarName fnName localVars
@@ -262,6 +264,8 @@ genOperand (Let Double (Name varName) variableValue body) localVars = do
   loadedVar <- load var 0
   -- TODO: alloca -> store -> load: there's probably a better way to do this
   genOperand body ((Just varName, loadedVar) : localVars)
+
+  
 genOperand (Let Integer (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.i32 Nothing 0
   computedValue <- genOperand variableValue localVars
@@ -288,5 +292,5 @@ getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
       | otherwise = find p (SnocList xs) res
     find _ (SnocList []) res = res
 
-getOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
-getOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
+getFunctionOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
+getFunctionOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
