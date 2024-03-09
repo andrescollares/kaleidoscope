@@ -1,0 +1,1 @@
+if (0) then 4 else 10;

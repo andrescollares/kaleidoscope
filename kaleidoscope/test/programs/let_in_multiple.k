@@ -1,2 +1,2 @@
-let a = 1, b = 2, c = 3 in
+let int a = 1, int b = 2, int c = 3 in
 a + b + c;

@@ -13,7 +13,6 @@ import Data.String
 
 import ParserH
 import JIT
--- import Emit
 import IRBuilder
 import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
@@ -90,8 +89,12 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("fn_div_int_int", 2.5, ASTType.double)
   , ("fn_nested", 9, ASTType.i32)
   , ("fn_int_float", 3.5, ASTType.double)
+  , ("if_int", 10, ASTType.i32)
+  , ("if_float", 2.5, ASTType.double)
   , ("let_in_int", 5, ASTType.i32)
-  , ("let_in_float", 5, ASTType.double) 
+  , ("let_in_float", 5, ASTType.double)
+  , ("let_in_multiple", 6, ASTType.i32)
+  , ("let_in_nested", 6, ASTType.double)
   , ("recursive_sum", 55, ASTType.i32)
   , ("recursive_fib", 8, ASTType.i32)
 

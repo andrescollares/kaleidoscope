@@ -29,7 +29,6 @@ import LLVM.IRBuilder.Internal.SnocList
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, ParameterName (ParameterName))
 import LLVM.IRBuilder.Monad
 import Syntax as S
-import Debug.Trace
 import qualified Data.List as DL
 
 -- Generates the Module from the previous module and the new expressions
@@ -147,12 +146,7 @@ genTopLevel expression = do
 type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
-getLocalVarName n vars = DL.find (\localVar -> matchName localVar n) vars
-findLast :: (a -> Bool) -> [a] -> Maybe a -> Maybe a
-findLast p (x : xs) res
-  | p x = findLast p xs (Just x)
-  | otherwise = findLast p xs res
-findLast _ [] res = res
+getLocalVarName n = DL.find (`matchName` n)
 matchName :: LocalVar -> ShortByteString -> Bool
 matchName (Just varName, _) n = varName == n
 matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
@@ -205,9 +199,6 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
       case functionDefinition of
         Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
         Nothing -> error $ "Function " <> show fnName <> " not found."
-
--- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
--- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}
 
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
@@ -268,7 +259,7 @@ genOperand (Let Double (Name varName) variableValue body) localVars = do
   -- TODO: alloca -> store -> load: there's probably a better way to do this
   genOperand body ((Just varName, loadedVar) : localVars)
 
-  
+
 genOperand (Let Integer (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.i32 Nothing 0
   computedValue <- genOperand variableValue localVars

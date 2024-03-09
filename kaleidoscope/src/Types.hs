@@ -3,7 +3,6 @@ module Types where
 import Syntax as S
 import LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
-import Data.ByteString.Short (ShortByteString)
 import Data.List (find)
 
 type LocalVarType = (Name, S.Type)
@@ -22,6 +21,11 @@ getExpressionType (BinOp _ a b) localVars = if getExpressionType a localVars == 
   then ASTType.double 
   else getExpressionType a localVars 
 getExpressionType (Let _ _ _ e) localVars = getExpressionType e localVars
+-- TODO: restriction: types of both sides of if statement should be the same
+-- raise error if not?
+getExpressionType (If _ e1 e2) localVars = if getExpressionType e1 localVars == ASTType.double || getExpressionType e2 localVars == ASTType.double 
+  then ASTType.double 
+  else getExpressionType e1 localVars
 getExpressionType _ _ = ASTType.double
 
 
