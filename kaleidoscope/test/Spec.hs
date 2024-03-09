@@ -90,6 +90,8 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("fn_div_int_int", 2.5, ASTType.double)
   , ("fn_nested", 9, ASTType.i32)
   , ("fn_int_float", 3.5, ASTType.double)
+  , ("let_in_int", 5, ASTType.i32)
+  , ("let_in_float", 5, ASTType.double) 
   , ("recursive_sum", 55, ASTType.i32)
   , ("recursive_fib", 8, ASTType.i32)
 

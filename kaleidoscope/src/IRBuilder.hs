@@ -74,11 +74,11 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
 functionLocalVar :: [Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
-functionLocalVar operands functionParameters (Name name) t = localVarsFallback operands ++ [(Just name, getFunctionOperand (Name name) t (functionLocalVarParameters functionParameters, False))]
+functionLocalVar operands functionParameters (Name n) t = localVarsFallback operands ++ [(Just n, getFunctionOperand (Name n) t (functionLocalVarParameters functionParameters, False))]
 functionLocalVar _ _ _ _ = error "Function lacks a name."
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
-functionLocalVarParameters = map (\(t, (ParameterName n)) -> Parameter (getASTType t) (Name n) [])
+functionLocalVarParameters = map (\(t, ParameterName n) -> Parameter (getASTType t) (Name n) [])
 
 localVarsFallback :: [Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
@@ -95,13 +95,13 @@ genTopLevel (S.Extern externName externArgs Boolean) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 -- Function definition
 genTopLevel (S.Function functionName functionArgs Double body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.double (\ops -> 
+  function functionName (first getASTType <$> functionArgs) ASTType.double (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double)
 genTopLevel (S.Function functionName functionArgs Integer body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.i32 (\ops -> 
+  function functionName (first getASTType <$> functionArgs) ASTType.i32 (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32)
 genTopLevel (S.Function functionName functionArgs Boolean body) = do
-  function functionName (first getASTType <$> functionArgs) ASTType.i1 (\ops -> 
+  function functionName (first getASTType <$> functionArgs) ASTType.i1 (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1)
 -- Constant definition
 genTopLevel (S.Constant Double constantName (Float val)) = do
@@ -123,6 +123,7 @@ genTopLevel expression = do
     -- expressionType = getExpressionType expression
     where
       expressionType = case expression of
+        -- if the expression is a call, we need to get the type of the function
         (S.Call fn _) -> do
           currentDefs <- liftModuleState $ gets builderDefs
           let maybeDef = getFunctionFromDefs currentDefs fn
@@ -132,7 +133,9 @@ genTopLevel expression = do
                 (GlobalDefinition AST.Function {returnType = retT}) -> return retT
                 _ -> error $ "Function " <> show fn <> " not found."
             Nothing -> error $ "Function " <> show fn <> " not found."
-        _ -> return $ getExpressionType expression
+        (S.Let varType varName _ expr) -> do
+          return $ getExpressionType expr [(varName, varType)]
+        _ -> return $ getExpressionType expression [] -- TODO: carry over variables
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -281,11 +284,11 @@ genOperand (Let Boolean (Name varName) variableValue body) localVars = do
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
 
 getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
-getFunctionFromDefs defs name = find (\def -> matchName def name) defs Nothing
+getFunctionFromDefs defs functionName = find (\def -> matchNameGlobal def functionName) defs Nothing
   where
-    matchName :: Definition -> Name -> Bool
-    matchName (GlobalDefinition AST.Function {name = n}) name = n == name
-    matchName _ _ = False
+    matchNameGlobal :: Definition -> Name -> Bool
+    matchNameGlobal (GlobalDefinition AST.Function {name = n}) nameToMatch = n == nameToMatch
+    matchNameGlobal _ _ = False
     find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
     find p (SnocList (x : xs)) res
       | p x = Just x

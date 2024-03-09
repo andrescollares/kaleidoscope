@@ -12,8 +12,6 @@ import qualified Text.Parsec.Token as Tok
 import qualified LLVM.IRBuilder.Module as M
 import Data.String
 import Data.Bifunctor (second)
-import qualified Data.Bifunctor
-import LLVM.AST (Name (Name))
 import Data.ByteString.Short (ShortByteString)
 
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
