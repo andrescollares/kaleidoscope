@@ -17,14 +17,18 @@ getExpressionType (Constant Boolean _ _) _ = ASTType.i1
 -- getExpressionType (S.Call _ _) = We can't infer this without context
 getExpressionType (Var varName) localVars = getASTType $ findLocalVarType localVars varName
 getExpressionType (UnaryOp _ _) _ = ASTType.double -- TODO!!
-getExpressionType (BinOp _ a b) localVars = if getExpressionType a localVars == ASTType.double || getExpressionType b localVars == ASTType.double 
-  then ASTType.double 
-  else getExpressionType a localVars 
-getExpressionType (Let _ _ _ e) localVars = getExpressionType e localVars
+-- TODO: this is potentially O(2^n)!!!
+getExpressionType (BinOp _ a b) localVars = if typeOfA == ASTType.double || typeOfB == ASTType.double 
+  then ASTType.double
+  else typeOfA
+  where
+    typeOfA = getExpressionType a localVars
+    typeOfB = getExpressionType b localVars
+getExpressionType (Let varType varName _ e) localVars = getExpressionType e $ localVars ++ [(varName, varType)]
 -- TODO: restriction: types of both sides of if statement should be the same
 -- raise error if not?
 getExpressionType (If _ e1 e2) localVars = if getExpressionType e1 localVars == ASTType.double || getExpressionType e2 localVars == ASTType.double 
-  then ASTType.double 
+  then ASTType.double
   else getExpressionType e1 localVars
 getExpressionType _ _ = ASTType.double
 
