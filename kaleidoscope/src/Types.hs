@@ -7,7 +7,7 @@ import Data.List (find)
 
 type LocalVarType = (Name, S.Type)
 
-getExpressionType :: Expr -> [LocalVarType] -> AST.Type
+getExpressionType :: SyntaxOperand -> [LocalVarType] -> AST.Type
 getExpressionType (Int _) _ = ASTType.i32
 getExpressionType (Float _) _ = ASTType.double
 getExpressionType (Bool _) _ = ASTType.i1

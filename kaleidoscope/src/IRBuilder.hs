@@ -86,37 +86,37 @@ localVarsFallback = map (\operand -> (Nothing, operand))
 -- The result is a ModuleBuilder monad
 genTopLevel :: Expr -> ModuleBuilder Operand
 -- Extern definition
-genTopLevel (S.Extern externName externArgs Integer) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs Integer)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i32
-genTopLevel (S.Extern externName externArgs Double) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs Double)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.double
-genTopLevel (S.Extern externName externArgs Boolean) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs Boolean)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 -- Function definition
-genTopLevel (S.Function functionName functionArgs Double body) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs Double body)) = do
   function functionName (first getASTType <$> functionArgs) ASTType.double (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double)
-genTopLevel (S.Function functionName functionArgs Integer body) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs Integer body)) = do
   function functionName (first getASTType <$> functionArgs) ASTType.i32 (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32)
-genTopLevel (S.Function functionName functionArgs Boolean body) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs Boolean body)) = do
   function functionName (first getASTType <$> functionArgs) ASTType.i1 (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1)
 -- Constant definition
-genTopLevel (S.Constant Double constantName (Float val)) = do
+genTopLevel (S.Operand (S.Constant Double constantName (Float val))) = do
   global constantName ASTType.double (C.Float (F.Double val))
-genTopLevel (S.Constant Integer constantName (Int val)) = do
+genTopLevel (S.Operand (S.Constant Integer constantName (Int val))) = do
   global constantName ASTType.i32 (C.Int 32 val)
-genTopLevel (S.Constant Boolean constantName (Bool val)) = do
+genTopLevel (S.Operand (S.Constant Boolean constantName (Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
 -- Unary operator definition
-genTopLevel (S.UnaryDef unaryOpName unaryArgs body) = do
+genTopLevel (S.Operand (S.UnaryDef unaryOpName unaryArgs body)) = do
   function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
 -- Binary operator definition
-genTopLevel (S.BinaryDef binaryOpName binaryArgs body) = do
+genTopLevel (S.Operand (S.BinaryDef binaryOpName binaryArgs body)) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
 -- Any expression
-genTopLevel expression = do
+genTopLevel (S.Operand expression) = do
   eType <- expressionType
   function "main" [] eType (\_ -> genLevel expression [])
     -- expressionType = getExpressionType expression
@@ -161,13 +161,13 @@ removeEnding variableName
   | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)
   | otherwise = variableName
 
-genLevel :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genLevel :: SyntaxOperand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
   generated <- genOperand e localVars
   ret generated
 
 -- Generates the Operands that genTopLevel needs.
-genOperand :: Expr -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
+genOperand :: SyntaxOperand -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Integer

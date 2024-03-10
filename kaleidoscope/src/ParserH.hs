@@ -14,10 +14,10 @@ import Data.String
 import Data.Bifunctor (second)
 import Data.ByteString.Short (ShortByteString)
 
-binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Expr
+binary :: String -> Ex.Assoc -> Ex.Operator String () Identity SyntaxOperand
 binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
 
-binops :: Ex.OperatorTable String () Identity Expr
+binops :: Ex.OperatorTable String () Identity SyntaxOperand
 binops =
   [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
@@ -30,7 +30,7 @@ binops =
     ]
   ]
 
-binarydef :: Parser Expr
+binarydef :: Parser SyntaxOperand
 binarydef = do
   reserved "def"
   reserved "binary"
@@ -39,7 +39,7 @@ binarydef = do
   args <- parens $ many identifier
   BinaryDef o (map fromString args) <$> expr
 
-unarydef :: Parser Expr
+unarydef :: Parser SyntaxOperand
 unarydef = do
   reserved "def"
   reserved "unary"
@@ -54,10 +54,10 @@ op = do
   whitespace
   return (fromString o)
 
-unop :: Ex.Operator String () Identity Expr
+unop :: Ex.Operator String () Identity SyntaxOperand
 unop = Ex.Prefix (UnaryOp <$> op)
 
-binop :: Ex.Operator String () Identity Expr
+binop :: Ex.Operator String () Identity SyntaxOperand
 binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
 tp :: Parser Syntax.Type
@@ -75,26 +75,26 @@ integer = reserved "int" >> return Integer
 boolean :: Parser Syntax.Type
 boolean = reserved "bool" >> return Boolean
 
-int :: Parser Expr
+int :: Parser SyntaxOperand
 int =
   Int <$> Lexer.int
 
-floating :: Parser Expr
+floating :: Parser SyntaxOperand
 floating =
   Float <$> float
 
-bool :: Parser Expr
+bool :: Parser SyntaxOperand
 bool =
   Bool <$> Lexer.bool
 
-expr :: Parser Expr
+expr :: Parser SyntaxOperand
 expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
 
-variable :: Parser Expr
+variable :: Parser SyntaxOperand
 variable =
   Var . fromString <$> identifier
 
-extern :: Parser Expr
+extern :: Parser SyntaxDef
 extern = do
   reserved "extern"
   name <- identifier
@@ -102,7 +102,7 @@ extern = do
   reserved "->"
   Extern (fromString name) (second fromString <$> arguments) <$> tp
 
-function :: Parser Expr
+function :: Parser SyntaxDef
 function = do
   reserved "def"
   name <- identifier
@@ -112,7 +112,7 @@ function = do
   reserved ":"
   Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
-constant :: Parser Expr
+constant :: Parser SyntaxOperand
 constant = do
   reservedOp "const"
   tpi <- tp
@@ -121,14 +121,14 @@ constant = do
   return $ Constant tpi (fromString name) value
 
 
-call :: Parser Expr
+call :: Parser SyntaxOperand
 call = do
   name <- identifier
   -- parenthesis are optional for functions without arguments
   arguments <- parens $ commaSep expr
   return $ Call (fromString name) arguments
 
-ifthen :: Parser Expr
+ifthen :: Parser SyntaxOperand
 ifthen = do
   reserved "if"
   cond <- expr
@@ -137,7 +137,7 @@ ifthen = do
   reserved "else"
   If cond thenExpr <$> expr
 
-letins :: Parser Expr
+letins :: Parser SyntaxOperand
 letins = do
   reserved "let"
   defs <- commaSep $ do
@@ -150,13 +150,13 @@ letins = do
   body <- expr
   return $ foldr (\(t, n, v) -> Let t n v) body defs
 
-factor :: Parser Expr
+factor :: Parser SyntaxOperand
 factor =
-  try floating
+  expr <|> try floating
     <|> try ParserH.int
     <|> try ParserH.bool
-    <|> try extern
-    <|> try function
+    -- <|> try extern
+    -- <|> try function
     <|> try call
     <|> try ifthen
     <|> try letins
@@ -164,13 +164,12 @@ factor =
     <|> parens expr
 
 defn :: Parser Expr
-defn =
-  try extern
-    <|> try function
-    <|> try constant
-    <|> try binarydef
-    <|> try unarydef
-    <|> expr
+defn = do
+  def <- optionMaybe $ try function <|> try extern
+  case def of
+    Just d -> return $ TopLevel d
+    Nothing -> do
+      Operand <$> factor
 
 contents :: Parser a -> Parser a
 contents p = do
@@ -184,9 +183,6 @@ toplevel = many $ do
   def <- defn
   reservedOp ";"
   return def
-
-parseExpr :: String -> Either ParseError Expr
-parseExpr = parse (contents expr) "<stdin>"
 
 parseToplevel :: String -> Either ParseError [Expr]
 parseToplevel = parse (contents toplevel) "<stdin>"
