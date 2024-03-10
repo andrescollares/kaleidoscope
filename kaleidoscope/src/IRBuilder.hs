@@ -143,6 +143,8 @@ genTopLevel expression = do
 -- variable context used in:
 -- - let in
 
+-- varName, value
+
 type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
@@ -185,19 +187,17 @@ genOperand (Var (Name nameString)) localVars = do
 -- Call
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  currentDefs <- liftModuleState $ gets builderDefs
-  let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
-  case maybeDef of
-    -- TODO: preguntar primero por la local y luego por la global
-    -- por si queiro re-definir la funcion y es recursiva.
-    Just def -> do
-      case def of
-        (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
-        _ -> error $ "Function " <> show fnName <> " not found."
+  let functionDefinition = getLocalVarName fnName localVars
+  case functionDefinition of
+    Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
     Nothing -> do
-      let functionDefinition = getLocalVarName fnName localVars
-      case functionDefinition of
-        Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
+      currentDefs <- liftModuleState $ gets builderDefs
+      let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
+      case maybeDef of
+        Just def -> do
+          case def of
+            (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
+            _ -> error $ "Function " <> show fnName <> " not found."
         Nothing -> error $ "Function " <> show fnName <> " not found."
 
 -- Unary Operands
