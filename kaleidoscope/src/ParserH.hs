@@ -152,7 +152,8 @@ letins = do
 
 factor :: Parser SyntaxOperand
 factor =
-  expr <|> try floating
+  -- try expr <|> 
+  try floating
     <|> try ParserH.int
     <|> try ParserH.bool
     -- <|> try extern
