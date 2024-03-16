@@ -28,4 +28,4 @@ cabal.project.local~
 
 *.s
 *.out
-
+out.k

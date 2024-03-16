@@ -16,7 +16,6 @@ data Operand
   | Bool Bool
   | Let Type Name Operand Operand
   | Var Name
-  | Constant Type Name Operand
   | Call Name [Operand]
   | If Operand Operand Operand
   | UnaryOp ShortByteString Operand
@@ -28,6 +27,7 @@ data Operand
 data Declaration
   = Function Name [(Type, ParameterName)] Type Operand
   | Extern Name [(Type, ParameterName)] Type
+  | Constant Type Name Operand
 
   deriving stock (Eq, Ord, Show)
 

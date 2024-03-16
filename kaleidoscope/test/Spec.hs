@@ -78,6 +78,7 @@ testProgramJIT programName expectedValue returnType = do
 jitTests :: TestTree
 jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testCase s $ do testProgramJIT s expectedValue returnType) [
   ("const_float", 10, ASTType.double)
+  , ("const_int_float", 6, ASTType.double)
   , ("expr_add_float_float", 2, ASTType.double)
   , ("expr_add_float_int", 2, ASTType.double)
   , ("expr_add_int_float", 2, ASTType.double)

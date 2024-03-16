@@ -112,7 +112,7 @@ function = do
   reserved ":"
   Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
-constant :: Parser Operand
+constant :: Parser Declaration
 constant = do
   reservedOp "const"
   tpi <- tp
@@ -158,17 +158,20 @@ factor =
     <|> try ParserH.bool
     -- <|> try extern
     -- <|> try function
-    <|> try constant
     <|> try call
     <|> try ifthen
     <|> try letins
     <|> variable
     <|> parens expr
 
-defn :: Parser Expr
-defn = do
-  def <- optionMaybe $ try function <|> try extern
-  case def of
+
+parseDeclaration :: Parser Declaration
+parseDeclaration = try function <|> try extern <|> try constant
+
+parseExpr :: Parser Expr
+parseExpr = do
+  declaration <- optionMaybe parseDeclaration
+  case declaration of
     Just d -> return $ TopLevel d
     Nothing -> do
       Operand <$> (expr <|> factor)
@@ -182,7 +185,7 @@ contents p = do
 
 toplevel :: Parser [Expr]
 toplevel = many $ do
-  def <- defn
+  def <- parseExpr
   reservedOp ";"
   return def
 

@@ -21,7 +21,8 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
 import qualified LLVM.AST.IntegerPredicate as IP
-import LLVM.AST.Global (Global (name), parameters, returnType)
+import LLVM.AST.Global (Global (name, GlobalVariable, type'), parameters, returnType)
+import qualified LLVM.AST.Global as G (Global (name, type'))
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
@@ -30,6 +31,7 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.List as DL
+import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -103,12 +105,13 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs Boolean body)) = d
   function functionName (first getASTType <$> functionArgs) ASTType.i1 (\ops ->
     genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1)
 -- Constant definition
-genTopLevel (S.Operand (S.Constant Double constantName (Float val))) = do
+genTopLevel (S.TopLevel (S.Constant Double constantName (Float val))) = do
   global constantName ASTType.double (C.Float (F.Double val))
-genTopLevel (S.Operand (S.Constant Integer constantName (Int val))) = do
+genTopLevel (S.TopLevel (S.Constant Integer constantName (Int val))) = do
   global constantName ASTType.i32 (C.Int 32 val)
-genTopLevel (S.Operand (S.Constant Boolean constantName (Bool val))) = do
+genTopLevel (S.TopLevel (S.Constant Boolean constantName (Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
+genTopLevel (S.TopLevel (S.Constant {})) = error "This shouldn't have matched here."
 -- Unary operator definition
 genTopLevel (S.Operand (S.UnaryDef unaryOpName unaryArgs body)) = do
   function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
@@ -134,7 +137,10 @@ genTopLevel (S.Operand expression) = do
             Nothing -> error $ "Function " <> show fn <> " not found."
         (S.Let varType varName _ expr) -> do
           return $ getExpressionType expr [(varName, varType)]
-        _ -> return $ getExpressionType expression [] -- TODO: carry over variables
+        -- TODO: carry over variables
+        -- e.g. define a global and have the type in the list
+        -- type can only be obtained within IRBuilderT ModuleBuilder
+        _ -> return $ getExpressionType expression []
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -181,7 +187,17 @@ genOperand (Var (Name nameString)) localVars = do
   -- also local variable names can have "_"
   case getLocalVarName nameString localVars of
     Just (_, localVar) -> return localVar
-    Nothing -> load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name nameString))) 0
+    Nothing -> do
+      currentDefs <- liftModuleState $ gets builderDefs
+      let maybeDef = trace ("Constants: " ++ show currentDefs) getConstantFromDefs currentDefs (Name nameString)
+      case maybeDef of
+        Just def -> do
+          case def of
+            (GlobalDefinition AST.GlobalVariable {G.type' = t}) -> load (ConstantOperand (C.GlobalReference (ASTType.ptr t) (Name nameString))) 0
+            _ -> error $ "Constant " <> show nameString <> " not found."
+        Nothing -> error $ "Constant " <> show nameString <> " not found."
+
+      -- load (ConstantOperand (C.GlobalReference (ASTType.ptr ASTType.double) (Name nameString))) 0
     -- possible Exception: EncodeException "reference to undefined global: Name \"a\""
 
 -- Call
@@ -279,6 +295,18 @@ getFunctionFromDefs defs functionName = find (\def -> matchNameGlobal def functi
   where
     matchNameGlobal :: Definition -> Name -> Bool
     matchNameGlobal (GlobalDefinition AST.Function {name = n}) nameToMatch = n == nameToMatch
+    matchNameGlobal _ _ = False
+    find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
+    find p (SnocList (x : xs)) res
+      | p x = Just x
+      | otherwise = find p (SnocList xs) res
+    find _ (SnocList []) res = res
+
+getConstantFromDefs :: SnocList Definition -> Name -> Maybe Definition
+getConstantFromDefs defs constantName = find (\def -> matchNameGlobal def constantName) defs Nothing
+  where
+    matchNameGlobal :: Definition -> Name -> Bool
+    matchNameGlobal (GlobalDefinition AST.GlobalVariable {name = n}) nameToMatch = n == nameToMatch
     matchNameGlobal _ _ = False
     find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
     find p (SnocList (x : xs)) res
