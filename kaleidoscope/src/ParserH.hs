@@ -14,10 +14,10 @@ import Data.String
 import Data.Bifunctor (second)
 import Data.ByteString.Short (ShortByteString)
 
-binary :: String -> Ex.Assoc -> Ex.Operator String () Identity SyntaxOperand
+binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Operand
 binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
 
-binops :: Ex.OperatorTable String () Identity SyntaxOperand
+binops :: Ex.OperatorTable String () Identity Operand
 binops =
   [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
@@ -30,7 +30,7 @@ binops =
     ]
   ]
 
-binarydef :: Parser SyntaxOperand
+binarydef :: Parser Operand
 binarydef = do
   reserved "def"
   reserved "binary"
@@ -39,7 +39,7 @@ binarydef = do
   args <- parens $ many identifier
   BinaryDef o (map fromString args) <$> expr
 
-unarydef :: Parser SyntaxOperand
+unarydef :: Parser Operand
 unarydef = do
   reserved "def"
   reserved "unary"
@@ -54,10 +54,10 @@ op = do
   whitespace
   return (fromString o)
 
-unop :: Ex.Operator String () Identity SyntaxOperand
+unop :: Ex.Operator String () Identity Operand
 unop = Ex.Prefix (UnaryOp <$> op)
 
-binop :: Ex.Operator String () Identity SyntaxOperand
+binop :: Ex.Operator String () Identity Operand
 binop = Ex.Infix (BinOp <$> op) Ex.AssocLeft
 
 tp :: Parser Syntax.Type
@@ -75,26 +75,26 @@ integer = reserved "int" >> return Integer
 boolean :: Parser Syntax.Type
 boolean = reserved "bool" >> return Boolean
 
-int :: Parser SyntaxOperand
+int :: Parser Operand
 int =
   Int <$> Lexer.int
 
-floating :: Parser SyntaxOperand
+floating :: Parser Operand
 floating =
   Float <$> float
 
-bool :: Parser SyntaxOperand
+bool :: Parser Operand
 bool =
   Bool <$> Lexer.bool
 
-expr :: Parser SyntaxOperand
+expr :: Parser Operand
 expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
 
-variable :: Parser SyntaxOperand
+variable :: Parser Operand
 variable =
   Var . fromString <$> identifier
 
-extern :: Parser SyntaxDef
+extern :: Parser Declaration
 extern = do
   reserved "extern"
   name <- identifier
@@ -102,7 +102,7 @@ extern = do
   reserved "->"
   Extern (fromString name) (second fromString <$> arguments) <$> tp
 
-function :: Parser SyntaxDef
+function :: Parser Declaration
 function = do
   reserved "def"
   name <- identifier
@@ -112,7 +112,7 @@ function = do
   reserved ":"
   Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
-constant :: Parser SyntaxOperand
+constant :: Parser Operand
 constant = do
   reservedOp "const"
   tpi <- tp
@@ -121,14 +121,14 @@ constant = do
   return $ Constant tpi (fromString name) value
 
 
-call :: Parser SyntaxOperand
+call :: Parser Operand
 call = do
   name <- identifier
   -- parenthesis are optional for functions without arguments
   arguments <- parens $ commaSep expr
   return $ Call (fromString name) arguments
 
-ifthen :: Parser SyntaxOperand
+ifthen :: Parser Operand
 ifthen = do
   reserved "if"
   cond <- expr
@@ -137,7 +137,7 @@ ifthen = do
   reserved "else"
   If cond thenExpr <$> expr
 
-letins :: Parser SyntaxOperand
+letins :: Parser Operand
 letins = do
   reserved "let"
   defs <- commaSep $ do
@@ -150,7 +150,7 @@ letins = do
   body <- expr
   return $ foldr (\(t, n, v) -> Let t n v) body defs
 
-factor :: Parser SyntaxOperand
+factor :: Parser Operand
 factor =
   -- try expr <|> 
   try floating
@@ -158,6 +158,7 @@ factor =
     <|> try ParserH.bool
     -- <|> try extern
     -- <|> try function
+    <|> try constant
     <|> try call
     <|> try ifthen
     <|> try letins
@@ -170,7 +171,7 @@ defn = do
   case def of
     Just d -> return $ TopLevel d
     Nothing -> do
-      Operand <$> factor
+      Operand <$> (expr <|> factor)
 
 contents :: Parser a -> Parser a
 contents p = do

@@ -72,19 +72,19 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
   where
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = mempty}
 
-functionLocalVar :: [Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
+functionLocalVar :: [AST.Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
 functionLocalVar operands functionParameters (Name n) t = localVarsFallback operands ++ [(Just n, getFunctionOperand (Name n) t (functionLocalVarParameters functionParameters, False))]
 functionLocalVar _ _ _ _ = error "Function lacks a name."
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
 functionLocalVarParameters = map (\(t, ParameterName n) -> Parameter (getASTType t) (Name n) [])
 
-localVarsFallback :: [Operand] -> [LocalVar]
+localVarsFallback :: [AST.Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
-genTopLevel :: Expr -> ModuleBuilder Operand
+genTopLevel :: Expr -> ModuleBuilder AST.Operand
 -- Extern definition
 genTopLevel (S.TopLevel (S.Extern externName externArgs Integer)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i32
@@ -145,7 +145,7 @@ genTopLevel (S.Operand expression) = do
 
 -- varName, value
 
-type LocalVar = (Maybe ShortByteString, Operand) -- alias, value
+type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
 getLocalVarName n = DL.find (`matchName` n)
@@ -161,13 +161,13 @@ removeEnding variableName
   | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)
   | otherwise = variableName
 
-genLevel :: SyntaxOperand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
   generated <- genOperand e localVars
   ret generated
 
 -- Generates the Operands that genTopLevel needs.
-genOperand :: SyntaxOperand -> [LocalVar] -> IRBuilderT ModuleBuilder Operand
+genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
 -- Float
 genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Integer
@@ -207,7 +207,7 @@ genOperand (UnaryOp oper a) localVars = do
     Just f -> f op
     Nothing -> error "This shouldn't have matched here, unary operand doesn't exist."
   where
-    unops :: M.Map ShortByteString (Operand -> IRBuilderT ModuleBuilder Operand)
+    unops :: M.Map ShortByteString (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
       M.fromList
         [("-", fneg)]
@@ -220,7 +220,7 @@ genOperand (BinOp oper a b) localVars = do
     Just f -> f opA opB
     Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
-    binops :: Operand -> Operand -> M.Map ShortByteString (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
+    binops :: AST.Operand -> AST.Operand -> M.Map ShortByteString (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
       M.fromList
         [ ("+", eitherType add fadd),
@@ -286,5 +286,5 @@ getFunctionFromDefs defs functionName = find (\def -> matchNameGlobal def functi
       | otherwise = find p (SnocList xs) res
     find _ (SnocList []) res = res
 
-getFunctionOperand :: Name -> AST.Type -> ([Parameter], Bool) -> Operand
+getFunctionOperand :: Name -> AST.Type -> ([Parameter], Bool) -> AST.Operand
 getFunctionOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn

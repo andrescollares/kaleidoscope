@@ -6,29 +6,27 @@ import LLVM.AST.Name ( Name )
 import Data.ByteString.Short (ShortByteString)
 
 data Expr
-  = Operand SyntaxOperand
-  | TopLevel SyntaxDef
+  = Operand Operand
+  | TopLevel Declaration
   deriving stock (Eq, Ord, Show)
 
-data SyntaxOperand
+data Operand
   = Int Integer
   | Float Double
   | Bool Bool
-  | Let Type Name SyntaxOperand SyntaxOperand
+  | Let Type Name Operand Operand
   | Var Name
-  | Constant Type Name SyntaxOperand
-  | Call Name [SyntaxOperand]
-  | If SyntaxOperand SyntaxOperand SyntaxOperand
-  -- | Function Name [(Type, ParameterName)] Type Expr
-  -- | Extern Name [(Type, ParameterName)] Type
-  | UnaryOp ShortByteString SyntaxOperand
-  | BinOp ShortByteString SyntaxOperand SyntaxOperand
-  | UnaryDef ShortByteString [ParameterName] SyntaxOperand -- TODO: adapt to new syntax
-  | BinaryDef ShortByteString [ParameterName] SyntaxOperand -- TODO: adapt to new syntax
+  | Constant Type Name Operand
+  | Call Name [Operand]
+  | If Operand Operand Operand
+  | UnaryOp ShortByteString Operand
+  | BinOp ShortByteString Operand Operand
+  | UnaryDef ShortByteString [ParameterName] Operand -- TODO: adapt to new syntax
+  | BinaryDef ShortByteString [ParameterName] Operand -- TODO: adapt to new syntax
   deriving stock (Eq, Ord, Show)
 
-data SyntaxDef
-  = Function Name [(Type, ParameterName)] Type SyntaxOperand
+data Declaration
+  = Function Name [(Type, ParameterName)] Type Operand
   | Extern Name [(Type, ParameterName)] Type
 
   deriving stock (Eq, Ord, Show)
