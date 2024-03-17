@@ -31,7 +31,6 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad
 import Syntax as S
 import qualified Data.List as DL
-import Debug.Trace
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -39,7 +38,7 @@ import Debug.Trace
 -- Has to update the module state
 genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
-  optMod <- trace ("Definitions:::" ++ show definitions) $ optimizeModule unoptimizedAst
+  optMod <- optimizeModule unoptimizedAst
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
@@ -128,18 +127,17 @@ genTopLevel (S.Operand expression) = do
 
 definitionsToLocalVars :: SnocList Definition -> [LocalVarType]
 definitionsToLocalVars (SnocList defs) = map (\def -> case def of
-  GlobalDefinition AST.GlobalVariable {name = n, G.type' = t} -> case t of
-    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> (n, Double)
-    ASTType.IntegerType {typeBits = 32} -> (n, Integer)
-    ASTType.IntegerType {typeBits = 1} -> (n, Boolean)
-    _ -> error "This shouldn't have matched here."
-  GlobalDefinition AST.Function {name = n, returnType = retT} -> case retT of
-    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> (n, Double)
-    ASTType.IntegerType {typeBits = 32} -> (n, Integer)
-    ASTType.IntegerType {typeBits = 1} -> (n, Boolean)
-    _ -> error "This shouldn't have matched here."
-  _ -> error "This shouldn't have matched here.") defs
+  GlobalDefinition AST.GlobalVariable {name = n, G.type' = t} -> (n, llvmTypeToSyntaxType t)
+  GlobalDefinition AST.Function {name = n, returnType = retT} -> (n, llvmTypeToSyntaxType retT)
+  _ -> error $ "Unsupported definition " ++ show def) defs
   -- TODO: probably missing some cases
+
+llvmTypeToSyntaxType :: ASTType.Type -> S.Type
+llvmTypeToSyntaxType t = case t of
+    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> Double
+    ASTType.IntegerType {typeBits = 32} -> Integer
+    ASTType.IntegerType {typeBits = 1} -> Boolean
+    _ -> error $ "Unsupported type " ++ show t
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
@@ -188,7 +186,7 @@ genOperand (Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = trace ("Constants: " ++ show currentDefs) getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
         Just def -> do
           case def of
