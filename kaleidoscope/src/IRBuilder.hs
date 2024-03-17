@@ -39,7 +39,7 @@ import Debug.Trace
 -- Has to update the module state
 genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
 genModule oldDefs expressions = do
-  optMod <- optimizeModule unoptimizedAst
+  optMod <- trace ("Definitions:::" ++ show definitions) $ optimizeModule unoptimizedAst
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
@@ -120,27 +120,26 @@ genTopLevel (S.Operand (S.BinaryDef binaryOpName binaryArgs body)) = do
   function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
 -- Any expression
 genTopLevel (S.Operand expression) = do
-  eType <- expressionType
-  function "main" [] eType (\_ -> genLevel expression [])
+  currentDefs <- liftModuleState $ gets builderDefs
+  function "main" [] (eType currentDefs) (\_ -> genLevel expression [])
     -- expressionType = getExpressionType expression
     where
-      expressionType = case expression of
-        -- if the expression is a call, we need to get the type of the function
-        (S.Call fn _) -> do
-          currentDefs <- liftModuleState $ gets builderDefs
-          let maybeDef = getFunctionFromDefs currentDefs fn
-          case maybeDef of
-            Just def -> do
-              case def of
-                (GlobalDefinition AST.Function {returnType = retT}) -> return retT
-                _ -> error $ "Function " <> show fn <> " not found."
-            Nothing -> error $ "Function " <> show fn <> " not found."
-        (S.Let varType varName _ expr) -> do
-          return $ getExpressionType expr [(varName, varType)]
-        -- TODO: carry over variables
-        -- e.g. define a global and have the type in the list
-        -- type can only be obtained within IRBuilderT ModuleBuilder
-        _ -> return $ getExpressionType expression []
+      eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
+
+definitionsToLocalVars :: SnocList Definition -> [LocalVarType]
+definitionsToLocalVars (SnocList defs) = map (\def -> case def of
+  GlobalDefinition AST.GlobalVariable {name = n, G.type' = t} -> case t of
+    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> (n, Double)
+    ASTType.IntegerType {typeBits = 32} -> (n, Integer)
+    ASTType.IntegerType {typeBits = 1} -> (n, Boolean)
+    _ -> error "This shouldn't have matched here."
+  GlobalDefinition AST.Function {name = n, returnType = retT} -> case retT of
+    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> (n, Double)
+    ASTType.IntegerType {typeBits = 32} -> (n, Integer)
+    ASTType.IntegerType {typeBits = 1} -> (n, Boolean)
+    _ -> error "This shouldn't have matched here."
+  _ -> error "This shouldn't have matched here.") defs
+  -- TODO: probably missing some cases
 
 -- we don't have a way to name variables within the llvm ir, they are named by numbers
 -- so we need to keep track of the variables ourselves
