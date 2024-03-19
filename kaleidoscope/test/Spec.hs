@@ -13,7 +13,7 @@ import Data.String
 
 import ParserH
 import JIT
-import IRBuilder
+import IRBuilder.GenModule
 import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
 import qualified LLVM.AST as AST

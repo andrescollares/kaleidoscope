@@ -3,7 +3,7 @@ module Main where
 import Control.Monad.Trans
 -- import Emit
 
-import IRBuilder (genModule)
+import IRBuilder.GenModule (genModule)
 import qualified LLVM.AST as AST
 import ParserH
 import System.Console.Haskeline
