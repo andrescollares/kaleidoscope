@@ -3,15 +3,13 @@ module Main where
 import Control.Monad.Trans
 -- import Emit
 
+import Data.Text (pack, strip, unpack)
 import IRBuilder.GenModule (genModule)
 import qualified LLVM.AST as AST
 import ParserH
+import StdLibrary
 import System.Console.Haskeline
 import System.Environment
-import Data.Text (strip, unpack, pack)
-
-import StdLibrary
-
 
 process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))
 process oldDefs source = do
@@ -37,7 +35,7 @@ repl = runInputT defaultSettings (loop 0 stdLibrary)
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
           case unpack $ strip $ pack input of
-            ('=':rest) -> do
+            ('=' : rest) -> do
               maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";")
               case maybeDefs of
                 Just (_, defs) -> loop prevRes defs
@@ -50,7 +48,7 @@ repl = runInputT defaultSettings (loop 0 stdLibrary)
     removeLast :: String -> String
     removeLast [] = []
     removeLast [_] = []
-    removeLast (x:xs) = x : removeLast xs
+    removeLast (x : xs) = x : removeLast xs
 
 main :: IO ()
 main = do

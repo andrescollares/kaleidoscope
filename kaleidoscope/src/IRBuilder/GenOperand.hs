@@ -5,37 +5,38 @@
 
 module IRBuilder.GenOperand where
 
-
+import Control.Monad (unless)
 import Control.Monad.RWS (gets)
 import Data.Bifunctor (first)
 import Data.ByteString.Short
+import qualified Data.List as DL
 import qualified Data.Map.Strict as M
 import Data.String
 import qualified Data.Text as T
-import JIT
-import Types
+import IRBuilder.LocalVar
+  ( LocalVar,
+    getConstantFromDefs,
+    getFunctionFromDefs,
+    getFunctionOperand,
+    getLocalVarName,
+  )
 import Instructions
+import JIT
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
-import qualified LLVM.AST.IntegerPredicate as IP
-import LLVM.AST.Global (Global (name, GlobalVariable, type'), parameters, returnType)
+import LLVM.AST.Global (Global (GlobalVariable, name, type'), parameters, returnType)
 import qualified LLVM.AST.Global as G (Global (name, type'))
+import qualified LLVM.AST.IntegerPredicate as IP
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, ParameterName (ParameterName))
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), ParameterName (ParameterName), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad
 import Syntax as S
-import qualified Data.List as DL
-import IRBuilder.LocalVar
-    ( LocalVar,
-      getLocalVarName,
-      getFunctionFromDefs,
-      getConstantFromDefs,
-      getFunctionOperand )
+import Types
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -136,8 +137,6 @@ genOperand (Let Double (Name varName) variableValue body) localVars = do
   loadedVar <- load var 0
   -- TODO: alloca -> store -> load: there's probably a better way to do this
   genOperand body ((Just varName, loadedVar) : localVars)
-
-
 genOperand (Let Integer (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.i32 Nothing 0
   computedValue <- genOperand variableValue localVars

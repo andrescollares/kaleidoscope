@@ -1,9 +1,10 @@
 {-# LANGUAGE DerivingStrategies #-}
 
 module Syntax where
-import LLVM.IRBuilder.Module ( ParameterName )
-import LLVM.AST.Name ( Name )
+
 import Data.ByteString.Short (ShortByteString)
+import LLVM.AST.Name (Name)
+import LLVM.IRBuilder.Module (ParameterName)
 
 data Expr
   = Operand Operand
@@ -28,10 +29,9 @@ data Declaration
   = Function Name [(Type, ParameterName)] Type Operand
   | Extern Name [(Type, ParameterName)] Type
   | Constant Type Name Operand
-
   deriving stock (Eq, Ord, Show)
 
-data Type 
+data Type
   = Double
   | Integer
   | Boolean

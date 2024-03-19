@@ -3,8 +3,8 @@
 module JIT where
 
 import qualified Data.ByteString as BS
-import Foreign.Ptr (FunPtr, castFunPtr)
 import Foreign.C.Types
+import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
 import LLVM.Context
@@ -66,5 +66,4 @@ runJIT astModule runType = do
                 result = case runType of
                   ASTType.FloatingPointType ASTType.DoubleFP -> run fn
                   _ -> fromIntegral $ runInteger fn
-
             Nothing -> return 0

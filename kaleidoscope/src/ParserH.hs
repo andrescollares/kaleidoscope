@@ -2,17 +2,17 @@
 
 module ParserH where
 
+import Data.Bifunctor (second)
+import Data.ByteString.Short (ShortByteString)
 import Data.Functor.Identity
+import Data.String
+import qualified LLVM.IRBuilder.Module as M
 import Lexer
 import Syntax
 import Text.Parsec
 import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
-import qualified LLVM.IRBuilder.Module as M
-import Data.String
-import Data.Bifunctor (second)
-import Data.ByteString.Short (ShortByteString)
 
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Operand
 binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
@@ -120,7 +120,6 @@ constant = do
   value <- try floating <|> try ParserH.int <|> try ParserH.bool
   return $ Constant tpi (fromString name) value
 
-
 call :: Parser Operand
 call = do
   name <- identifier
@@ -152,7 +151,7 @@ letins = do
 
 factor :: Parser Operand
 factor =
-  -- try expr <|> 
+  -- try expr <|>
   try floating
     <|> try ParserH.int
     <|> try ParserH.bool
@@ -163,7 +162,6 @@ factor =
     <|> try letins
     <|> variable
     <|> parens expr
-
 
 parseDeclaration :: Parser Declaration
 parseDeclaration = try function <|> try extern <|> try constant

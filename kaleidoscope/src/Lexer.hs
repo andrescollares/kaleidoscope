@@ -1,10 +1,10 @@
 module Lexer where
 
-import Text.Parsec.Prim (many, (<|>))
+import Syntax
 import Text.Parsec.Language (emptyDef)
+import Text.Parsec.Prim (many, (<|>))
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
-import Syntax
 
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
@@ -64,7 +64,7 @@ operator :: Parser String
 operator = do
   c <- Tok.opStart emptyDef
   cs <- many $ Tok.opLetter emptyDef
-  return (c:cs)
+  return (c : cs)
 
 whitespace :: Parser ()
 whitespace = Tok.whiteSpace lexer

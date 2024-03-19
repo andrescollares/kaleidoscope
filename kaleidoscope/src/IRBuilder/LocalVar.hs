@@ -8,34 +8,39 @@ module IRBuilder.LocalVar where
 -- import Data.Maybe
 
 import Data.ByteString.Short
+import qualified Data.List as DL
 import Data.String
 import qualified Data.Text as T
-import Types
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Global as G (Global (name, type'), returnType, parameters)
+import qualified LLVM.AST.Global as G (Global (name, type'), parameters, returnType)
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Internal.SnocList
 import LLVM.IRBuilder.Module (ParameterName (ParameterName))
 import Syntax as S
-import qualified Data.List as DL
+import Types
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
 definitionsToLocalVars :: SnocList Definition -> [LocalVarType]
-definitionsToLocalVars (SnocList defs) = map (\def -> case def of
-  GlobalDefinition AST.GlobalVariable {G.name = n, G.type' = t} -> (n, llvmTypeToSyntaxType t)
-  GlobalDefinition AST.Function {G.name = n, G.returnType = retT} -> (n, llvmTypeToSyntaxType retT)
-  _ -> error $ "Unsupported definition " ++ show def) defs
-  -- TODO: probably missing some cases
+definitionsToLocalVars (SnocList defs) =
+  map
+    ( \def -> case def of
+        GlobalDefinition AST.GlobalVariable {G.name = n, G.type' = t} -> (n, llvmTypeToSyntaxType t)
+        GlobalDefinition AST.Function {G.name = n, G.returnType = retT} -> (n, llvmTypeToSyntaxType retT)
+        _ -> error $ "Unsupported definition " ++ show def
+    )
+    defs
+
+-- TODO: probably missing some cases
 
 llvmTypeToSyntaxType :: ASTType.Type -> S.Type
 llvmTypeToSyntaxType t = case t of
-    ASTType.FloatingPointType {floatingPointType = DoubleFP} -> Double
-    ASTType.IntegerType {typeBits = 32} -> Integer
-    ASTType.IntegerType {typeBits = 1} -> Boolean
-    _ -> error $ "Unsupported type " ++ show t
+  ASTType.FloatingPointType {floatingPointType = DoubleFP} -> Double
+  ASTType.IntegerType {typeBits = 32} -> Integer
+  ASTType.IntegerType {typeBits = 1} -> Boolean
+  _ -> error $ "Unsupported type " ++ show t
 
 functionLocalVar :: [AST.Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
 functionLocalVar operands functionParameters (Name n) t = localVarsFallback operands ++ [(Just n, getFunctionOperand (Name n) t (functionLocalVarParameters functionParameters, False))]
@@ -46,7 +51,6 @@ localVarsFallback = map (\operand -> (Nothing, operand))
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
 functionLocalVarParameters = map (\(t, ParameterName n) -> Parameter (getASTType t) (Name n) [])
-
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
 getLocalVarName n = DL.find (`matchName` n)
@@ -91,4 +95,3 @@ getConstantFromDefs defs constantName = find (\def -> matchNameGlobal def consta
 
 getFunctionOperand :: Name -> AST.Type -> ([Parameter], Bool) -> AST.Operand
 getFunctionOperand fn retType (params, _) = ConstantOperand $ C.GlobalReference (ptr $ FunctionType retType (map (\(AST.Parameter t _ _) -> t) params) False) fn
-
