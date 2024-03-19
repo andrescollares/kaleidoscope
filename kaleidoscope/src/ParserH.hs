@@ -4,12 +4,13 @@ module ParserH where
 
 import Data.Bifunctor (second)
 import Data.ByteString.Short (ShortByteString)
-import Data.Functor.Identity
-import Data.String
+import Data.Functor.Identity ( Identity )
+import Data.String ( IsString(fromString) )
 import qualified LLVM.IRBuilder.Module as M
 import Lexer
-import Syntax
+import Syntax ( Type(..), Declaration(..), Operand(..), Expr(..) )
 import Text.Parsec
+    ( (<|>), many, parse, try, ParseError, eof, optionMaybe )
 import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok

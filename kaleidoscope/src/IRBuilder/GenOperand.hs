@@ -1,18 +1,12 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
 
 module IRBuilder.GenOperand where
 
-import Control.Monad (unless)
 import Control.Monad.RWS (gets)
-import Data.Bifunctor (first)
-import Data.ByteString.Short
-import qualified Data.List as DL
+import Data.ByteString.Short ( ShortByteString )
 import qualified Data.Map.Strict as M
-import Data.String
-import qualified Data.Text as T
 import IRBuilder.LocalVar
   ( LocalVar,
     getConstantFromDefs,
@@ -20,23 +14,23 @@ import IRBuilder.LocalVar
     getFunctionOperand,
     getLocalVarName,
   )
-import Instructions
-import JIT
-import LLVM.AST as AST hiding (function)
+import Instructions (typedOperandInstruction)
+import LLVM.AST as AST
+  ( Definition (GlobalDefinition),
+    Global (Function, GlobalVariable),
+    Name (Name),
+    Operand (ConstantOperand),
+  )
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
-import LLVM.AST.Global (Global (GlobalVariable, name, type'), parameters, returnType)
-import qualified LLVM.AST.Global as G (Global (name, type'))
+import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.IntegerPredicate as IP
-import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
+import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
-import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), ParameterName (ParameterName), execModuleBuilder, extern, function, global)
-import LLVM.IRBuilder.Monad
+import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
-import Types
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -75,7 +69,7 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
       case maybeDef of
         Just def -> do
           case def of
-            (GlobalDefinition AST.Function {returnType = retT, parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
+            (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
             _ -> error $ "Function " <> show fnName <> " not found."
         Nothing -> error $ "Function " <> show fnName <> " not found."
 

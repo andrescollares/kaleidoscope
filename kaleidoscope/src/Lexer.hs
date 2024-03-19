@@ -1,6 +1,6 @@
 module Lexer where
 
-import Syntax
+import Syntax ( Type(..) )
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Prim (many, (<|>))
 import Text.Parsec.String (Parser)

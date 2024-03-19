@@ -9,30 +9,21 @@ module IRBuilder.GenModule where
 
 import Control.Monad.RWS (gets)
 import Data.Bifunctor (first)
-import Data.ByteString.Short
-import qualified Data.List as DL
-import qualified Data.Map.Strict as M
-import Data.String
-import qualified Data.Text as T
 import IRBuilder.GenOperand (genOperand)
 import IRBuilder.LocalVar
-import Instructions
-import JIT
+    ( LocalVar, definitionsToLocalVars, functionLocalVar )
+import JIT ( optimizeModule, runJIT )
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
-import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
-import LLVM.AST.Global (Global (GlobalVariable, name, type'), parameters, returnType)
-import qualified LLVM.AST.Global as G (Global (name, type'))
-import qualified LLVM.AST.IntegerPredicate as IP
-import LLVM.AST.Type (ptr)
+import LLVM.AST.Global (Global (name), returnType)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Instruction
-import LLVM.IRBuilder.Internal.SnocList
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), ParameterName (ParameterName), execModuleBuilder, extern, function, global)
-import LLVM.IRBuilder.Monad
+import LLVM.IRBuilder.Instruction ( ret )
+import LLVM.IRBuilder.Internal.SnocList ( SnocList(SnocList) )
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
+import LLVM.IRBuilder.Monad ( IRBuilderT )
 import Syntax as S
-import Types
+import Types ( getExpressionType, getASTType )
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module

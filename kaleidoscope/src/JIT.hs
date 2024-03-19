@@ -3,14 +3,19 @@
 module JIT where
 
 import qualified Data.ByteString as BS
-import Foreign.C.Types
+import Foreign.C.Types ( CInt(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
-import LLVM.Context
+import LLVM.Context ( withContext, Context )
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
+    ( moduleAST, moduleLLVMAssembly, withModuleFromAST )
 import LLVM.PassManager
+    ( defaultCuratedPassSetSpec,
+      runPassManager,
+      withPassManager,
+      PassSetSpec(optLevel) )
 
 foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
 

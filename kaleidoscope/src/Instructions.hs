@@ -1,11 +1,11 @@
 module Instructions where
 
 import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand))
-import LLVM.AST.Constant
+import LLVM.AST.Constant ( Constant(Float, Int) )
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Instruction
+import LLVM.IRBuilder.Instruction ( sitofp, uitofp )
 import LLVM.IRBuilder.Module (ModuleBuilder)
-import LLVM.IRBuilder.Monad
+import LLVM.IRBuilder.Monad ( IRBuilderT )
 
 type BinOpInstruction = (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
 

@@ -1,22 +1,22 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase #-}
+
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecursiveDo #-}
+
 
 module IRBuilder.LocalVar where
 
 -- import Data.Maybe
 
-import Data.ByteString.Short
+import Data.ByteString.Short ( ShortByteString )
 import qualified Data.List as DL
-import Data.String
+import Data.String ( IsString(fromString) )
 import qualified Data.Text as T
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Global as G (Global (name, type'), parameters, returnType)
+import qualified LLVM.AST.Global as G (Global (name, type'), returnType)
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Internal.SnocList
+import LLVM.IRBuilder.Internal.SnocList ( SnocList(SnocList) )
 import LLVM.IRBuilder.Module (ParameterName (ParameterName))
 import Syntax as S
 import Types
@@ -70,7 +70,7 @@ removeEnding variableName
 
 -- TODO: lots of DRY to do here
 getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
-getFunctionFromDefs defs functionName = find (\def -> matchNameGlobal def functionName) defs Nothing
+getFunctionFromDefs defs functionName = find (`matchNameGlobal` functionName) defs Nothing
   where
     matchNameGlobal :: Definition -> Name -> Bool
     matchNameGlobal (GlobalDefinition AST.Function {G.name = n}) nameToMatch = n == nameToMatch
@@ -82,7 +82,7 @@ getFunctionFromDefs defs functionName = find (\def -> matchNameGlobal def functi
     find _ (SnocList []) res = res
 
 getConstantFromDefs :: SnocList Definition -> Name -> Maybe Definition
-getConstantFromDefs defs constantName = find (\def -> matchNameGlobal def constantName) defs Nothing
+getConstantFromDefs defs constantName = find (`matchNameGlobal` constantName) defs Nothing
   where
     matchNameGlobal :: Definition -> Name -> Bool
     matchNameGlobal (GlobalDefinition AST.GlobalVariable {G.name = n}) nameToMatch = n == nameToMatch

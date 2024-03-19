@@ -1,7 +1,7 @@
 module Types where
 
 import Data.List (find)
-import LLVM.AST as AST
+import LLVM.AST as AST ( Name, Type )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
 
@@ -23,8 +23,6 @@ getExpressionType (BinOp _ a b) localVars =
     typeOfA = getExpressionType a localVars
     typeOfB = getExpressionType b localVars
 getExpressionType (Let varType varName _ e) localVars = getExpressionType e $ localVars ++ [(varName, varType)]
--- TODO: restriction: types of both sides of if statement should be the same
--- raise error if not?
 getExpressionType (If _ e1 e2) localVars =
   if e1Type == getExpressionType e2 localVars
     then e1Type

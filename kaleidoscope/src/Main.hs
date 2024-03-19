@@ -1,15 +1,16 @@
 module Main where
 
-import Control.Monad.Trans
+import Control.Monad.Trans ( MonadIO(liftIO) )
 -- import Emit
 
 import Data.Text (pack, strip, unpack)
 import IRBuilder.GenModule (genModule)
 import qualified LLVM.AST as AST
-import ParserH
-import StdLibrary
+import ParserH ( parseToplevel )
+import StdLibrary ( stdLibrary )
 import System.Console.Haskeline
-import System.Environment
+    ( defaultSettings, getInputLine, outputStrLn, runInputT )
+import System.Environment ( getArgs )
 
 process :: [AST.Definition] -> String -> IO (Maybe (Double, [AST.Definition]))
 process oldDefs source = do
