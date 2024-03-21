@@ -112,12 +112,6 @@ genTopLevel (S.TopLevel (S.Constant Integer constantName (Int val))) = do
 genTopLevel (S.TopLevel (S.Constant Boolean constantName (Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
 genTopLevel (S.TopLevel (S.Constant {})) = error "This shouldn't have matched here."
--- Unary operator definition
-genTopLevel (S.Operand (S.UnaryDef unaryOpName unaryArgs body)) = do
-  function (Name ("unary_" <> unaryOpName)) (map (\x -> (ASTType.double, x)) unaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
-  -- Binary operator definition
-genTopLevel (S.Operand (S.BinaryDef binaryOpName binaryArgs body)) = do
-  function (Name ("binary_" <> binaryOpName)) (map (\x -> (ASTType.double, x)) binaryArgs) ASTType.double (\_ -> genLevel body []) -- TODO: localVars
   -- Any expression
 genTopLevel (S.Operand expression) = do
   currentDefs <- liftModuleState $ gets builderDefs

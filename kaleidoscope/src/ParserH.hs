@@ -31,23 +31,6 @@ binops =
     ]
   ]
 
-binarydef :: Parser Operand
-binarydef = do
-  reserved "def"
-  reserved "binary"
-  o <- op
-  _ <- ParserH.int
-  args <- parens $ many identifier
-  BinaryDef o (map fromString args) <$> expr
-
-unarydef :: Parser Operand
-unarydef = do
-  reserved "def"
-  reserved "unary"
-  o <- op
-  args <- parens $ many identifier
-  UnaryDef o (map fromString args) <$> expr
-
 op :: Parser ShortByteString
 op = do
   whitespace

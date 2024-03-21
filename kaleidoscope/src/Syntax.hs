@@ -21,8 +21,6 @@ data Operand
   | If Operand Operand Operand
   | UnaryOp ShortByteString Operand
   | BinOp ShortByteString Operand Operand
-  | UnaryDef ShortByteString [ParameterName] Operand -- TODO: adapt to new syntax
-  | BinaryDef ShortByteString [ParameterName] Operand -- TODO: adapt to new syntax
   deriving stock (Eq, Ord, Show)
 
 data Declaration
