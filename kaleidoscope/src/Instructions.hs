@@ -1,9 +1,9 @@
 module Instructions where
 
-import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand))
+import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand), Type (IntegerType, FloatingPointType))
 import LLVM.AST.Constant ( Constant(Float, Int) )
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Instruction ( sitofp, uitofp )
+import LLVM.IRBuilder.Instruction ( sitofp, fptosi )
 import LLVM.IRBuilder.Module (ModuleBuilder)
 import LLVM.IRBuilder.Monad ( IRBuilderT )
 
@@ -13,24 +13,23 @@ typedOperandInstruction :: Operand -> Operand -> BinOpInstruction -> BinOpInstru
 typedOperandInstruction a b wholeInstr floatingInstr = do
   let aType = operandType a
   let bType = operandType b
-  -- TODO: make this a case statement :/
-  -- "Qualified name in binding position: ASTType.double"
-  if aType == ASTType.i32 && bType == ASTType.i32
-    then wholeInstr
-    else
-      if aType == ASTType.double && bType == ASTType.double
-        then floatingInstr
-        else
-          if aType == ASTType.i32 && bType == ASTType.double
-            then \x y -> do
-              x' <- sitofp x ASTType.double
-              floatingInstr x' y
-            else
-              if aType == ASTType.double && bType == ASTType.i32
-                then \x y -> do
-                  y' <- uitofp y ASTType.double
-                  floatingInstr x y'
-                else error "Invalid types for operand"
+  case aType of
+    (IntegerType _) -> case bType of
+      (IntegerType _) -> wholeInstr
+      (FloatingPointType _) -> \x y -> do
+        x' <- sitofp x ASTType.double
+        floatingInstr x' y
+      _ -> error "Invalid types for operand"
+    (FloatingPointType _) -> case bType of
+      (IntegerType 1) -> \x y -> do
+        x' <- fptosi x ASTType.double
+        floatingInstr x' y
+      (IntegerType _) -> \x y -> do
+        y' <- sitofp y ASTType.double
+        floatingInstr x y'
+      (FloatingPointType _) -> floatingInstr
+      _ -> error "Invalid types for operand"
+    _ -> error "Invalid types for operand"
 
 operandType :: Operand -> ASTType.Type
 operandType op = case op of

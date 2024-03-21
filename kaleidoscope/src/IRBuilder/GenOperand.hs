@@ -83,7 +83,14 @@ genOperand (UnaryOp oper a) localVars = do
     unops :: M.Map ShortByteString (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
       M.fromList
-        [("-", fneg)]
+        [
+          ("-", fneg),
+          ("!", not')
+        ]
+      where
+        not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
+        not' x = do
+          icmp IP.EQ x (ConstantOperand (C.Int 1 0))
 
 -- Binary Operands
 genOperand (BinOp oper a b) localVars = do
@@ -101,11 +108,16 @@ genOperand (BinOp oper a b) localVars = do
           ("*", eitherType mul fmul),
           ("/", eitherType udiv fdiv),
           ("<", eitherType (icmp IP.ULT) (fcmp ULT)),
+          ("<=", eitherType (icmp IP.ULE) (fcmp ULE)),
           (">", eitherType (icmp IP.UGT) (fcmp UGT)),
+          (">=", eitherType (icmp IP.UGE) (fcmp UGE)),
+
           ("==", eitherType (icmp IP.EQ) (fcmp UEQ)),
           ("!=", eitherType (icmp IP.NE) (fcmp UNE)),
-          ("<=", eitherType (icmp IP.ULE) (fcmp ULE)),
-          (">=", eitherType (icmp IP.UGE) (fcmp UGE))
+
+          ("^^", LLVM.IRBuilder.Instruction.xor),
+          ("&&", LLVM.IRBuilder.Instruction.and),
+          ("||", LLVM.IRBuilder.Instruction.or)
         ]
       where
         eitherType = typedOperandInstruction firstOp secondOp
