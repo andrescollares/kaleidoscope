@@ -16,6 +16,7 @@ import LLVM.PassManager
       runPassManager,
       withPassManager,
       PassSetSpec(optLevel) )
+import Data.ByteString.Short (ShortByteString)
 
 foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
 
@@ -35,15 +36,15 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
     ptrelim = Nothing -- frame pointer elimination
     fastins = Nothing -- fast instruction selection
 
-passes :: PassSetSpec
-passes = defaultCuratedPassSetSpec {optLevel = Just 3}
+passes :: Word -> PassSetSpec
+passes level = defaultCuratedPassSetSpec {optLevel = Just level}
 
-optimizeModule :: AST.Module -> IO AST.Module
-optimizeModule astModule = do
+optimizeModule :: AST.Module -> Word -> IO AST.Module
+optimizeModule astModule level = do
   withContext $ \context ->
     jit context $ \_ ->
       withModuleFromAST context astModule $ \m ->
-        withPassManager passes $ \pm -> do
+        withPassManager (passes level) $ \pm -> do
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m

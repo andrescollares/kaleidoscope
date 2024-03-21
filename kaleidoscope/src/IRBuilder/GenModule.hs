@@ -29,9 +29,9 @@ import Types ( getExpressionType, getASTType )
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> IO (Double, [Definition])
-genModule oldDefs expressions = do
-  optMod <- optimizeModule unoptimizedAst
+genModule :: [Definition] -> [Expr] -> Word -> IO (Double, [Definition])
+genModule oldDefs expressions optLevel = do
+  optMod <- optimizeModule unoptimizedAst optLevel 
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
