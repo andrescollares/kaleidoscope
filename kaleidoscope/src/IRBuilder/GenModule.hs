@@ -29,7 +29,7 @@ import Types ( getExpressionType, getASTType )
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> Word -> IO (Double, [Definition])
+genModule :: [Definition] -> [Expr] -> Word -> IO (String, [Definition])
 genModule oldDefs expressions optLevel = do
   optMod <- optimizeModule unoptimizedAst optLevel 
   res <- runJIT optMod moduleMainFnType
@@ -54,7 +54,7 @@ genModule oldDefs expressions optLevel = do
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
     moduleMainFn =
-      filter
+      filter -- Filter fst TODO: 
         ( \case
             GlobalDefinition AST.Function {name = Name "main"} -> True
             _ -> False
@@ -62,7 +62,8 @@ genModule oldDefs expressions optLevel = do
         definitions
     moduleMainFnType = case moduleMainFn of
       [GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}] -> ASTType.i32
-      _ -> ASTType.double
+      [GlobalDefinition AST.Function {returnType = FloatingPointType {floatingPointType = DoubleFP}}] -> ASTType.double
+      _ -> ASTType.i1
 
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl

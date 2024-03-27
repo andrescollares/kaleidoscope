@@ -3,10 +3,11 @@
 module JIT where
 
 import qualified Data.ByteString as BS
-import Foreign.C.Types ( CInt(..) )
+import Foreign.C.Types ( CInt(..), CBool(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
+import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand), Type (IntegerType, FloatingPointType))
 import LLVM.Context ( withContext, Context )
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
@@ -17,16 +18,22 @@ import LLVM.PassManager
       withPassManager,
       PassSetSpec(optLevel) )
 import Data.ByteString.Short (ShortByteString)
+import LLVM.AST.Constant (Constant(integerBits))
 
-foreign import ccall "dynamic" haskFun :: FunPtr Double -> Double
+foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
 
-run :: FunPtr a -> Double
-run fn = haskFun (castFunPtr fn :: FunPtr Double)
+foreign import ccall "dynamic" haskFunBool :: FunPtr CBool -> CBool
+
+runDouble :: FunPtr a -> Double
+runDouble fn = haskFunDouble (castFunPtr fn :: FunPtr Double)
 
 runInteger :: FunPtr a -> CInt
 runInteger fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
+
+runBool :: FunPtr a -> CInt
+runBool fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
@@ -57,7 +64,7 @@ optimizeModule astModule level = do
   where
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
-runJIT :: AST.Module -> AST.Type -> IO Double
+runJIT :: AST.Module -> AST.Type -> IO String
 runJIT astModule runType = do
   withContext $ \context ->
     jit context $ \executionEngine ->
@@ -70,6 +77,8 @@ runJIT astModule runType = do
               return result
               where
                 result = case runType of
-                  ASTType.FloatingPointType ASTType.DoubleFP -> run fn
-                  _ -> fromIntegral $ runInteger fn
-            Nothing -> return 0
+                  FloatingPointType _ -> show $ runDouble fn
+                  IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
+                  IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
+                  _ -> error "Unknown expression type"
+            Nothing -> return "0"

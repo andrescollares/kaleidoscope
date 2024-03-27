@@ -12,7 +12,7 @@ import System.Console.Haskeline
     ( defaultSettings, getInputLine, outputStrLn, runInputT )
 import System.Environment ( getArgs )
 
-process :: [AST.Definition] -> String -> Word -> IO (Maybe (Double, [AST.Definition]))
+process :: [AST.Definition] -> String -> Word -> IO (Maybe (String, [AST.Definition]))
 process oldDefs source optLevel = do
   let parsedSrc = parseToplevel source
   case parsedSrc of
@@ -31,7 +31,7 @@ replOptLevel :: Word
 replOptLevel = 3
 
 repl :: IO ()
-repl = runInputT defaultSettings (loop 0 stdLibrary)
+repl = runInputT defaultSettings (loop "0" stdLibrary)
   where
     loop prevRes oldDefs = do
       minput <- getInputLine "ready> "

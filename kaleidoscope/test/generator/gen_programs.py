@@ -1,4 +1,5 @@
 import sys
+import random
 
 iterations = int(sys.argv[1])
 program = ""
@@ -10,7 +11,7 @@ for i in range(iterations):
 
 for i in range(iterations):
     var_name = f"var_{i}"
-    let_in = f"let int var_{i} = func_{i}({i}) in\n"
+    let_in = f"let int var_{i} = func_{random.randint(0, i)}({i}) in\n"
     program += let_in
     var_list.append(var_name)
 
