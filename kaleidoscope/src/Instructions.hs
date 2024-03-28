@@ -9,6 +9,7 @@ import LLVM.IRBuilder.Monad ( IRBuilderT )
 
 type BinOpInstruction = (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
 
+-- TODO: preconditon: Operands are only Float or Integer
 typedOperandInstruction :: Operand -> Operand -> BinOpInstruction -> BinOpInstruction -> BinOpInstruction
 typedOperandInstruction a b wholeInstr floatingInstr = do
   let aType = operandType a
@@ -37,5 +38,5 @@ operandType op = case op of
   ConstantOperand con -> case con of
     Int _ _ -> ASTType.i32
     Float _ -> ASTType.double
-    _ -> ASTType.double -- TODO
+    _ -> ASTType.i1 -- TODO
   MetadataOperand _ -> ASTType.double -- TODO

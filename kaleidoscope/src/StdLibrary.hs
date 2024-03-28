@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
+
 module StdLibrary where
 
 import Data.String
@@ -17,14 +19,14 @@ stdLibrary =
       functionDefaults
         { name = Name (fromString "printd"),
           parameters = ([Parameter (FloatingPointType DoubleFP) (Name (fromString "d")) []], False),
-          returnType = VoidType,
+          returnType = FloatingPointType DoubleFP,
           basicBlocks = []
         },
     GlobalDefinition
       functionDefaults
         { name = Name (fromString "printb"),
           parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
-          returnType = VoidType,
+          returnType = IntegerType 1,
           basicBlocks = []
         }
   ]

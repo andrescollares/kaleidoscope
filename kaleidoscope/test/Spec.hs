@@ -19,8 +19,6 @@ import Control.Monad (void)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
 
-import Debug.Trace
-
 main :: IO ()
 main = defaultMain tests
 

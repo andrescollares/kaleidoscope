@@ -11,7 +11,7 @@ getExpressionType :: S.Operand -> [LocalVarType] -> AST.Type
 getExpressionType (Int _) _ = ASTType.i32
 getExpressionType (Float _) _ = ASTType.double
 getExpressionType (Bool _) _ = ASTType.i1
--- getExpressionType (S.Call _ _) = We can't infer this without context
+getExpressionType (S.Call functionName _) localVars = getASTType $ findLocalVarType localVars functionName
 getExpressionType (Var varName) localVars = getASTType $ findLocalVarType localVars varName
 getExpressionType (UnaryOp _ _) _ = ASTType.double -- TODO!!
 -- TODO: this is potentially O(2^n)!!!
@@ -29,7 +29,7 @@ getExpressionType (If _ e1 e2) localVars =
     else error "Types of both sides of if statement should be the same"
   where
     e1Type = getExpressionType e1 localVars
-getExpressionType _ _ = ASTType.double
+getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 getASTType :: S.Type -> AST.Type
 getASTType Double = ASTType.double
