@@ -7,7 +7,7 @@ import Foreign.C.Types ( CInt(..), CBool(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
-import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand), Type (IntegerType, FloatingPointType))
+import LLVM.AST (Type (IntegerType, FloatingPointType))
 import LLVM.Context ( withContext, Context )
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
@@ -17,8 +17,6 @@ import LLVM.PassManager
       runPassManager,
       withPassManager,
       PassSetSpec(optLevel) )
-import Data.ByteString.Short (ShortByteString)
-import LLVM.AST.Constant (Constant(integerBits))
 
 foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
 
@@ -73,7 +71,7 @@ runJIT astModule runType = do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of
             Just fn -> do
-              putStrLn $ "Evaluated to: " ++ show result
+              putStrLn $ "Evaluated to: " ++ result
               return result
               where
                 result = case runType of
