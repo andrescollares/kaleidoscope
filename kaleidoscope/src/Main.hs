@@ -28,7 +28,7 @@ processFile fname optLevel = do
   return $ snd <$> result
 
 replOptLevel :: Word
-replOptLevel = 3
+replOptLevel = 0
 
 repl :: IO ()
 repl = runInputT defaultSettings (loop "0" stdLibrary)
