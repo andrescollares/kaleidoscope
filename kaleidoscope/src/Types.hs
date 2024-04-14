@@ -40,3 +40,6 @@ findLocalVarType :: [LocalVarType] -> Name -> S.Type
 findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVars of
   Just (var, t) -> t
   Nothing -> error $ "Cannot determine type of variable " ++ show varName
+
+structType :: [AST.Type] -> AST.Type
+structType = ASTType.StructureType False
