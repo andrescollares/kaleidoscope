@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Control.Monad.Trans ( MonadIO(liftIO) )
@@ -9,7 +11,7 @@ import qualified LLVM.AST as AST
 import ParserH ( parseToplevel )
 import StdLibrary ( stdLibrary )
 import System.Console.Haskeline
-    ( defaultSettings, getInputLine, outputStrLn, runInputT )
+    ( defaultSettings, getInputLine, outputStrLn, outputStr, runInputT, InputT )
 import System.Environment ( getArgs )
 
 process :: [AST.Definition] -> String -> Word -> IO (Maybe (String, [AST.Definition]))
@@ -30,11 +32,29 @@ processFile fname optLevel = do
 replOptLevel :: Word
 replOptLevel = 0
 
+lastCharOrEmpty :: String -> Char
+lastCharOrEmpty [] = ' '
+lastCharOrEmpty s = last s
+
+getNextInput :: InputT IO (Maybe String)
+getNextInput = do
+  str <- getInputLine ""
+  case str of
+    Just line -> case lastCharOrEmpty line of
+      ';' -> return $ Just line
+      _ -> do
+        nextLine <- getNextInput
+        case nextLine of
+          Nothing -> return $ Just line
+          Just nextLine -> return $ Just $ line ++ ' ' : nextLine
+    Nothing -> return Nothing
+
 repl :: IO ()
 repl = runInputT defaultSettings (loop "0" stdLibrary)
   where
     loop prevRes oldDefs = do
-      minput <- getInputLine "ready> "
+      outputStr "ready> "
+      minput <- getNextInput
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
