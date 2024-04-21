@@ -10,47 +10,27 @@ import IRBuilder.GenModule (genModule)
 import qualified LLVM.AST as AST
 import ParserH ( parseToplevel )
 import StdLibrary ( stdLibrary )
+import Options.Applicative
+import CLI (getNextInput, opts, CliOptions (inputFile))
 import System.Console.Haskeline
-    ( defaultSettings, getInputLine, outputStrLn, outputStr, runInputT, InputT )
-import System.Environment ( getArgs )
 
-process :: [AST.Definition] -> String -> Word -> IO (Maybe (String, [AST.Definition]))
-process oldDefs source optLevel = do
-  let parsedSrc = parseToplevel source
+process :: [AST.Definition] -> String -> CliOptions -> IO (Maybe (String, [AST.Definition]))
+process oldDefs source processOptions = do
+  let parsedSrc = parseToplevel source 
   case parsedSrc of
     Left err -> print err >> return Nothing
     Right expressions -> do
-      (res, defs) <- genModule oldDefs expressions optLevel
+      (res, defs) <- genModule oldDefs expressions processOptions
       return $ Just (res, defs)
 
-processFile :: String -> Word -> IO (Maybe [AST.Definition])
-processFile fname optLevel = do
+processFile :: String -> CliOptions -> IO (Maybe [AST.Definition])
+processFile fname processOptions = do
   file <- readFile fname
-  result <- process [] file optLevel
+  result <- process [] file processOptions
   return $ snd <$> result
 
-replOptLevel :: Word
-replOptLevel = 0
-
-lastCharOrEmpty :: String -> Char
-lastCharOrEmpty [] = ' '
-lastCharOrEmpty s = last s
-
-getNextInput :: InputT IO (Maybe String)
-getNextInput = do
-  str <- getInputLine ""
-  case str of
-    Just line -> case lastCharOrEmpty line of
-      ';' -> return $ Just line
-      _ -> do
-        nextLine <- getNextInput
-        case nextLine of
-          Nothing -> return $ Just line
-          Just nextLine -> return $ Just $ line ++ ' ' : nextLine
-    Nothing -> return Nothing
-
-repl :: IO ()
-repl = runInputT defaultSettings (loop "0" stdLibrary)
+repl :: CliOptions -> IO ()
+repl replOptions = runInputT defaultSettings (loop "0" stdLibrary)
   where
     loop prevRes oldDefs = do
       outputStr "ready> "
@@ -60,12 +40,12 @@ repl = runInputT defaultSettings (loop "0" stdLibrary)
         Just input -> do
           case unpack $ strip $ pack input of
             ('=' : rest) -> do
-              maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") replOptLevel
+              maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") replOptions
               case maybeDefs of
                 Just (_, defs) -> loop prevRes defs
                 Nothing -> loop prevRes oldDefs
             _ -> do
-              maybeDefs <- liftIO $ process oldDefs input replOptLevel
+              maybeDefs <- liftIO $ process oldDefs input replOptions
               case maybeDefs of
                 Just (res, defs) -> loop res defs
                 Nothing -> loop prevRes oldDefs
@@ -76,12 +56,10 @@ repl = runInputT defaultSettings (loop "0" stdLibrary)
 
 main :: IO ()
 main = do
-  args <- getArgs
-  case args of
-    [] -> repl
-    [fname] -> processFile fname 3 >> return ()
-    [fname, optLevel] -> processFile fname (read optLevel) >> return ()
-    _ -> print "Usage: kaleidoscope [filename]"
+  parsedOptions <- execParser opts
+  case inputFile parsedOptions of
+    [] -> repl parsedOptions
+    fname -> processFile fname parsedOptions >> return ()
 
 -- Print AST (chapter 2)
 printAST :: String -> IO ()

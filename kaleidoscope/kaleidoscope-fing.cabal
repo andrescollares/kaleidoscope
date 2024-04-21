@@ -46,7 +46,7 @@ common common-options
 executable kaleidoscope-fing
     import: common-options
     main-is: Main.hs
-    other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple
+    other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple, CLI
     hs-source-dirs: src
     build-depends:
         , bytestring  >=0.10
@@ -56,6 +56,7 @@ executable kaleidoscope-fing
         , text ^>= 1.2
         , haskeline >=0.7
         , parsec >=3.1.0
+        , optparse-applicative >=0.17.0.0
 
 -- library kaleidoscope-fing-lib
 --     exposed-modules: ParserH
@@ -69,7 +70,7 @@ test-suite unit-test
   hs-source-dirs:
       test
       , src
-  other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple
+  other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple, CLI
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     --   kaleidoscope-fing
@@ -84,6 +85,7 @@ test-suite unit-test
     , text ^>= 1.2
     , haskeline >=0.7
     , parsec >=3.1.0
+    , optparse-applicative >=0.17.0.0
     -- , kaleidoscope-fing-lib
   default-language: Haskell2010
 

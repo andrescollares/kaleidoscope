@@ -24,14 +24,16 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad ( IRBuilderT )
 import Syntax as S
 import Types ( getExpressionType, getASTType )
+import CLI (CliOptions)
+
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> Word -> IO (String, [Definition])
-genModule oldDefs expressions optLevel = do
-  optMod <- optimizeModule unoptimizedAst optLevel 
+genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
+genModule oldDefs expressions options = do
+  optMod <- optimizeModule unoptimizedAst options
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where

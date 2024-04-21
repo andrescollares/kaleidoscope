@@ -17,6 +17,7 @@ import LLVM.PassManager
       runPassManager,
       withPassManager,
       PassSetSpec(optLevel) )
+import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
 
 foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
 
@@ -33,10 +34,10 @@ runInteger fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
 runBool :: FunPtr a -> CInt
 runBool fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
 
-jit :: Context -> (EE.MCJIT -> IO a) -> IO a
-jit c = EE.withMCJIT c optlevel model ptrelim fastins
+jit :: Context -> Word -> (EE.MCJIT -> IO a) -> IO a
+jit c oLevel = EE.withMCJIT c optlevel model ptrelim fastins
   where
-    optlevel = Just 0 -- optimization level
+    optlevel = Just oLevel -- optimization level
     model = Nothing -- code model ( Default )
     ptrelim = Nothing -- frame pointer elimination
     fastins = Nothing -- fast instruction selection
@@ -44,28 +45,30 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 passes :: Word -> PassSetSpec
 passes level = defaultCuratedPassSetSpec {optLevel = Just level}
 
-optimizeModule :: AST.Module -> Word -> IO AST.Module
-optimizeModule astModule level = do
+optimizeModule :: AST.Module -> CliOptions -> IO AST.Module
+optimizeModule astModule CliOptions { optimizationLevel = level, emitLLVM = emit } = do
   withContext $ \context ->
-    jit context $ \_ ->
+    jit context level $ \_ ->
       withModuleFromAST context astModule $ \m ->
         withPassManager (passes level) $ \pm -> do
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m
-          modBS <- moduleLLVMAssembly m
-          -- Print the optimized module as LLVM assembly to stdout
-          putStrLn "Optimized LLVM assembly:"
-          putStrLn $ modBSToString modBS
-          -- Return the optimized module
-          return optmod
+          if emit then (do
+            modBS <- moduleLLVMAssembly m
+            -- Print the optimized module as LLVM assembly to stdout
+            putStrLn "Optimized LLVM assembly:"
+            putStrLn $ modBSToString modBS
+            -- Return the optimized module
+            return optmod) 
+          else return optmod
   where
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
 runJIT :: AST.Module -> AST.Type -> IO String
 runJIT astModule runType = do
   withContext $ \context ->
-    jit context $ \executionEngine ->
+    jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
           mainfn <- EE.getFunction ee (AST.Name "main")

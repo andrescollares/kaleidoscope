@@ -23,17 +23,32 @@ Andrés Collares & Agustín Gazzano
 docker compose build
 docker compose up -d
 docker compose run project bash
-cabal run kaleidoscope-fing
+cabal run
 ```
+
+### Available options
+
+```
+cabal run kaleidoscope-fing -- --help
+```
+
 ### Running code samples
 
 ```
-cabal run kaleidoscope-fing -- "programs/add_sub.k"
+cabal run kaleidoscope-fing -- --file "./test/programs/recursive_fib.k"
+```
+
+### Test suite
+
+```
+cabal test
 ```
 
 ### Running ghci through Cabal
 
 ```
 cabal exec ghci
+or
+cabal repl
 ```
 
