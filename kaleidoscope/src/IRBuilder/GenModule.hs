@@ -11,17 +11,20 @@ import Control.Monad.RWS (gets)
 import Data.Bifunctor (first)
 import IRBuilder.GenOperand (genOperand)
 import IRBuilder.LocalVar
-    ( LocalVar, definitionsToLocalVars, functionLocalVar )
-import JIT ( optimizeModule, runJIT )
+  ( LocalVar,
+    definitionsToLocalVars,
+    functionLocalVar,
+  )
+import JIT (optimizeModule, runJIT)
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.Global (Global (name), returnType)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Instruction ( ret )
-import LLVM.IRBuilder.Internal.SnocList ( SnocList(SnocList) )
+import LLVM.IRBuilder.Instruction (ret)
+import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
-import LLVM.IRBuilder.Monad ( IRBuilderT )
+import LLVM.IRBuilder.Monad (IRBuilderT)
 import Syntax as S
 import Types ( getExpressionType, getASTType )
 import CLI (CliOptions)
@@ -56,7 +59,7 @@ genModule oldDefs expressions options = do
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
     moduleMainFn =
-      filter -- Filter fst TODO: 
+      filter -- Filter fst TODO:
         ( \case
             GlobalDefinition AST.Function {name = Name "main"} -> True
             _ -> False
@@ -82,6 +85,7 @@ genTopLevel (S.TopLevel (S.Extern externName externArgs Double)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.double
 genTopLevel (S.TopLevel (S.Extern externName externArgs Boolean)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
+
 -- Function definition
 genTopLevel (S.TopLevel (S.Function functionName functionArgs Double body)) = do
   function
@@ -107,6 +111,15 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs Boolean body)) = d
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1
     )
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (Tuple t1 t2) body)) = do
+  function
+    functionName
+    (first getASTType <$> functionArgs)
+    ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
+    ( \ops ->
+        genLevel body $ functionLocalVar ops functionArgs functionName ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
+    )
+
 -- Constant definition
 genTopLevel (S.TopLevel (S.Constant Double constantName (Float val))) = do
   global constantName ASTType.double (C.Float (F.Double val))
@@ -115,7 +128,8 @@ genTopLevel (S.TopLevel (S.Constant Integer constantName (Int val))) = do
 genTopLevel (S.TopLevel (S.Constant Boolean constantName (Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
 genTopLevel (S.TopLevel (S.Constant {})) = error "This shouldn't have matched here."
-  -- Any expression
+
+-- Main expression
 genTopLevel (S.Operand expression) = do
   currentDefs <- liftModuleState $ gets builderDefs
   function "main" [] (eType currentDefs) (\_ -> genLevel expression [])
@@ -128,4 +142,3 @@ genLevel e localVars = do
   generated <- genOperand e localVars
   ret generated
 
--- Local vars

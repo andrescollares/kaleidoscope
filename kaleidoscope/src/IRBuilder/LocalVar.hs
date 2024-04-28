@@ -23,6 +23,7 @@ import Types
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
+-- TODO: wtf is this xd
 definitionsToLocalVars :: SnocList Definition -> [LocalVarType]
 definitionsToLocalVars (SnocList defs) =
   map
@@ -42,6 +43,7 @@ llvmTypeToSyntaxType t = case t of
   ASTType.IntegerType {typeBits = 1} -> Boolean
   _ -> error $ "Unsupported type " ++ show t
 
+-- Why would we want to have the function as a local var?
 functionLocalVar :: [AST.Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
 functionLocalVar operands functionParameters (Name n) t = localVarsFallback operands ++ [(Just n, getFunctionOperand (Name n) t (functionLocalVarParameters functionParameters, False))]
 functionLocalVar _ _ _ _ = error "Function lacks a name."
@@ -69,6 +71,7 @@ removeEnding variableName
   | otherwise = variableName
 
 -- TODO: lots of DRY to do here
+-- The function shouldn't live in the local vars
 getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
 getFunctionFromDefs defs functionName = find (`matchNameGlobal` functionName) defs Nothing
   where

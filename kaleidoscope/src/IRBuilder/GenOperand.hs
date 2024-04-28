@@ -31,6 +31,7 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
+import Types (getASTType)
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -40,6 +41,15 @@ genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 genOperand (Int n) _ = return $ ConstantOperand (C.Int 32 n)
 -- Bool
 genOperand (Bool b) _ = return $ ConstantOperand (C.Int 1 (if b then 1 else 0))
+-- Tuple
+genOperand (TupleI a b) localVars = do
+  opA <- genOperand a localVars
+  opB <- genOperand b localVars
+  return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant opA, getConstant opB]})
+  where
+    getConstant (ConstantOperand c) = c
+    getConstant _ = error "Only constants allowed inside tuples."
+
 -- Variables
 genOperand (Var (Name nameString)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
@@ -102,6 +112,7 @@ genOperand (BinOp oper a b) localVars = do
   where
     binops :: AST.Operand -> AST.Operand -> M.Map ShortByteString (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
+      -- TODO: This info is also in the ParserH binops, is it necessary for it to be there?
       M.fromList
         [ ("+", eitherType add fadd),
           ("-", eitherType sub fsub),
@@ -155,4 +166,11 @@ genOperand (Let Boolean (Name varName) variableValue body) localVars = do
   store var 0 computedValue
   loadedVar <- load var 0
   genOperand body ((Just varName, loadedVar) : localVars)
+genOperand (Let (Tuple t1 t2) (Name varName) variableValue body) localVars = do
+  var <- alloca (ASTType.StructureType False [getASTType t1, getASTType t2]) Nothing 0
+  computedValue <- genOperand variableValue localVars
+  store var 0 computedValue
+  loadedVar <- load var 0
+  genOperand body ((Just varName, loadedVar) : localVars)
+
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x

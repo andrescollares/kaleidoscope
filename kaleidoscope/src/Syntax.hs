@@ -15,6 +15,7 @@ data Operand
   = Int Integer
   | Float Double
   | Bool Bool
+  | TupleI Operand Operand
   | Let Type Name Operand Operand
   | Var Name
   | Call Name [Operand]
@@ -33,6 +34,7 @@ data Type
   = Double
   | Integer
   | Boolean
+  | Tuple Type Type
   deriving stock (Eq, Ord, Show)
 
 -- | Enum Literal

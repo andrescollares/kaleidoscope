@@ -8,7 +8,7 @@ import Data.Functor.Identity ( Identity )
 import Data.String ( IsString(fromString) )
 import qualified LLVM.IRBuilder.Module as M
 import Lexer
-import Syntax ( Type(..), Declaration(..), Operand(..), Expr(..) )
+import Syntax ( Type(..), Declaration(..), Operand(..), Expr(..), )
 import Text.Parsec
     ( (<|>), many, parse, try, ParseError, eof, optionMaybe )
 import qualified Text.Parsec.Expr as Ex
@@ -20,14 +20,23 @@ binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
 
 binops :: Ex.OperatorTable String () Identity Operand
 binops =
-  [ [ binary "*" Ex.AssocLeft,
+  [ 
+    [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
     [ binary "+" Ex.AssocLeft,
       binary "-" Ex.AssocLeft
     ],
     [ binary "<" Ex.AssocLeft,
-      binary ">" Ex.AssocLeft
+      binary ">" Ex.AssocLeft,
+      binary "<=" Ex.AssocLeft,
+      binary ">=" Ex.AssocLeft,
+      binary "==" Ex.AssocLeft,
+      binary "!=" Ex.AssocLeft
+    ],
+    [ binary "^^" Ex.AssocLeft,
+      binary "&&" Ex.AssocLeft,
+      binary "||" Ex.AssocLeft
     ]
   ]
 
@@ -49,6 +58,7 @@ tp = do
   try double
     <|> try integer
     <|> try boolean
+    <|> try tupleT
 
 double :: Parser Syntax.Type
 double = reserved "double" >> return Double
@@ -58,6 +68,12 @@ integer = reserved "int" >> return Integer
 
 boolean :: Parser Syntax.Type
 boolean = reserved "bool" >> return Boolean
+
+tupleT :: Parser Syntax.Type
+tupleT = do
+  reserved "tuple"
+  types <- parens $ commaSep tp
+  return $ Tuple (head types) (head $ tail types)
 
 int :: Parser Operand
 int =
@@ -70,6 +86,13 @@ floating =
 bool :: Parser Operand
 bool =
   Bool <$> Lexer.bool
+
+tuple :: Parser Operand
+tuple = do
+  elements <- parens $ commaSep expr
+  case elements of
+    [frst, scnd] -> return $ TupleI frst scnd
+    _ -> fail "tuples must have exactly two elements"
 
 expr :: Parser Operand
 expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
@@ -133,14 +156,13 @@ letins = do
   body <- expr
   return $ foldr (\(t, n, v) -> Let t n v) body defs
 
+
 factor :: Parser Operand
 factor =
-  -- try expr <|>
   try floating
     <|> try ParserH.int
     <|> try ParserH.bool
-    -- <|> try extern
-    -- <|> try function
+    <|> try tuple
     <|> try call
     <|> try ifthen
     <|> try letins
