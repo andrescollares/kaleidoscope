@@ -9,7 +9,6 @@ import qualified LLVM.AST.Constant as C
 import LLVM.AST.Float
 import LLVM.AST.Type (ptr)
 import LLVM.AST.Constant (Constant(GlobalReference))
-import Types (structType)
 import Tuple (tupleAccessor)
 
 stdLibrary :: [Definition]
@@ -131,6 +130,7 @@ stdLibrary =
       -- these functions should be called by another higher level function
       -- fst & snd should call the appropiate function to get the first element of the tuple
       -- depending on the types of the tuple.
-      tupleAccessor 0 [IntegerType 32, FloatingPointType DoubleFP, IntegerType 1],
-      tupleAccessor 1 [IntegerType 32, FloatingPointType DoubleFP, IntegerType 1]
+      -- tupleAccessor 0 [IntegerType 32, FloatingPointType DoubleFP, IntegerType 1],
+      -- tupleAccessor 1 [IntegerType 32, FloatingPointType DoubleFP, IntegerType 1],
+      tupleAccessor 0 [IntegerType 32, IntegerType 32]
   ]

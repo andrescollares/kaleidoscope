@@ -1,32 +1,59 @@
+{-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
 module Tuple where
 
 import LLVM.AST
-import LLVM.AST.Global hiding (alignment, metadata)
+import LLVM.AST.Global hiding (functionAttributes, returnAttributes, callingConvention, alignment, metadata)
 import LLVM.AST.Type
 import qualified LLVM.AST.Constant as C
 import Data.String
 import Data.List ( intercalate )
 
 import Types (structType)
+import LLVM.IRBuilder
+import qualified LLVM.AST as AST
+
+tupleAccessorOperand :: Operand -> Operand -> [Type] -> IRBuilderT ModuleBuilder AST.Operand
+tupleAccessorOperand tupleIndexOperand tupleOperand types = do
+  var <- alloca (structType types) Nothing 8
+  store var 0 tupleOperand
+  tmp_input_w0 <- gep var [ConstantOperand (C.Int 32 0), tupleIndexOperand]
+  tmp_input_w1 <- load tmp_input_w0 8
+  return tmp_input_w1
+  -- return 0
+  -- return $ ConstantOperand (C.Int 32 0)
+
 
 tupleAccessor :: Integer -> [Type] -> Definition
 tupleAccessor tupleIndex types =
       GlobalDefinition
       functionDefaults
         { name = Name (fromString $ "_accessor_" ++ intercalate "_" (map typeToString types) ++ "_" ++ show tupleIndex),
-          parameters = ([Parameter (ptr $ structType types) (Name (fromString "targetStruct")) []], False),
-          -- TODO: the param is a pointer, we should load it first
-          -- or better yet, we should pass the struct by value, but it breaks GetElementPtr for some reason
+          parameters = ([Parameter (structType types) (Name (fromString "targetStruct")) []], False),
           returnType = IntegerType 32,
           basicBlocks = [
                    BasicBlock (Name $ fromString "entry") [
+                    -- GetElementPtr expects a pointer to the struct, the next 2 steps are to get the pointer to the tuple element
+                    UnName 0 := Alloca {
+                      allocatedType = structType types,
+                      numElements = Nothing,
+                      alignment = 8,
+                      metadata = []
+                    },
+                    Do $ Store {
+                      volatile = False,
+                      address = LocalReference (ptr (structType types)) (UnName 0),
+                      value = LocalReference (structType types) (Name (fromString "targetStruct")),
+                      maybeAtomicity = Nothing,
+                      alignment = 8,
+                      metadata = []
+                    },
                     Name (fromString "tmp_input_w0") := GetElementPtr {
                       inBounds = True,
-                      address = LocalReference (structType types) (Name (fromString "targetStruct")),
+                      address = LocalReference (structType types) (UnName 0),
                       indices = [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 tupleIndex)],
                       metadata = []
                     },
-                    UnName 0 := Load {
+                    UnName 1 := Load {
                       volatile = False,
                       address = LocalReference (ptr (FloatingPointType DoubleFP)) (Name (fromString "tmp_input_w0")),
                       maybeAtomicity = Nothing,
@@ -34,7 +61,7 @@ tupleAccessor tupleIndex types =
                       metadata = []
                     }
                     ] (
-                      Do $ Ret (Just (LocalReference (IntegerType 32) (UnName 0))) []
+                      Do $ Ret (Just (LocalReference (IntegerType 32) (UnName 1))) []
                     )
                   ]
         }
