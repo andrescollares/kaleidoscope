@@ -1,5 +1,6 @@
 module Types where
 
+import Data.String (fromString)
 import Data.List (find)
 import LLVM.AST as AST ( Name, Type )
 import qualified LLVM.AST.Type as ASTType
@@ -16,6 +17,10 @@ getExpressionType (S.Call functionName _) localVars = getASTType $ findLocalVarT
 getExpressionType (Var varName) localVars = getASTType $ findLocalVarType localVars varName
 getExpressionType (UnaryOp _ _) _ = ASTType.double -- TODO!!
 -- TODO: this is potentially O(2^n)!!!
+
+getExpressionType (BinOp op tuple indexOperand) localVars
+  | op == fromString "->" = case tuple of
+    TupleI e1 e2 -> getExpressionType (if indexOperand == (Int 0) then e1 else e2) localVars
 getExpressionType (BinOp _ a b) localVars =
   if typeOfA == ASTType.double || typeOfB == ASTType.double
     then ASTType.double

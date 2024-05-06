@@ -127,7 +127,7 @@ constant = do
   reservedOp "const"
   tpi <- tp
   name <- identifier
-  value <- try floating <|> try ParserH.int <|> try ParserH.bool
+  value <- try floating <|> try ParserH.int <|> try ParserH.bool <|> try tuple
   return $ Constant tpi (fromString name) value
 
 call :: Parser Operand

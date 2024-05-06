@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module IRBuilder.GenModule where
 
@@ -127,8 +128,18 @@ genTopLevel (S.TopLevel (S.Constant Integer constantName (Int val))) = do
   global constantName ASTType.i32 (C.Int 32 val)
 genTopLevel (S.TopLevel (S.Constant Boolean constantName (Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
-genTopLevel (S.TopLevel (S.Constant {})) = error "This shouldn't have matched here."
-
+genTopLevel (S.TopLevel (S.Constant (Tuple t1 t2) constantName (TupleI e1 e2))) = do
+  global constantName (ASTType.StructureType False [getASTType t1, getASTType t2])
+   (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [
+      constantOperand e1,
+      constantOperand e2
+   ]})
+  where
+    constantOperand (Float n) = C.Float (F.Double n)
+    constantOperand (Int n) = C.Int 32 n
+    constantOperand (Bool b) = C.Int 1 (if b then 1 else 0)
+    constantOperand (TupleI a b) = error "TODO: recursive tuple constant"
+genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
 -- Main expression
 genTopLevel (S.Operand expression) = do
   currentDefs <- liftModuleState $ gets builderDefs
@@ -136,6 +147,8 @@ genTopLevel (S.Operand expression) = do
   where
     -- Determine type of expression to be used as return type of main function
     eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
+
+genTopLevel _ = error "This shouldn't have matched here."
 
 genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do

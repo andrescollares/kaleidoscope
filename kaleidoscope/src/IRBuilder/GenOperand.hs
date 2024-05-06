@@ -31,7 +31,7 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
-import Types (getASTType)
+import Types (getASTType, getExpressionType)
 import Tuple (tupleAccessorOperand)
 
 -- Generates the Operands that genTopLevel needs.
@@ -132,7 +132,7 @@ genOperand (BinOp oper a b) localVars = do
           ("||", LLVM.IRBuilder.Instruction.or),
 
           -- secondOp must be: ConstantOperand (C.Int 32 tupleIndex)
-          ("->", \ x y -> tupleAccessorOperand x y [])
+          ("->", \ tuple index -> tupleAccessorOperand tuple index (getExpressionType a [])) -- TODO: local vars?
         ]
       where
         eitherType = typedOperandInstruction firstOp secondOp
