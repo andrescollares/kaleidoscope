@@ -7,7 +7,7 @@ import Foreign.C.Types ( CInt(..), CBool(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
-import LLVM.AST (Type (IntegerType, FloatingPointType))
+import LLVM.AST (Type (IntegerType, FloatingPointType, StructureType))
 import LLVM.Context ( withContext, Context )
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
@@ -22,8 +22,6 @@ import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
 foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
-
-foreign import ccall "dynamic" haskFunBool :: FunPtr CBool -> CBool
 
 runDouble :: FunPtr a -> Double
 runDouble fn = haskFunDouble (castFunPtr fn :: FunPtr Double)
@@ -81,5 +79,6 @@ runJIT astModule runType = do
                   FloatingPointType _ -> show $ runDouble fn
                   IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
                   IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
+                  StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ (show $ runInteger fn) ++ ", ...)"
                   _ -> error "Unknown expression type"
             Nothing -> return "0"

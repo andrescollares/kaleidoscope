@@ -41,6 +41,7 @@ llvmTypeToSyntaxType t = case t of
   ASTType.FloatingPointType {floatingPointType = DoubleFP} -> Double
   ASTType.IntegerType {typeBits = 32} -> Integer
   ASTType.IntegerType {typeBits = 1} -> Boolean
+  ASTType.StructureType { elementTypes = [t1, t2] } -> Tuple (llvmTypeToSyntaxType t1) (llvmTypeToSyntaxType t2)
   _ -> error $ "Unsupported type " ++ show t
 
 -- Why would we want to have the function as a local var?

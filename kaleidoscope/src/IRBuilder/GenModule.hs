@@ -69,6 +69,7 @@ genModule oldDefs expressions options = do
     moduleMainFnType = case moduleMainFn of
       [GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}] -> ASTType.i32
       [GlobalDefinition AST.Function {returnType = FloatingPointType {floatingPointType = DoubleFP}}] -> ASTType.double
+      [GlobalDefinition AST.Function {returnType = StructureType { elementTypes = [t1, t2] }}] -> ASTType.StructureType { elementTypes = [t1, t2] }
       _ -> ASTType.i1
 
 buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
