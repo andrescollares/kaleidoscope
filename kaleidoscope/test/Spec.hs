@@ -78,7 +78,9 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   ("const_float", "10.0", ASTType.double)
   , ("const_int_float", "6.0", ASTType.double)
   , ("const_int_int", "16", ASTType.i32)
-  -- , ("const_tuple_int", "16", ASTType.i32) TODO: fix this
+  , ("const_tuple_int", "Tuple (9, ...)", ASTType.StructureType False [ASTType.i32, ASTType.i32])
+  , ("const_tuple_float", "Tuple (7.2, ...)", ASTType.StructureType False [ASTType.double, ASTType.double])
+  , ("const_tuple_bool", "Tuple (true, ...)", ASTType.StructureType False [ASTType.i1, ASTType.i1])
   , ("add_float_float", "2.0", ASTType.double)
   , ("add_float_int", "2.0", ASTType.double)
   , ("add_int_float", "2.0", ASTType.double)
@@ -111,8 +113,10 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("recursive_fib", "8", ASTType.i32)
   , ("redefinition_function", "1050", ASTType.i32)
   , ("redefinition_function_recursive", "55", ASTType.i32)
-  , ("tuple_accessor_int", "9", ASTType.i32)
-  , ("tuple_accessor_float", "13.45", ASTType.double)
+  , ("fst_int", "9", ASTType.i32)
+  , ("fst_float", "9.99", ASTType.double)
+  , ("snd_float", "13.45", ASTType.double)
+  , ("snd_bool", "false", ASTType.i1)
 
 
   -- , ("add_sub", 15)

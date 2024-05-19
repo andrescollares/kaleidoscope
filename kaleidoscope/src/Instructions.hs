@@ -20,7 +20,7 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
       (FloatingPointType _) -> \x y -> do
         x' <- sitofp x ASTType.double
         floatingInstr x' y
-      _ -> error "Invalid types for operand"
+      _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
     (FloatingPointType _) -> case bType of
       (IntegerType 1) -> \x y -> do
         x' <- fptosi x ASTType.double
@@ -29,8 +29,8 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
         y' <- sitofp y ASTType.double
         floatingInstr x y'
       (FloatingPointType _) -> floatingInstr
-      _ -> error "Invalid types for operand"
-    _ -> error "Invalid types for operand"
+      _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
+    _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
 
 operandType :: Operand -> ASTType.Type
 operandType op = case op of

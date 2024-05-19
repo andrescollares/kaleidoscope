@@ -18,6 +18,18 @@ import qualified Text.Parsec.Token as Tok
 binary :: String -> Ex.Assoc -> Ex.Operator String () Identity Operand
 binary s = Ex.Infix (reservedOp s >> return (BinOp (fromString s)))
 
+unary :: String -> Ex.Operator String () Identity Operand
+unary s = Ex.Prefix (reservedOp s >> return (UnaryOp (fromString s)))
+
+unops :: Ex.OperatorTable String () Identity Operand
+unops = [
+  [ unary "!" ],
+  [ unary "-" ],
+  [ unary "fst",
+    unary "snd"
+  ]]
+
+
 binops :: Ex.OperatorTable String () Identity Operand
 binops =
   [ 
@@ -37,9 +49,6 @@ binops =
     [ binary "^^" Ex.AssocLeft,
       binary "&&" Ex.AssocLeft,
       binary "||" Ex.AssocLeft
-    ],
-    [
-      binary "->" Ex.AssocLeft
     ]
   ]
 
@@ -98,7 +107,7 @@ tuple = do
     _ -> fail "tuples must have exactly two elements"
 
 expr :: Parser Operand
-expr = Ex.buildExpressionParser (binops ++ [[unop], [binop]]) factor
+expr = Ex.buildExpressionParser (binops ++ unops ++ [[unop], [binop]]) factor
 
 variable :: Parser Operand
 variable =

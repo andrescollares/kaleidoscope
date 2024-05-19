@@ -42,6 +42,8 @@ cabal run kaleidoscope-fing -- --file "./test/programs/recursive_fib.k"
 
 ```
 cabal test
+or to show progress:
+cabal test tests --test-show-detail=streaming
 ```
 
 ### Running ghci through Cabal

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Types where
 
 import Data.String (fromString)
@@ -15,9 +17,14 @@ getExpressionType (Bool _) _ = ASTType.i1
 getExpressionType (TupleI e1 e2) localVars = ASTType.StructureType False [getExpressionType e1 localVars, getExpressionType e2 localVars]
 getExpressionType (S.Call functionName _) localVars = getASTType $ findLocalVarType localVars functionName
 getExpressionType (Var varName) localVars = getASTType $ findLocalVarType localVars varName
-getExpressionType (UnaryOp _ _) _ = ASTType.double -- TODO!!
--- TODO: this is potentially O(2^n)!!!
+getExpressionType (UnaryOp unOp (TupleI e1 e2)) localVars =
+  case unOp of
+    "fst" -> getExpressionType e1 localVars
+    "snd" -> getExpressionType e2 localVars
+    _ -> error "Unsupported unary operation on Tuple"
+getExpressionType (UnaryOp _ e) localVars = getExpressionType e localVars
 
+-- TODO: this is potentially O(2^n)!!!
 getExpressionType (BinOp op tuple indexOperand) localVars
   | op == fromString "->" = case tuple of
     TupleI e1 e2 -> getExpressionType (if indexOperand == (Int 0) then e1 else e2) localVars

@@ -79,6 +79,12 @@ runJIT astModule runType = do
                   FloatingPointType _ -> show $ runDouble fn
                   IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
                   IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
-                  StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ (show $ runInteger fn) ++ ", ...)"
+                  -- TODO: find a better wat to print the tuples
+                  StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ firstElem ++ ", ...)"
+                    where firstElem = case t1 of
+                            IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
+                            IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
+                            FloatingPointType _ -> show $ runDouble fn
+                            _ -> error "Unknown expression type"
                   _ -> error "Unknown expression type"
             Nothing -> return "0"

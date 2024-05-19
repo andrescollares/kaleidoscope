@@ -96,7 +96,9 @@ genOperand (UnaryOp oper a) localVars = do
       M.fromList
         [
           ("-", fneg),
-          ("!", not')
+          ("!", not'), -- FIXME: printing double instead of bool
+          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0)) (getExpressionType a [])),
+          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)) (getExpressionType a []))
         ]
       where
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
@@ -129,10 +131,10 @@ genOperand (BinOp oper a b) localVars = do
 
           ("^^", LLVM.IRBuilder.Instruction.xor),
           ("&&", LLVM.IRBuilder.Instruction.and),
-          ("||", LLVM.IRBuilder.Instruction.or),
+          ("||", LLVM.IRBuilder.Instruction.or)
 
           -- secondOp must be: ConstantOperand (C.Int 32 tupleIndex)
-          ("->", \ tuple index -> tupleAccessorOperand tuple index (getExpressionType a [])) -- TODO: local vars?
+          -- ("->", \ tuple index -> tupleAccessorOperand tuple index (getExpressionType a [])) -- TODO: local vars?
         ]
       where
         eitherType = typedOperandInstruction firstOp secondOp
