@@ -28,6 +28,7 @@ data Declaration
   = Function Name [(Type, ParameterName)] Type Operand
   | Extern Name [(Type, ParameterName)] Type
   | Constant Type Name Operand
+  | TypeDef Name Type
   deriving stock (Eq, Ord, Show)
 
 data Type

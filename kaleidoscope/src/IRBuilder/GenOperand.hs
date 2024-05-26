@@ -27,12 +27,13 @@ import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, U
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
+import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState, ModuleBuilderState (builderTypeDefs))
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
 import Types (getASTType, getExpressionType)
 import Tuple (tupleAccessorOperand)
+
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -60,7 +61,7 @@ genOperand (Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef =  getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
         Just def -> do
           case def of

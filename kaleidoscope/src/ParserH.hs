@@ -139,6 +139,14 @@ constant = do
   value <- try floating <|> try ParserH.int <|> try ParserH.bool <|> try tuple
   return $ Constant tpi (fromString name) value
 
+typedef :: Parser Declaration
+typedef = do
+  reserved "type"
+  name <- identifier
+  reservedOp "="
+  tpi <- tp
+  return $ TypeDef (fromString name) tpi
+
 call :: Parser Operand
 call = do
   name <- identifier
@@ -182,7 +190,7 @@ factor =
     <|> parens expr
 
 parseDeclaration :: Parser Declaration
-parseDeclaration = try function <|> try extern <|> try constant
+parseDeclaration = try function <|> try extern <|> try constant <|> try typedef
 
 parseExpr :: Parser Expr
 parseExpr = do

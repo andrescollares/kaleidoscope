@@ -115,8 +115,10 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("redefinition_function_recursive", "55", ASTType.i32)
   , ("fst_int", "9", ASTType.i32)
   , ("fst_float", "9.99", ASTType.double)
+  , ("fst_tuple", "Tuple (1, ...)", ASTType.StructureType False [ASTType.i32, ASTType.i32])
   , ("snd_float", "13.45", ASTType.double)
   , ("snd_bool", "false", ASTType.i1)
+  , ("snd_tuple", "Tuple (2, ...)", ASTType.StructureType False [ASTType.i32, ASTType.i32])
 
 
   -- , ("add_sub", 15)
