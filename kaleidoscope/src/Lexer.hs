@@ -45,13 +45,9 @@ type' = do
     "int" -> return Syntax.Integer
     "bool" -> return Syntax.Boolean
     "tuple" -> do
-      reserved "<"
-      t1 <- type'
-      reserved ","
-      t2 <- type'
-      reserved ">"
-      return $ Syntax.Tuple t1 t2
-    _ -> fail "unknown type"
+        types <- parens $ commaSep type'
+        return $ Tuple (head types) (head $ tail types)
+    _ -> fail "unknown type" -- TODO: why is the syntax different here?
 
 argument :: Parser (Type, String)
 argument = do

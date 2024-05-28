@@ -12,7 +12,7 @@ import IRBuilder.LocalVar
     getConstantFromDefs,
     getFunctionFromDefs,
     getFunctionOperand,
-    getLocalVarName,
+    getLocalVarName, definitionsToLocalVars,
   )
 import Instructions (typedOperandInstruction)
 import LLVM.AST as AST
@@ -33,6 +33,7 @@ import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
 import Types (getASTType, getExpressionType)
 import Tuple (tupleAccessorOperand)
+import LLVM.IRBuilder.Internal.SnocList (SnocList(SnocList))
 
 
 -- Generates the Operands that genTopLevel needs.
@@ -61,7 +62,7 @@ genOperand (Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef =  getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
         Just def -> do
           case def of
@@ -88,18 +89,19 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
 -- Unary Operands
 genOperand (UnaryOp oper a) localVars = do
   op <- genOperand a localVars
-  case M.lookup oper unops of
+  currentDefs <- liftModuleState $ gets builderDefs
+  case M.lookup oper (unops currentDefs) of
     Just f -> f op
     Nothing -> error "This shouldn't have matched here, unary operand doesn't exist."
   where
-    unops :: M.Map ShortByteString (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
-    unops =
+    unops :: SnocList Definition -> M.Map ShortByteString (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
+    unops defs =
       M.fromList
         [
           ("-", fneg),
           ("!", not'), -- FIXME: printing double instead of bool
-          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0)) (getExpressionType a [])),
-          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)) (getExpressionType a []))
+          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0)) (getExpressionType a (definitionsToLocalVars defs))),
+          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)) (getExpressionType a (definitionsToLocalVars defs)))
         ]
       where
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
@@ -133,9 +135,6 @@ genOperand (BinOp oper a b) localVars = do
           ("^^", LLVM.IRBuilder.Instruction.xor),
           ("&&", LLVM.IRBuilder.Instruction.and),
           ("||", LLVM.IRBuilder.Instruction.or)
-
-          -- secondOp must be: ConstantOperand (C.Int 32 tupleIndex)
-          -- ("->", \ tuple index -> tupleAccessorOperand tuple index (getExpressionType a [])) -- TODO: local vars?
         ]
       where
         eitherType = typedOperandInstruction firstOp secondOp

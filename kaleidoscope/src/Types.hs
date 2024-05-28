@@ -25,9 +25,6 @@ getExpressionType (UnaryOp unOp (TupleI e1 e2)) localVars =
 getExpressionType (UnaryOp _ e) localVars = getExpressionType e localVars
 
 -- TODO: this is potentially O(2^n)!!!
-getExpressionType (BinOp op tuple indexOperand) localVars
-  | op == fromString "->" = case tuple of
-    TupleI e1 e2 -> getExpressionType (if indexOperand == (Int 0) then e1 else e2) localVars
 getExpressionType (BinOp _ a b) localVars =
   if typeOfA == ASTType.double || typeOfB == ASTType.double
     then ASTType.double
