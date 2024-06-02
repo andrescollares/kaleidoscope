@@ -1,7 +1,7 @@
 module Instructions where
 
-import LLVM.AST (Operand (ConstantOperand, LocalReference, MetadataOperand), Type (IntegerType, FloatingPointType))
-import LLVM.AST.Constant ( Constant(Float, Int) )
+import LLVM.AST (Operand (ConstantOperand, LocalReference), Type (IntegerType, FloatingPointType, elementTypes, StructureType))
+import LLVM.AST.Constant ( Constant(Float, Int, Struct, memberValues) )
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction ( sitofp, fptosi )
 import LLVM.IRBuilder.Module (ModuleBuilder)
@@ -38,5 +38,6 @@ operandType op = case op of
   ConstantOperand con -> case con of
     Int _ _ -> ASTType.i32
     Float _ -> ASTType.double
-    _ -> ASTType.i1 -- TODO
-  MetadataOperand _ -> ASTType.double -- TODO
+    Struct { memberValues = [a, b] } -> StructureType False [operandType $ ConstantOperand a, operandType $ ConstantOperand b]
+    _ -> error $ "Unsupported constant operand type: " ++ show op
+  _ -> error $ "Unsupported operand type: " ++ show op

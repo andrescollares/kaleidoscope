@@ -12,7 +12,7 @@ import IRBuilder.LocalVar
     getConstantFromDefs,
     getFunctionFromDefs,
     getFunctionOperand,
-    getLocalVarName, definitionsToLocalVars,
+    getLocalVarName, definitionsToLocalVars
   )
 import Instructions (typedOperandInstruction)
 import LLVM.AST as AST
@@ -100,8 +100,8 @@ genOperand (UnaryOp oper a) localVars = do
         [
           ("-", fneg),
           ("!", not'), -- FIXME: printing double instead of bool
-          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0)) (getExpressionType a (definitionsToLocalVars defs))),
-          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)) (getExpressionType a (definitionsToLocalVars defs)))
+          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0))),
+          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)))
         ]
       where
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand

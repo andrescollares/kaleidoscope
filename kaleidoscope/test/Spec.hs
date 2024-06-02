@@ -103,6 +103,7 @@ jitTests = testGroup "JIT Tests" $ map (\(s, expectedValue, returnType) -> testC
   , ("fn_div_int_int", "2.5", ASTType.double)
   , ("fn_nested", "9", ASTType.i32)
   , ("fn_int_float", "3.5", ASTType.double)
+  , ("fn_return_tuple", "Tuple (0.0, ...)", ASTType.StructureType False [ASTType.double, ASTType.double])
   , ("if_int", "10", ASTType.i32)
   , ("if_float", "2.5", ASTType.double)
   , ("let_in_int", "5", ASTType.i32)

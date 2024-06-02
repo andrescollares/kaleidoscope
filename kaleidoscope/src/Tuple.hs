@@ -11,13 +11,19 @@ import Data.List ( intercalate )
 import Types (structType, getExpressionType)
 import LLVM.IRBuilder
 import qualified LLVM.AST as AST
+import LLVM.Internal.FFI.User (getOperand)
+import Instructions (operandType)
 
-tupleAccessorOperand :: Operand -> Operand -> Type -> IRBuilderT ModuleBuilder AST.Operand
-tupleAccessorOperand tupleOperand indexOperand tupleType = do
+tupleAccessorOperand :: Operand -> Operand -> IRBuilderT ModuleBuilder AST.Operand
+tupleAccessorOperand tupleOperand indexOperand = do
   var <- alloca tupleType Nothing 8
   store var 0 tupleOperand
   tmp_input_w0 <- gep var [ConstantOperand (C.Int 32 0), indexOperand]
   load tmp_input_w0 8
+  where
+  tupleType = operandType tupleOperand
+
+
 
 
 -- tupleAccessor :: Integer -> [Type] -> Definition
