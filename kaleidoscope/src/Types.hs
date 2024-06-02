@@ -1,12 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Types where
 
 import Data.String (fromString)
 import Data.List (find)
-import LLVM.AST as AST ( Name, Type )
+import LLVM.AST as AST ( Name, Type, Definition (TypeDefinition) )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
+import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
+
 
 type LocalVarType = (Name, S.Type)
 
@@ -54,3 +57,9 @@ findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVa
 
 structType :: [AST.Type] -> AST.Type
 structType = ASTType.StructureType False
+
+findTypeAlias :: Name -> SnocList Definition -> Definition
+findTypeAlias name (SnocList []) = error $ "Type alias " ++ show name ++ " not found"
+findTypeAlias name (SnocList (TypeDefinition n t : xs)) = if n == name then TypeDefinition n t else findTypeAlias name (SnocList xs)
+findTypeAlias name (SnocList (_ : xs)) = findTypeAlias name (SnocList xs)
+

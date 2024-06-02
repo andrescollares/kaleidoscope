@@ -27,14 +27,10 @@ import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, typedef)
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import Syntax as S
-import Types ( getExpressionType, getASTType )
+import Types ( getExpressionType, getASTType, findTypeAlias )
 import CLI (CliOptions)
 import Data.Map.Strict (Map, fromList)
-
-import Data.Map.Strict (size)
 import Debug.Trace
-
--- All defs: [GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "printi", parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "i") []],False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [], personalityFunction = Nothing, metadata = []}),GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = FloatingPointType {floatingPointType = DoubleFP}, name = Name "printd", parameters = ([Parameter (FloatingPointType {floatingPointType = DoubleFP}) (Name "d") []],False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [], personalityFunction = Nothing, metadata = []}),GlobalDefinition (Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 1}, name = Name "printb", parameters = ([Parameter (IntegerType {typeBits = 1}) (Name "b") []],False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [], personalityFunction = Nothing, metadata = []}),GlobalDefinition (GlobalVariable {name = Name "dummy", linkage = External, visibility = Default, dllStorageClass = Nothing, threadLocalMode = Nothing, unnamedAddr = Nothing, isConstant = False, type' = IntegerType {typeBits = 32}, addrSpace = AddrSpace 0, initializer = Just (Int {integerBits = 32, integerValue = 0}), section = Nothing, comdat = Nothing, alignment = 0, metadata = []})]
 
 
 -- Generates the Module from the previous module and the new expressions
@@ -70,7 +66,7 @@ genModule oldDefs expressions options = do
     modlTypesState = mapM genTypes expressions
     newModlTypes = buildModuleWithTypeDefinitions oldTypeDefs modlTypesState
     definitions = newModlTypes ++ buildModuleWithDefinitions oldDefsWithoutMain newModlTypes modlState
-    unoptimizedAst = trace ("Module defs: " ++ show definitions) $ mkModule definitions
+    unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
     moduleMainFn =
       filter -- Filter fst TODO:
@@ -167,12 +163,13 @@ genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Operand expression) = do
-  typeDefs <- liftModuleState $ gets builderTypeDefs
-  currentDefs <- trace ("Type defs:" ++ show typeDefs) $ liftModuleState $ gets builderDefs
+  currentDefs <- liftModuleState $ gets builderDefs
   function "main" [] (eType currentDefs) (\_ -> genLevel expression [])
   where
     -- Determine type of expression to be used as return type of main function
     eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
+    -- typeDefs moduleDefs = findTypeAlias (Name "a") moduleDefs
+    -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
 
 -- -- Type definition: this is a no-op
 genTopLevel (S.TopLevel (S.TypeDef _ _)) = do
@@ -190,6 +187,6 @@ genTypes :: Expr -> ModuleBuilder AST.Type
 genTypes (S.TopLevel (S.TypeDef typeName typeDef)) = do
   typedef typeName (Just $ getASTType typeDef)
 
--- do a no-op
+-- TODO: do a no-op
 genTypes _ = return ASTType.i32
 
