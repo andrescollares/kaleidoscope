@@ -16,6 +16,7 @@ data Operand
   | Float Double
   | Bool Bool
   | TupleI Operand Operand
+  | List [Operand]
   | Let Type Name Operand Operand
   | Var Name
   | Call Name [Operand]

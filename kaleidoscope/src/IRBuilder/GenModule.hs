@@ -39,7 +39,7 @@ import Debug.Trace
 -- Has to update the module state
 genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
 genModule oldDefs expressions options = do
-  optMod <- optimizeModule unoptimizedAst options
+  optMod <- trace ("main fn: " ++ show moduleMainFnType) $ optimizeModule unoptimizedAst options
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
@@ -78,7 +78,7 @@ genModule oldDefs expressions options = do
     moduleMainFnType = case moduleMainFn of
       [GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}] -> ASTType.i32
       [GlobalDefinition AST.Function {returnType = FloatingPointType {floatingPointType = DoubleFP}}] -> ASTType.double
-      [GlobalDefinition AST.Function {returnType = StructureType { elementTypes = [t1, t2] }}] -> ASTType.StructureType { elementTypes = [t1, t2] }
+      [GlobalDefinition AST.Function {returnType = StructureType { elementTypes = [t1, t2] }}] -> ASTType.StructureType { elementTypes = [t1, t2], isPacked = False}
       _ -> ASTType.i1
 
 type TypeDefinitionMap = Map Name AST.Type

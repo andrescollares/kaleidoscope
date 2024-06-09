@@ -9,6 +9,7 @@ import LLVM.AST as AST ( Name, Type, Definition (TypeDefinition) )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
+import Debug.Trace
 
 
 type LocalVarType = (Name, S.Type)
@@ -42,6 +43,10 @@ getExpressionType (If _ e1 e2) localVars =
     else error "Types of both sides of if statement should be the same"
   where
     e1Type = getExpressionType e1 localVars
+getExpressionType (List [x]) localVars = trace ("operandType: " ++ show x) $ getExpressionType x localVars
+getExpressionType (List (x:xs)) localVars = ASTType.StructureType False [getExpressionType x localVars, restType]
+  where
+    restType = trace ("operandType: " ++ show x) $ getExpressionType (List xs) localVars
 getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 getASTType :: S.Type -> AST.Type

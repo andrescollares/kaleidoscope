@@ -106,6 +106,11 @@ tuple = do
     [frst, scnd] -> return $ TupleI frst scnd
     _ -> fail "tuples must have exactly two elements"
 
+list :: Parser Operand
+list = do
+  elements <- brackets $ commaSep expr
+  return $ List elements
+
 expr :: Parser Operand
 expr = Ex.buildExpressionParser (binops ++ unops ++ [[unop], [binop]]) factor
 
@@ -136,7 +141,7 @@ constant = do
   reservedOp "const"
   tpi <- tp
   name <- identifier
-  value <- try floating <|> try ParserH.int <|> try ParserH.bool <|> try tuple
+  value <- try floating <|> try ParserH.int <|> try ParserH.bool <|> try tuple <|> try list
   return $ Constant tpi (fromString name) value
 
 typedef :: Parser Declaration
@@ -183,6 +188,7 @@ factor =
     <|> try ParserH.int
     <|> try ParserH.bool
     <|> try tuple
+    <|> try list
     <|> try call
     <|> try ifthen
     <|> try letins

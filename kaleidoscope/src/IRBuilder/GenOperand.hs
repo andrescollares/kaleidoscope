@@ -34,6 +34,7 @@ import Syntax as S
 import Types (getASTType, getExpressionType)
 import Tuple (tupleAccessorOperand)
 import LLVM.IRBuilder.Internal.SnocList (SnocList(SnocList))
+import Debug.Trace (trace)
 
 
 -- Generates the Operands that genTopLevel needs.
@@ -178,5 +179,18 @@ genOperand (Let (Tuple t1 t2) (Name varName) variableValue body) localVars = do
   store var 0 computedValue
   loadedVar <- load var 0
   genOperand body ((Just varName, loadedVar) : localVars)
+
+-- Lists
+genOperand (List []) _ = error "Empty lists are not supported."
+genOperand (List [x]) localVars = trace ("operand: " ++ show x) $ genOperand x localVars
+genOperand (List (x:xs)) localVars = do
+  leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
+  rightOp <- genOperand (List xs) localVars
+  return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant leftOp, getConstant rightOp]})
+  where
+    getConstant (ConstantOperand c) = c -- TODO: DRY
+    getConstant _ = error "Only constants allowed inside tuples."
+
+
 
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x

@@ -58,6 +58,9 @@ argument = do
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer
 
+brackets :: Parser a -> Parser a
+brackets = Tok.brackets lexer
+
 semiSep :: Parser a -> Parser [a]
 semiSep = Tok.semiSep lexer
 

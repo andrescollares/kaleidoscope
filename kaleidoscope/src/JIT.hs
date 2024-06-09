@@ -72,6 +72,7 @@ runJIT astModule runType = do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of
             Just fn -> do
+              putStrLn "Running main function..."
               putStrLn $ "Evaluated to: " ++ result
               return result
               where
@@ -79,10 +80,10 @@ runJIT astModule runType = do
                   FloatingPointType _ -> show $ runDouble fn
                   IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
                   IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
-                  -- TODO: find a better wat to print the tuples
+                  -- TODO: find a better way to print the tuples
                   StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ firstElem ++ ", ...)"
                     where firstElem = case t1 of
-                            IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
+                            IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn -- FIXME: runInteger can't handle lists longer that 3 :skull_emoji:
                             IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
                             FloatingPointType _ -> show $ runDouble fn
                             _ -> error "Unknown expression type"
