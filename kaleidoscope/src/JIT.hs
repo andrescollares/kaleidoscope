@@ -72,7 +72,6 @@ runJIT astModule runType = do
           mainfn <- EE.getFunction ee (AST.Name "main")
           case mainfn of
             Just fn -> do
-              putStrLn "Running main function..."
               putStrLn $ "Evaluated to: " ++ result
               return result
               where

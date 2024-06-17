@@ -33,14 +33,19 @@ import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
 import Types (getASTType, getExpressionType)
 import Tuple (tupleAccessorOperand)
+import List (nullIntList)
 import LLVM.IRBuilder.Internal.SnocList (SnocList(SnocList))
 import Debug.Trace (trace)
+import qualified LLVM.AST.AddrSpace as AST
+import LLVM.AST.Constant (Constant(Null))
 
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
 -- Float
-genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
+genOperand (Float n) _ = do
+    typedefs <- liftModuleState $ gets builderTypeDefs
+    return $ trace ("Type defss: " ++ show typedefs) ConstantOperand (C.Float (F.Double n))
 -- Integer
 genOperand (Int n) _ = return $ ConstantOperand (C.Int 32 n)
 -- Bool
@@ -181,15 +186,37 @@ genOperand (Let (Tuple t1 t2) (Name varName) variableValue body) localVars = do
   genOperand body ((Just varName, loadedVar) : localVars)
 
 -- Lists
-genOperand (List []) _ = error "Empty lists are not supported."
-genOperand (List [x]) localVars = trace ("operand: " ++ show x) $ genOperand x localVars
-genOperand (List (x:xs)) localVars = do
-  leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
-  rightOp <- genOperand (List xs) localVars
-  return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant leftOp, getConstant rightOp]})
+genOperand (List []) _ = nullIntList
+genOperand (List [x]) localVars = do
+    var <- alloca intListType Nothing 0
+    i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
+    computedValue <- genOperand x localVars
+    store i32_slot 0 computedValue
+    null_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+    store null_slot 0 (ConstantOperand $ Null intListPtrType)
+    load var 0
   where
-    getConstant (ConstantOperand c) = c -- TODO: DRY
-    getConstant _ = error "Only constants allowed inside tuples."
+    intListType = ASTType.NamedTypeReference (AST.Name "IntList")
+    intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
+genOperand (List (x:xs)) localVars = do
+    var <- alloca intListType Nothing 0
+    i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
+    nodeValue <- genOperand x localVars
+    store i32_slot 0 nodeValue
+    next_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+    nextValue <- genOperand (List xs) localVars
+    store next_slot 0 nextValue
+    load var 0
+  where
+    intListType = ASTType.NamedTypeReference (AST.Name "IntList")
+    intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
+  -- do
+  -- leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
+  -- rightOp <- genOperand (List xs) localVars
+  -- return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant leftOp, getConstant rightOp]})
+  -- where
+  --   getConstant (ConstantOperand c) = c -- TODO: DRY
+  --   getConstant _ = error "Only constants allowed inside tuples."
 
 
 

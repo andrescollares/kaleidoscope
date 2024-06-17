@@ -3,8 +3,12 @@
 module StdLibrary where
 
 import Data.String
-import LLVM.AST
+import LLVM.AST hiding (type')
 import LLVM.AST.Global hiding (alignment, metadata)
+import LLVM.AST.AddrSpace
+import LLVM.AST.Linkage (Linkage(External))
+import LLVM.AST.Visibility (Visibility(Default))
+import qualified LLVM.AST.Constant as C
 
 stdLibrary :: [Definition]
 stdLibrary =
@@ -28,5 +32,18 @@ stdLibrary =
           parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
           returnType = IntegerType 1,
           basicBlocks = []
-        }
+        },
+    TypeDefinition (Name (fromString "IntList")) $ Just (StructureType False [
+      IntegerType 32,
+      PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+    ]),
+    GlobalDefinition
+      globalVariableDefaults {
+        name = Name (fromString "VoidIntList"),
+        linkage = External,
+        visibility = Default,
+        isConstant = True,
+        type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
+        initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+      }
   ]

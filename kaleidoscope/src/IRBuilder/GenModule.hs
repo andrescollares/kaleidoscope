@@ -39,7 +39,7 @@ import Debug.Trace
 -- Has to update the module state
 genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
 genModule oldDefs expressions options = do
-  optMod <- trace ("main fn: " ++ show moduleMainFnType) $ optimizeModule unoptimizedAst options
+  optMod <- optimizeModule unoptimizedAst options
   res <- runJIT optMod moduleMainFnType
   return (res, definitions)
   where
@@ -53,19 +53,11 @@ genModule oldDefs expressions options = do
             _ -> False
         )
         oldDefs
-    oldTypeDefs = filter
-      ( \case
-          TypeDefinition {} -> True
-          _ -> False
-      )
-      oldDefs
     filterFst _ [] = []
     filterFst p (x : xs)
       | p x = xs
       | otherwise = x : filterFst p xs
-    modlTypesState = mapM genTypes expressions
-    newModlTypes = buildModuleWithTypeDefinitions oldTypeDefs modlTypesState
-    definitions = newModlTypes ++ buildModuleWithDefinitions oldDefsWithoutMain newModlTypes modlState
+    definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
     moduleMainFn =
@@ -83,17 +75,14 @@ genModule oldDefs expressions options = do
 
 type TypeDefinitionMap = Map Name AST.Type
 
-buildModuleWithTypeDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
-buildModuleWithTypeDefinitions prevDefs = execModuleBuilder oldModl
-  where
-    oldModl = ModuleBuilderState {builderDefs = SnocList [], builderTypeDefs = defsMap}
-    defsMap = fromList $ map (\(TypeDefinition definitionName (Just t)) -> (definitionName, t)) prevDefs
-
-buildModuleWithDefinitions :: [Definition] -> [Definition] -> ModuleBuilder a -> [Definition]
-buildModuleWithDefinitions prevDefs typeDefs = execModuleBuilder oldModl
+buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
+buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
   where
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = defsMap}
     defsMap = fromList $ map (\(TypeDefinition definitionName (Just t)) -> (definitionName, t)) typeDefs
+    typeDefs = filter isTypeDef prevDefs
+    isTypeDef (TypeDefinition _ _) = True
+    isTypeDef _ = False
 
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
@@ -172,7 +161,8 @@ genTopLevel (S.Operand expression) = do
     -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
 
 -- -- Type definition: this is a no-op
-genTopLevel (S.TopLevel (S.TypeDef _ _)) = do
+genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do
+  _ <- typedef typeName (Just $ getASTType typeDef)
   global "dummy" ASTType.i32 (C.Int 32 0)
   -- TODO: do nothing (no-op)
 
@@ -182,11 +172,4 @@ genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
   generated <- genOperand e localVars
   ret generated
-
-genTypes :: Expr -> ModuleBuilder AST.Type
-genTypes (S.TopLevel (S.TypeDef typeName typeDef)) = do
-  typedef typeName (Just $ getASTType typeDef)
-
--- TODO: do a no-op
-genTypes _ = return ASTType.i32
 

@@ -29,7 +29,7 @@ data Declaration
   = Function Name [(Type, ParameterName)] Type Operand
   | Extern Name [(Type, ParameterName)] Type
   | Constant Type Name Operand
-  | TypeDef Name Type
+  | TypeDef Name Type -- TODO: BUG: type defs are optimized out if no instances are found. Even with optLevel 0
   deriving stock (Eq, Ord, Show)
 
 data Type
