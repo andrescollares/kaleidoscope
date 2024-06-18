@@ -38,6 +38,13 @@ stdLibrary =
       PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
     ]),
     GlobalDefinition
+      functionDefaults
+       { name = Name (fromString "printil"),
+         parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+         returnType = IntegerType 32,
+         basicBlocks = []
+       },
+    GlobalDefinition
       globalVariableDefaults {
         name = Name (fromString "VoidIntList"),
         linkage = External,

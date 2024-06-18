@@ -30,6 +30,7 @@ definitionsToLocalVars (SnocList defs) =
     ( \def -> case def of
         GlobalDefinition AST.GlobalVariable {G.name = n, G.type' = t} -> (n, llvmTypeToSyntaxType t)
         GlobalDefinition AST.Function {G.name = n, G.returnType = retT} -> (n, llvmTypeToSyntaxType retT)
+        TypeDefinition n (Just t) -> (n, llvmTypeToSyntaxType t)
         _ -> error $ "Unsupported definition " ++ show def
     )
     defs

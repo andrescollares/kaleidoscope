@@ -186,7 +186,7 @@ genOperand (Let (Tuple t1 t2) (Name varName) variableValue body) localVars = do
   genOperand body ((Just varName, loadedVar) : localVars)
 
 -- Lists
-genOperand (List []) _ = nullIntList
+genOperand (List []) _ = nullIntList -- TODO: No
 genOperand (List [x]) localVars = do
     var <- alloca intListType Nothing 0
     i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
@@ -194,7 +194,7 @@ genOperand (List [x]) localVars = do
     store i32_slot 0 computedValue
     null_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
     store null_slot 0 (ConstantOperand $ Null intListPtrType)
-    load var 0
+    return var
   where
     intListType = ASTType.NamedTypeReference (AST.Name "IntList")
     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
@@ -206,7 +206,7 @@ genOperand (List (x:xs)) localVars = do
     next_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
     nextValue <- genOperand (List xs) localVars
     store next_slot 0 nextValue
-    load var 0
+    return var
   where
     intListType = ASTType.NamedTypeReference (AST.Name "IntList")
     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)

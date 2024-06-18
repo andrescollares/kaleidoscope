@@ -27,6 +27,17 @@ int8_t printb(int8_t b) {
   return b;
 }
 
+// print an int list
+int32_t printil(struct intList *list) {
+  struct intList *current = list;
+  while (current != NULL) {
+    printf("%d ", current->val);
+    current = current->next;
+  }
+  printf("\n");
+  return 0;
+}
+
 // write a double to a file
 double writed(double d) {
   FILE *fptr;

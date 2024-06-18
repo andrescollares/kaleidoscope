@@ -5,11 +5,12 @@ module Types where
 
 import Data.String (fromString)
 import Data.List (find)
-import LLVM.AST as AST ( Name, Type, Definition (TypeDefinition) )
+import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference), Definition (TypeDefinition) )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import Debug.Trace
+import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 
 
 type LocalVarType = (Name, S.Type)
@@ -43,10 +44,10 @@ getExpressionType (If _ e1 e2) localVars =
     else error "Types of both sides of if statement should be the same"
   where
     e1Type = getExpressionType e1 localVars
-getExpressionType (List [x]) localVars = trace ("operandType: " ++ show x) $ getExpressionType x localVars
-getExpressionType (List (x:xs)) localVars = ASTType.StructureType False [getExpressionType x localVars, restType]
+getExpressionType (List [x]) localVars = getExpressionType x localVars
+getExpressionType (List (x:xs)) localVars = ASTType.StructureType False [getExpressionType x localVars, listPointerType]
   where
-    restType = trace ("operandType: " ++ show x) $ getExpressionType (List xs) localVars
+    listPointerType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
 getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 getASTType :: S.Type -> AST.Type
