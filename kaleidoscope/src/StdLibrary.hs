@@ -3,12 +3,13 @@
 module StdLibrary where
 
 import Data.String
-import LLVM.AST hiding (type')
+import LLVM.AST hiding (type', callingConvention, returnAttributes, functionAttributes)
 import LLVM.AST.Global hiding (alignment, metadata)
 import LLVM.AST.AddrSpace
 import LLVM.AST.Linkage (Linkage(External))
 import LLVM.AST.Visibility (Visibility(Default))
 import qualified LLVM.AST.Constant as C
+import qualified LLVM.AST.CallingConvention as CC
 
 stdLibrary :: [Definition]
 stdLibrary =
@@ -52,5 +53,33 @@ stdLibrary =
         isConstant = True,
         type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
         initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-      }
+      },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "printIntMainFunction"),
+          parameters = [],
+          returnType = IntegerType 32,
+          basicBlocks = [
+            BasicBlock (Name (fromString "entry")) [
+              UnName 0 := Call {
+                tailCallKind = Nothing,
+                callingConvention = CC.C,
+                returnAttributes = [],
+                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "main")),
+                arguments = [],
+                functionAttributes = [],
+                metadata = []
+              },
+              UnName 1 := Call {
+                tailCallKind = Nothing,
+                callingConvention = CC.C,
+                returnAttributes = [],
+                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "printi")),
+                arguments = [ (LocalReference (UnName 0) (IntegerType 32), []) ],
+                functionAttributes = [],
+                metadata = []
+              }
+            ]
+          ]
+        }
   ]

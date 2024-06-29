@@ -18,6 +18,7 @@ import LLVM.PassManager
       withPassManager,
       PassSetSpec(optLevel) )
 import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
+import Data.String ( IsString(fromString) )
 
 foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
 
@@ -69,22 +70,32 @@ runJIT astModule runType = do
     jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
-          mainfn <- EE.getFunction ee (AST.Name "main")
-          case mainfn of
+          printer <- EE.getFunction ee (AST.Name $ fromString $ printerFunctionName runType)
+          case printer of
             Just fn -> do
-              putStrLn $ "Evaluated to: " ++ result
-              return result
-              where
-                result = case runType of
-                  FloatingPointType _ -> show $ runDouble fn
-                  IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
-                  IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
-                  -- TODO: find a better way to print the tuples
-                  StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ firstElem ++ ", ...)"
-                    where firstElem = case t1 of
-                            IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn -- FIXME: runInteger can't handle lists longer that 3 :skull_emoji:
-                            IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
-                            FloatingPointType _ -> show $ runDouble fn
-                            _ -> error "Unknown expression type"
-                  _ -> error "Unknown expression type"
-            Nothing -> return "0"
+              return $ "Evaluated to" ++ (show $ runInteger fn)
+            Nothing -> error "Unable to print this result"
+
+        
+            --   where
+            --     result = case runType of
+            --       FloatingPointType _ -> show $ runDouble fn
+            --       IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
+            --       IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
+            --       -- TODO: find a better way to print the tuples
+            --       StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ firstElem ++ ", ...)"
+            --         where firstElem = case t1 of
+            --                 IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn -- FIXME: runInteger can't handle lists longer that 3 :skull_emoji:
+            --                 IntegerType { ASTType.typeBits = 1 } -> if runBool
+              --  fn == 0 then "false" else "true"
+            --                 FloatingPointType _ -> show $ runDouble fn
+            --                 _ -> error "Unknown expression type"
+            --       _ -> error "Unknown expression type"
+            -- Nothing -> return "0"
+
+printerFunctionName :: AST.Type -> String
+printerFunctionName (FloatingPointType _) = "printd"
+printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printi"
+printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "printb"
+printerFunctionName _ = error "Unable to print this result"
+

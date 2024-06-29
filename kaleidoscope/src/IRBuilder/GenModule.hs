@@ -168,6 +168,7 @@ genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do
 
 genTopLevel _ = error "This shouldn't have matched here."
 
+-- TODO: add print statement to show result value
 genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
   generated <- genOperand e localVars

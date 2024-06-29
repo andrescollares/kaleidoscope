@@ -4,7 +4,6 @@ define %myStruct @main() {
   ret %myStruct { i32 1, %myStruct* null }
 }
 
-; create a 2-node linked list of the %myStruct type
 define %myStruct @linked_list() {
     %node1 = alloca %myStruct
     %node2 = alloca %myStruct
