@@ -3,8 +3,8 @@
 module StdLibrary where
 
 import Data.String
-import LLVM.AST hiding (type', callingConvention, returnAttributes, functionAttributes)
-import LLVM.AST.Global hiding (alignment, metadata)
+import LLVM.AST hiding (type')
+import LLVM.AST.Global hiding (alignment, metadata, callingConvention, returnAttributes, functionAttributes)
 import LLVM.AST.AddrSpace
 import LLVM.AST.Linkage (Linkage(External))
 import LLVM.AST.Visibility (Visibility(Default))
@@ -57,7 +57,7 @@ stdLibrary =
     GlobalDefinition
       functionDefaults
         { name = Name (fromString "printIntMainFunction"),
-          parameters = [],
+          parameters = ([], False),
           returnType = IntegerType 32,
           basicBlocks = [
             BasicBlock (Name (fromString "entry")) [
@@ -74,12 +74,15 @@ stdLibrary =
                 tailCallKind = Nothing,
                 callingConvention = CC.C,
                 returnAttributes = [],
-                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "printi")),
-                arguments = [ (LocalReference (UnName 0) (IntegerType 32), []) ],
+                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [IntegerType {typeBits = 32}] False) (AddrSpace 0)) (Name (fromString "printi")),
+                arguments = [ (LocalReference (IntegerType 32) (UnName 0), []) ],
+                -- arguments = [ (ConstantOperand $ C.Int 32 42, []) ],
                 functionAttributes = [],
                 metadata = []
               }
-            ]
+            ] (
+                  Do $ Ret (Just $ ConstantOperand $ C.Int 32 0) []
+                 )
           ]
         }
   ]

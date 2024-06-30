@@ -59,7 +59,7 @@ optimizeModule astModule CliOptions { optimizationLevel = level, emitLLVM = emit
             putStrLn "Optimized LLVM assembly:"
             putStrLn $ modBSToString modBS
             -- Return the optimized module
-            return optmod) 
+            return optmod)
           else return optmod
   where
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
@@ -71,12 +71,15 @@ runJIT astModule runType = do
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
           printer <- EE.getFunction ee (AST.Name $ fromString $ printerFunctionName runType)
-          case printer of
-            Just fn -> do
-              return $ "Evaluated to" ++ (show $ runInteger fn)
-            Nothing -> error "Unable to print this result"
+          putStrLn "Running JIT..."
+          putStrLn $ result printer
+          return "Done!"
+          where
+            result p = case p of
+              Just fn -> "Evaluated to" ++ show (runInteger fn)
+              Nothing -> error "Unable to print this result"
 
-        
+
             --   where
             --     result = case runType of
             --       FloatingPointType _ -> show $ runDouble fn
@@ -94,8 +97,8 @@ runJIT astModule runType = do
             -- Nothing -> return "0"
 
 printerFunctionName :: AST.Type -> String
-printerFunctionName (FloatingPointType _) = "printd"
-printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printi"
-printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "printb"
+printerFunctionName (FloatingPointType _) = "aasdasd"
+printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printIntMainFunction"
+printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "asdasd"
 printerFunctionName _ = error "Unable to print this result"
 
