@@ -53,36 +53,36 @@ stdLibrary =
         isConstant = True,
         type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
         initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-      },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printIntMainFunction"),
-          parameters = ([], False),
-          returnType = IntegerType 32,
-          basicBlocks = [
-            BasicBlock (Name (fromString "entry")) [
-              UnName 0 := Call {
-                tailCallKind = Nothing,
-                callingConvention = CC.C,
-                returnAttributes = [],
-                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "main")),
-                arguments = [],
-                functionAttributes = [],
-                metadata = []
-              },
-              UnName 1 := Call {
-                tailCallKind = Nothing,
-                callingConvention = CC.C,
-                returnAttributes = [],
-                function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [IntegerType {typeBits = 32}] False) (AddrSpace 0)) (Name (fromString "printi")),
-                arguments = [ (LocalReference (IntegerType 32) (UnName 0), []) ],
-                -- arguments = [ (ConstantOperand $ C.Int 32 42, []) ],
-                functionAttributes = [],
-                metadata = []
-              }
-            ] (
-                  Do $ Ret (Just $ ConstantOperand $ C.Int 32 0) []
-                 )
-          ]
-        }
+      }
+    -- GlobalDefinition
+    --   functionDefaults
+    --     { name = Name (fromString "printIntMainFunction"),
+    --       parameters = ([], False),
+    --       returnType = IntegerType 32,
+    --       basicBlocks = [
+    --         BasicBlock (Name (fromString "entry")) [
+    --           UnName 0 := Call {
+    --             tailCallKind = Nothing,
+    --             callingConvention = CC.C,
+    --             returnAttributes = [],
+    --             function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "main")),
+    --             arguments = [],
+    --             functionAttributes = [],
+    --             metadata = []
+    --           },
+    --           UnName 1 := Call {
+    --             tailCallKind = Nothing,
+    --             callingConvention = CC.C,
+    --             returnAttributes = [],
+    --             function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [IntegerType {typeBits = 32}] False) (AddrSpace 0)) (Name (fromString "printi")),
+    --             arguments = [ (LocalReference (IntegerType 32) (UnName 0), []) ],
+    --             -- arguments = [ (ConstantOperand $ C.Int 32 42, []) ],
+    --             functionAttributes = [],
+    --             metadata = []
+    --           }
+    --         ] (
+    --               Do $ Ret (Just $ ConstantOperand $ C.Int 32 0) []
+    --              )
+    --       ]
+    --     }
   ]

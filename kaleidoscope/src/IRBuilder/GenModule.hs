@@ -154,11 +154,13 @@ genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
 genTopLevel (S.Operand expression) = do
   currentDefs <- liftModuleState $ gets builderDefs
   function "main" [] (eType currentDefs) (\_ -> genLevel expression [])
+  function "printResult" [] (eType currentDefs) (\_ -> genLevel printerExpressions [])
   where
     -- Determine type of expression to be used as return type of main function
     eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
     -- typeDefs moduleDefs = findTypeAlias (Name "a") moduleDefs
     -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
+    printerExpressions = S.Call "printi" [S.Call "main" []]
 
 -- -- Type definition: this is a no-op
 genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do

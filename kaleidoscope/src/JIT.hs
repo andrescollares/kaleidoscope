@@ -70,13 +70,17 @@ runJIT astModule runType = do
     jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
-          printer <- EE.getFunction ee (AST.Name $ fromString $ printerFunctionName runType)
-          putStrLn "Running JIT..."
-          putStrLn $ result printer
-          return "Done!"
+          mainFn <- EE.getFunction ee (AST.Name "main")
+          case mainFn of
+            Just _ -> do
+              printer <- EE.getFunction ee (AST.Name $ fromString $ printerFunctionName runType)
+              putStrLn "Running JIT..."
+              putStrLn $ result printer
+              return "Done!"
+            Nothing -> return "0"
           where
             result p = case p of
-              Just fn -> "Evaluated to" ++ show (runInteger fn)
+              Just fn -> show (runInteger fn)
               Nothing -> error "Unable to print this result"
 
 
@@ -98,7 +102,7 @@ runJIT astModule runType = do
 
 printerFunctionName :: AST.Type -> String
 printerFunctionName (FloatingPointType _) = "aasdasd"
-printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printIntMainFunction"
+printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printResult"
 printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "asdasd"
 printerFunctionName _ = error "Unable to print this result"
 
