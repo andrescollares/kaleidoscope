@@ -27,14 +27,70 @@ int8_t printb(int8_t b) {
   return b;
 }
 
+// print a tuple of two ints
+// TODO: print any other type
+int32_t printii(struct intTuple t) {
+  printf("(%d, %d)\n", t.a, t.b);
+  return 0;
+}
+
 // print an int list
 int32_t printil(struct intList *list) {
+  if (list == NULL) {
+    printf("[]\n");
+    return 0;
+  }
+  printf("[");
+  _print_int_list(list);
+  printf("]\n");
+}
+
+int32_t _print_int_list(struct intList *list) {
   struct intList *current = list;
   while (current != NULL) {
     printf("%d ", current->val);
     current = current->next;
   }
-  printf("\n");
+  return 0;
+}
+
+// print a double list
+int32_t printfl(struct doubleList *list) {
+  if (list == NULL) {
+    printf("[]\n");
+    return 0;
+  }
+  printf("[");
+  _print_double_list(list);
+  printf("]\n");
+}
+
+int32_t _print_double_list(struct doubleList *list) {
+  struct doubleList *current = list;
+  while (current != NULL) {
+    printf("%f ", current->val);
+    current = current->next;
+  }
+  return 0;
+}
+
+// print a boolean list
+int32_t printbl(struct boolList *list) {
+  if (list == NULL) {
+    printf("[]\n");
+    return 0;
+  }
+  printf("[");
+  _print_bool_list(list);
+  printf("]\n");
+}
+
+int32_t _print_bool_list(struct boolList *list) {
+  struct boolList *current = list;
+  while (current != NULL) {
+    printf("%s ", current->val ? "true" : "false");
+    current = current->next;
+  }
   return 0;
 }
 

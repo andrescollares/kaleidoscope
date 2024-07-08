@@ -65,23 +65,17 @@ optimizeModule astModule CliOptions { optimizationLevel = level, emitLLVM = emit
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
 runJIT :: AST.Module -> AST.Type -> IO String
-runJIT astModule runType = do
+runJIT astModule runType = do -- TODO: runType no longer necessary
   withContext $ \context ->
     jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
           mainFn <- EE.getFunction ee (AST.Name "main")
           case mainFn of
-            Just _ -> do
-              printer <- EE.getFunction ee (AST.Name $ fromString $ printerFunctionName runType)
-              putStrLn "Running JIT..."
-              putStrLn $ result printer
-              return "Done!"
+            Just fn -> do
+              putStr $ if show (runInteger fn) == "" then "Error" else "\n"
+              return $ show (runInteger fn)
             Nothing -> return "0"
-          where
-            result p = case p of
-              Just fn -> show (runInteger fn)
-              Nothing -> error "Unable to print this result"
 
 
             --   where
@@ -99,10 +93,4 @@ runJIT astModule runType = do
             --                 _ -> error "Unknown expression type"
             --       _ -> error "Unknown expression type"
             -- Nothing -> return "0"
-
-printerFunctionName :: AST.Type -> String
-printerFunctionName (FloatingPointType _) = "aasdasd"
-printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printResult"
-printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "asdasd"
-printerFunctionName _ = error "Unable to print this result"
 

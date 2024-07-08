@@ -31,21 +31,20 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState, ModuleBuilde
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
-import Types (getASTType, getExpressionType)
+import Types (getASTType, getExpressionType, listPointerTypeName)
 import Tuple (tupleAccessorOperand)
 import List (nullIntList)
 import LLVM.IRBuilder.Internal.SnocList (SnocList(SnocList))
 import Debug.Trace (trace)
 import qualified LLVM.AST.AddrSpace as AST
 import LLVM.AST.Constant (Constant(Null))
+import Data.String (fromString)
 
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
 -- Float
-genOperand (Float n) _ = do
-    typedefs <- liftModuleState $ gets builderTypeDefs
-    return $ trace ("Type defss: " ++ show typedefs) ConstantOperand (C.Float (F.Double n))
+genOperand (Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Integer
 genOperand (Int n) _ = return $ ConstantOperand (C.Int 32 n)
 -- Bool
@@ -208,7 +207,8 @@ genOperand (List (x:xs)) localVars = do
     store next_slot 0 nextValue
     return var
   where
-    intListType = ASTType.NamedTypeReference (AST.Name "IntList")
+    elementType = getExpressionType x [] -- TODO: local vars
+    intListType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeName x)
     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
   -- do
   -- leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars

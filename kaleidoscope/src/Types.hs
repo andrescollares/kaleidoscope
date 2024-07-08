@@ -5,12 +5,14 @@ module Types where
 
 import Data.String (fromString)
 import Data.List (find)
-import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference), Definition (TypeDefinition) )
+import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference, IntegerType, FloatingPointType), Definition (TypeDefinition) )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import Debug.Trace
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
+import qualified LLVM.Internal.FFI.Type as ASTType
+import qualified LLVM.AST.AddrSpace as AST
 
 
 type LocalVarType = (Name, S.Type)
@@ -44,11 +46,23 @@ getExpressionType (If _ e1 e2) localVars =
     else error "Types of both sides of if statement should be the same"
   where
     e1Type = getExpressionType e1 localVars
-getExpressionType (List [x]) localVars = getExpressionType x localVars
-getExpressionType (List (x:xs)) localVars = ASTType.StructureType False [getExpressionType x localVars, listPointerType]
-  where
-    listPointerType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+-- getExpressionType (List [x]) localVars = getExpressionType x localVars
+getExpressionType (List (x:_)) localVars = listPointerType x localVars
 getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
+
+listPointerType :: S.Operand -> [LocalVarType] -> AST.Type
+listPointerType listElement localVars = case (getExpressionType listElement localVars) of -- TODO: local vars param
+  IntegerType { ASTType.typeBits = 32 } -> PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+  IntegerType { ASTType.typeBits = 1 } -> PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)
+  FloatingPointType _ -> PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)
+  _ -> error "Unsupported list element type"
+
+listPointerTypeName :: S.Operand -> String
+listPointerTypeName listElement = case (getExpressionType listElement []) of
+  IntegerType { ASTType.typeBits = 32 } -> "IntList"
+  IntegerType { ASTType.typeBits = 1 } -> "BoolList"
+  FloatingPointType _ -> "FloatList"
+  _ -> error "Unsupported list element type"
 
 getASTType :: S.Type -> AST.Type
 getASTType Double = ASTType.double

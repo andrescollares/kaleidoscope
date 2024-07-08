@@ -38,10 +38,32 @@ stdLibrary =
       IntegerType 32,
       PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
     ]),
+    TypeDefinition (Name (fromString "FloatList")) $ Just (StructureType False [
+      FloatingPointType DoubleFP,
+      PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)
+    ]),
+    TypeDefinition (Name (fromString "BoolList")) $ Just (StructureType False [
+      IntegerType 1,
+      PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)
+    ]),
     GlobalDefinition
       functionDefaults
        { name = Name (fromString "printil"),
          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+         returnType = IntegerType 32,
+         basicBlocks = []
+       },
+    GlobalDefinition
+      functionDefaults
+       { name = Name (fromString "printfl"),
+         parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+         returnType = IntegerType 32,
+         basicBlocks = []
+       },
+    GlobalDefinition
+      functionDefaults
+       { name = Name (fromString "printbl"),
+         parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
          returnType = IntegerType 32,
          basicBlocks = []
        },
