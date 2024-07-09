@@ -27,10 +27,24 @@ int8_t printb(int8_t b) {
   return b;
 }
 
-// print a tuple of two ints
-// TODO: print any other type
-int32_t printii(struct intTuple t) {
-  printf("(%d, %d)\n", t.a, t.b);
+// print a tuple 
+int32_t print_tuple(struct intTuple t, int32_t first_type, int32_t second_type) {
+  if (first_type == K_INT) {
+    printf("(%d, ", t.a);
+  } else if (first_type == K_DOUBLE) {
+    printf("(%f, ", t.a);
+  } else if (first_type == K_BOOL) {
+    printf("(%s, ", t.a ? "true" : "false");
+  }
+
+  if (second_type == K_INT) {
+    printf("%d)\n", t.b);
+  } else if (second_type == K_DOUBLE) {
+    printf("%f)\n", t.b);
+  } else if (second_type == K_BOOL) {
+    printf("%s)\n", t.b ? "true" : "false");
+  }
+
   return 0;
 }
 
@@ -40,18 +54,18 @@ int32_t printil(struct intList *list) {
     printf("[]\n");
     return 0;
   }
-  printf("[");
-  _print_int_list(list);
-  printf("]\n");
-}
-
-int32_t _print_int_list(struct intList *list) {
   struct intList *current = list;
+  struct intList *next = NULL;
+  printf("[");
   while (current != NULL) {
-    printf("%d ", current->val);
-    current = current->next;
+    printf("%d", current->val);
+    next = current->next;
+    if (next != NULL) {
+      printf(", ");
+    }
+    current = next;
   }
-  return 0;
+  printf("]\n");
 }
 
 // print a double list
@@ -60,18 +74,18 @@ int32_t printfl(struct doubleList *list) {
     printf("[]\n");
     return 0;
   }
-  printf("[");
-  _print_double_list(list);
-  printf("]\n");
-}
-
-int32_t _print_double_list(struct doubleList *list) {
   struct doubleList *current = list;
+  struct doubleList *next = NULL;
+  printf("[");
   while (current != NULL) {
-    printf("%f ", current->val);
-    current = current->next;
+    printf("%f", current->val);
+    next = current->next;
+    if (next != NULL) {
+      printf(", ");
+    }
+    current = next;
   }
-  return 0;
+  printf("]\n");
 }
 
 // print a boolean list
@@ -80,18 +94,18 @@ int32_t printbl(struct boolList *list) {
     printf("[]\n");
     return 0;
   }
-  printf("[");
-  _print_bool_list(list);
-  printf("]\n");
-}
-
-int32_t _print_bool_list(struct boolList *list) {
   struct boolList *current = list;
+  struct boolList *next = NULL;
+  printf("[");
   while (current != NULL) {
-    printf("%s ", current->val ? "true" : "false");
-    current = current->next;
+    printf("%s", current->val ? "true" : "false");
+    next = current->next;
+    if (next != NULL) {
+      printf(", ");
+    }
+    current = next;
   }
-  return 0;
+  printf("]\n");
 }
 
 // write a double to a file

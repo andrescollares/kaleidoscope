@@ -161,15 +161,27 @@ genTopLevel (S.Operand expression) = do
     eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
     -- typeDefs moduleDefs = findTypeAlias (Name "a") moduleDefs
     -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
-    printerWrapper exprs currentDefs = S.Call (printerFunctionName (eType currentDefs)) [exprs]
+    printerWrapper exprs currentDefs = S.Call (printerFunctionName (eType currentDefs)) ([exprs] ++ (printerExtraParams (eType currentDefs)))
     printerFunctionName (FloatingPointType _) = "printd"
     printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printi"
     printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "printb"
     printerFunctionName (PointerType (NamedTypeReference (Name "IntList")) (AddrSpace 0)) = "printil"
     printerFunctionName (PointerType (NamedTypeReference (Name "FloatList")) (AddrSpace 0)) = "printfl"
     printerFunctionName (PointerType (NamedTypeReference (Name "BoolList")) (AddrSpace 0)) = "printbl"
-    printerFunctionName (StructureType { ASTType.elementTypes = [t1, t2] }) = "TODO: print tuple"
+    printerFunctionName (StructureType { ASTType.elementTypes = _ }) = "print_tuple"
     printerFunctionName _ = error "Unsupported type for print function"
+    printerExtraParams (StructureType { ASTType.elementTypes = [t1, t2] }) = case (t1, t2) of
+      (IntegerType { ASTType.typeBits = 32 }, IntegerType { ASTType.typeBits = 32 }) -> [S.Int 1, S.Int 1]
+      (IntegerType { ASTType.typeBits = 32 }, FloatingPointType { ASTType.floatingPointType = DoubleFP }) -> [S.Int 1, S.Int 2]
+      (IntegerType { ASTType.typeBits = 32 }, IntegerType { ASTType.typeBits = 1 }) -> [S.Int 1, S.Int 3]
+      (FloatingPointType { ASTType.floatingPointType = DoubleFP }, IntegerType { ASTType.typeBits = 32 }) -> [S.Int 2, S.Int 1]
+      (FloatingPointType { ASTType.floatingPointType = DoubleFP }, FloatingPointType { ASTType.floatingPointType = DoubleFP }) -> [S.Int 2, S.Int 2]
+      (FloatingPointType { ASTType.floatingPointType = DoubleFP }, IntegerType { ASTType.typeBits = 1 }) -> [S.Int 2, S.Int 3]
+      (IntegerType { ASTType.typeBits = 1 }, IntegerType { ASTType.typeBits = 32 }) -> [S.Int 3, S.Int 1]
+      (IntegerType { ASTType.typeBits = 1 }, FloatingPointType { ASTType.floatingPointType = DoubleFP }) -> [S.Int 3, S.Int 2]
+      (IntegerType { ASTType.typeBits = 1 }, IntegerType { ASTType.typeBits = 1 }) -> [S.Int 3, S.Int 3]
+      _ -> []
+    printerExtraParams _ = []
 
 -- -- Type definition: this is a no-op
 genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do

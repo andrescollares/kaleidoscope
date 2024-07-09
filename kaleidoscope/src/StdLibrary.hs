@@ -68,6 +68,19 @@ stdLibrary =
          basicBlocks = []
        },
     GlobalDefinition
+      functionDefaults
+       { name = Name (fromString "print_tuple"),
+         parameters = ([Parameter (StructureType { elementTypes = [
+            IntegerType 32,
+            IntegerType 32
+         ], isPacked = False }) (Name (fromString "tuple")) [],
+         Parameter (IntegerType 32) (Name (fromString "first_type")) [],
+         Parameter (IntegerType 32) (Name (fromString "second_type")) []
+         ], False),
+         returnType = IntegerType 32,
+         basicBlocks = []
+       },
+    GlobalDefinition
       globalVariableDefaults {
         name = Name (fromString "VoidIntList"),
         linkage = External,
