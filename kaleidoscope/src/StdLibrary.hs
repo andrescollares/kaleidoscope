@@ -9,7 +9,6 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Linkage (Linkage(External))
 import LLVM.AST.Visibility (Visibility(Default))
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.CallingConvention as CC
 
 stdLibrary :: [Definition]
 stdLibrary =
@@ -88,36 +87,56 @@ stdLibrary =
         isConstant = True,
         type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
         initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-      }
-    -- GlobalDefinition
-    --   functionDefaults
-    --     { name = Name (fromString "printIntMainFunction"),
-    --       parameters = ([], False),
-    --       returnType = IntegerType 32,
-    --       basicBlocks = [
-    --         BasicBlock (Name (fromString "entry")) [
-    --           UnName 0 := Call {
-    --             tailCallKind = Nothing,
-    --             callingConvention = CC.C,
-    --             returnAttributes = [],
-    --             function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [] False) (AddrSpace 0)) (Name (fromString "main")),
-    --             arguments = [],
-    --             functionAttributes = [],
-    --             metadata = []
-    --           },
-    --           UnName 1 := Call {
-    --             tailCallKind = Nothing,
-    --             callingConvention = CC.C,
-    --             returnAttributes = [],
-    --             function = Right $ ConstantOperand $ C.GlobalReference (PointerType (FunctionType (IntegerType 32) [IntegerType {typeBits = 32}] False) (AddrSpace 0)) (Name (fromString "printi")),
-    --             arguments = [ (LocalReference (IntegerType 32) (UnName 0), []) ],
-    --             -- arguments = [ (ConstantOperand $ C.Int 32 42, []) ],
-    --             functionAttributes = [],
-    --             metadata = []
-    --           }
-    --         ] (
-    --               Do $ Ret (Just $ ConstantOperand $ C.Int 32 0) []
-    --              )
-    --       ]
-    --     }
+      },
+      -- def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));
+      -- TODO: define length using the code above
+      -- TODO: head and tail should accept different list types
+      GlobalDefinition
+        functionDefaults {
+          name = Name (fromString "tail"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
+          basicBlocks = [
+            BasicBlock (Name (fromString "entry")) [
+              UnName 0 := Load {
+                volatile = False,
+                address = LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")),
+                maybeAtomicity = Nothing,
+                alignment = 0,
+                metadata = []
+              },
+              UnName 1 := ExtractValue {
+                aggregate = LocalReference (NamedTypeReference (Name (fromString "IntList"))) (UnName 0),
+                indices' = [1],
+                metadata = []
+              }
+            ] (
+              Do $ Ret (Just $ LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (UnName 1)) []
+            )
+          ]
+        },
+      GlobalDefinition
+        functionDefaults {
+          name = Name (fromString "head"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = IntegerType 32,
+          basicBlocks = [
+            BasicBlock (Name (fromString "entry")) [
+              UnName 0 := Load {
+                volatile = False,
+                address = LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")),
+                maybeAtomicity = Nothing,
+                alignment = 0,
+                metadata = []
+              },
+              UnName 1 := ExtractValue {
+                aggregate = LocalReference (NamedTypeReference (Name (fromString "IntList"))) (UnName 0),
+                indices' = [0],
+                metadata = []
+              }
+            ] (
+              Do $ Ret (Just $ LocalReference (IntegerType 32) (UnName 1)) []
+            )
+          ]
+        }
   ]

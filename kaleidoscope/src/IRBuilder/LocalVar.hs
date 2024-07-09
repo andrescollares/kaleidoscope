@@ -43,6 +43,11 @@ llvmTypeToSyntaxType t = case t of
   ASTType.IntegerType {typeBits = 32} -> Integer
   ASTType.IntegerType {typeBits = 1} -> Boolean
   ASTType.StructureType { elementTypes = [t1, t2] } -> Tuple (llvmTypeToSyntaxType t1) (llvmTypeToSyntaxType t2)
+  ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (Name n) } -> case n of
+    "IntList" -> ListType Integer
+    "BoolList" -> ListType Boolean
+    "FloatList" -> ListType Double
+    _ -> error $ "Unsupported list type " ++ show n
   _ -> error $ "Unsupported type " ++ show t
 
 -- Why would we want to have the function as a local var?

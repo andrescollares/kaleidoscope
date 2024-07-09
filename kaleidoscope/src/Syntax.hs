@@ -37,6 +37,7 @@ data Type
   | Integer
   | Boolean
   | Tuple Type Type
+  | ListType Type
   deriving stock (Eq, Ord, Show)
 
 -- | Enum Literal

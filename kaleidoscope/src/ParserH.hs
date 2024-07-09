@@ -71,6 +71,13 @@ tp = do
     <|> try integer
     <|> try boolean
     <|> try tupleT
+    <|> try listT
+
+argument :: Parser (Type, String)
+argument = do
+  t <- tp
+  n <- identifier
+  return (t, n)
 
 double :: Parser Syntax.Type
 double = reserved "double" >> return Double
@@ -87,6 +94,11 @@ tupleT = do
   types <- parens $ commaSep tp
   return $ Tuple (head types) (head $ tail types)
 
+listT :: Parser Syntax.Type
+listT = do
+  listTp <- brackets tp
+  return $ ListType listTp
+  
 int :: Parser Operand
 int =
   Int <$> Lexer.int

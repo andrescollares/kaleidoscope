@@ -48,6 +48,8 @@ getExpressionType (If _ e1 e2) localVars =
     e1Type = getExpressionType e1 localVars
 -- getExpressionType (List [x]) localVars = getExpressionType x localVars
 getExpressionType (List (x:_)) localVars = listPointerType x localVars
+-- FIXME: (?) empty list defaults to int list
+getExpressionType (List []) _ = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
 getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 listPointerType :: S.Operand -> [LocalVarType] -> AST.Type
@@ -64,11 +66,18 @@ listPointerTypeName listElement = case (getExpressionType listElement []) of
   FloatingPointType _ -> "FloatList"
   _ -> error "Unsupported list element type"
 
+listSyntaxPointerTypeName :: S.Type -> String
+listSyntaxPointerTypeName Integer = "IntList"
+listSyntaxPointerTypeName Boolean = "BoolList"
+listSyntaxPointerTypeName Double = "FloatList"
+listSyntaxPointerTypeName _ = error "Unsupported list element type"
+
 getASTType :: S.Type -> AST.Type
 getASTType Double = ASTType.double
 getASTType Integer = ASTType.i32
 getASTType Boolean = ASTType.i1
 getASTType (Tuple t1 t2) = ASTType.StructureType False [getASTType t1, getASTType t2]
+getASTType (ListType t) = PointerType (NamedTypeReference (Name (fromString $ listSyntaxPointerTypeName t))) (AddrSpace 0)
 
 findLocalVarType :: [LocalVarType] -> Name -> S.Type
 findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVars of

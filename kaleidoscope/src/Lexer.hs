@@ -1,7 +1,6 @@
 module Lexer where
 
 import Control.Applicative (many, (<|>))
-import Syntax (Type (..))
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
@@ -37,23 +36,17 @@ bool = Tok.lexeme lexer $ (True <$ Tok.symbol lexer "true") <|> (False <$ Tok.sy
 identifier :: Parser String
 identifier = Tok.identifier lexer
 
-type' :: Parser Type
-type' = do
-  t <- identifier
-  case t of
-    "double" -> return Syntax.Double
-    "int" -> return Syntax.Integer
-    "bool" -> return Syntax.Boolean
-    "tuple" -> do
-        types <- parens $ commaSep type'
-        return $ Tuple (head types) (head $ tail types)
-    _ -> fail "unknown type" -- TODO: why is the syntax different here?
-
-argument :: Parser (Type, String)
-argument = do
-  t <- type'
-  n <- identifier
-  return (t, n)
+-- type' :: Parser Type
+-- type' = do
+--   t <- identifier
+--   case t of
+--     "double" -> return Syntax.Double
+--     "int" -> return Syntax.Integer
+--     "bool" -> return Syntax.Boolean
+--     "tuple" -> do
+--         types <- parens $ commaSep type'
+--         return $ Tuple (head types) (head $ tail types)
+--     _ -> fail "unknown type" -- TODO: why is the syntax different here?
 
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer
