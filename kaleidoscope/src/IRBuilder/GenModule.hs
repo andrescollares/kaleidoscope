@@ -42,37 +42,22 @@ import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
 genModule oldDefs expressions options = do
   optMod <- optimizeModule unoptimizedAst options
-  res <- runJIT optMod moduleMainFnType
+  res <- runJIT optMod
   return (res, definitions)
   where
     -- TODO: Remove old duplicate functions
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
     oldDefsWithoutMain =
-      filter
+      filter -- TODO: filter first
         ( \case
             GlobalDefinition AST.Function {name = Name "main"} -> False
-            GlobalDefinition AST.Function {name = Name "printResult"} -> False
             _ -> True
         )
         oldDefs
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
     unoptimizedAst = mkModule definitions
     mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
-    moduleMainFn =
-      find
-        ( \case
-            GlobalDefinition AST.Function {name = Name "main"} -> True
-            _ -> False
-        )
-        definitions
-    moduleMainFnType = case moduleMainFn of
-      Just (GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 32}}) -> ASTType.i32
-      Just (GlobalDefinition AST.Function {returnType = IntegerType {typeBits = 1}}) -> ASTType.i1
-      Just (GlobalDefinition AST.Function {returnType = FloatingPointType {floatingPointType = DoubleFP}}) -> ASTType.double
-      Just (GlobalDefinition AST.Function {returnType = StructureType { elementTypes = [t1, t2] }}) -> ASTType.StructureType { elementTypes = [t1, t2], isPacked = False}
-      Just (GlobalDefinition AST.Function {returnType = NamedTypeReference (Name "IntList")}) -> NamedTypeReference (Name "IntList")
-      Nothing -> error "Main function not found"
 
 type TypeDefinitionMap = Map Name AST.Type
 

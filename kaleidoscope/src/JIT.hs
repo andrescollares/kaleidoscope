@@ -3,7 +3,7 @@
 module JIT where
 
 import qualified Data.ByteString as BS
-import Foreign.C.Types ( CInt(..), CBool(..) )
+import Foreign.C.Types ( CInt(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
@@ -20,18 +20,11 @@ import LLVM.PassManager
 import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
 import Data.String ( IsString(fromString) )
 
-foreign import ccall "dynamic" haskFunDouble :: FunPtr Double -> Double
-
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
 
-runDouble :: FunPtr a -> Double
-runDouble fn = haskFunDouble (castFunPtr fn :: FunPtr Double)
 
 runInteger :: FunPtr a -> CInt
 runInteger fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
-
-runBool :: FunPtr a -> CInt
-runBool fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
 
 jit :: Context -> Word -> (EE.MCJIT -> IO a) -> IO a
 jit c oLevel = EE.withMCJIT c optlevel model ptrelim fastins
@@ -53,19 +46,22 @@ optimizeModule astModule CliOptions { optimizationLevel = level, emitLLVM = emit
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m
-          if emit then (do
-            modBS <- moduleLLVMAssembly m
-            -- Print the optimized module as LLVM assembly to stdout
-            putStrLn "Optimized LLVM assembly:"
-            putStrLn $ modBSToString modBS
-            -- Return the optimized module
-            return optmod)
-          else return optmod
+          if emit
+            then
+              ( do
+                  modBS <- moduleLLVMAssembly m
+                  -- Print the optimized module as LLVM assembly to stdout
+                  putStrLn "Optimized LLVM assembly:"
+                  putStrLn $ modBSToString modBS
+                  -- Return the optimized module
+                  return optmod
+              )
+            else return optmod
   where
     modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
 
-runJIT :: AST.Module -> AST.Type -> IO String
-runJIT astModule runType = do -- TODO: runType no longer necessary
+runJIT :: AST.Module -> IO String
+runJIT astModule = do
   withContext $ \context ->
     jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
@@ -76,21 +72,3 @@ runJIT astModule runType = do -- TODO: runType no longer necessary
               putStr $ if show (runInteger fn) == "" then "Error" else "\n"
               return $ show (runInteger fn)
             Nothing -> return "0"
-
-
-            --   where
-            --     result = case runType of
-            --       FloatingPointType _ -> show $ runDouble fn
-            --       IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn
-            --       IntegerType { ASTType.typeBits = 1 } -> if runBool fn == 0 then "false" else "true"
-            --       -- TODO: find a better way to print the tuples
-            --       StructureType { ASTType.elementTypes = [t1, t2] } -> "Tuple (" ++ firstElem ++ ", ...)"
-            --         where firstElem = case t1 of
-            --                 IntegerType { ASTType.typeBits = 32 } -> show $ runInteger fn -- FIXME: runInteger can't handle lists longer that 3 :skull_emoji:
-            --                 IntegerType { ASTType.typeBits = 1 } -> if runBool
-              --  fn == 0 then "false" else "true"
-            --                 FloatingPointType _ -> show $ runDouble fn
-            --                 _ -> error "Unknown expression type"
-            --       _ -> error "Unknown expression type"
-            -- Nothing -> return "0"
-

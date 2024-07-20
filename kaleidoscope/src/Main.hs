@@ -26,7 +26,7 @@ process oldDefs source processOptions = do
 processFile :: String -> CliOptions -> IO (Maybe [AST.Definition])
 processFile fname processOptions = do
   file <- readFile fname
-  result <- process [] file processOptions
+  result <- process stdLibrary file processOptions
   return $ snd <$> result
 
 repl :: CliOptions -> IO ()
