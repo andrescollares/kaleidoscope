@@ -20,18 +20,16 @@ import JIT (optimizeModule, runJIT)
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
-import LLVM.AST.Global (Global (name), returnType)
+import LLVM.AST.Global (Global (name))
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, typedef)
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import Syntax as S
-import Types ( getExpressionType, getASTType, findTypeAlias )
+import Types ( getExpressionType, getASTType )
 import CLI (CliOptions)
 import Data.Map.Strict (Map, fromList)
-import Debug.Trace
-import Data.Foldable (find)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 
 
@@ -133,7 +131,7 @@ genTopLevel (S.TopLevel (S.Constant (Tuple t1 t2) constantName (TupleI e1 e2))) 
     constantOperand (Float n) = C.Float (F.Double n)
     constantOperand (Int n) = C.Int 32 n
     constantOperand (Bool b) = C.Int 1 (if b then 1 else 0)
-    constantOperand (TupleI a b) = error "TODO: recursive tuple constant"
+    constantOperand (TupleI _ _) = error "TODO: recursive tuple constant"
 genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
 
 -- Main expression

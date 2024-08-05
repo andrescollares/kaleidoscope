@@ -15,7 +15,7 @@ import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as ASTType
-import System.Cmd
+import System.Process
 import System.Exit
 import System.Directory
 import Data.List (isSuffixOf)
@@ -47,17 +47,18 @@ filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
 programTests :: TestTree
 programTests = testCase "Program Tests" (do
   files <- getDirectoryContents "./test/programs"
-  system $ "echo Testing files: " ++ (show $ filterProgramFiles files)
+  system $ "echo Testing files: " ++ show (filterProgramFiles files)
   mapM_ (\f -> do
     system $ "echo Testing file: " ++ f
-    exitCode <- system $ "cabal run kaleidoscope-fing -- --file=./test/programs/" ++ f ++ " > ./test/tmp.out"
+    exitCode <- system $ "cabal run kaleidoscope-fing -- --file=./test/programs/" ++ f ++ " --quiet-llvm > ./test/tmp.out"
     putStrLn $ "\tExit code: " ++ show exitCode
     exitCode @?= ExitSuccess
-    output <- readFile "./test/tmp.out"
+    actualOutput <- readFile "./test/tmp.out"
+    -- writeFile ("./test/output/" ++ f) actualOutput
     expectedOutput <- readFile $ "./test/output/" ++ f
-    output @?= expectedOutput
+    actualOutput @?= expectedOutput
     ) (filterProgramFiles files)
-  
+
   -- exitCode <- system $ "cabal run kaleidoscope-fing -- --file=./test/programs/" ++ head (filterProgramFiles files)
   )
 

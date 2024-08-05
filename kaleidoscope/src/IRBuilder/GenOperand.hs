@@ -12,7 +12,7 @@ import IRBuilder.LocalVar
     getConstantFromDefs,
     getFunctionFromDefs,
     getFunctionOperand,
-    getLocalVarName, definitionsToLocalVars
+    getLocalVarName
   )
 import Instructions (typedOperandInstruction)
 import LLVM.AST as AST
@@ -27,17 +27,15 @@ import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, U
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState, ModuleBuilderState (builderTypeDefs))
+import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
 import Types (getASTType, getExpressionType, listPointerTypeName)
 import Tuple (tupleAccessorOperand)
 import List (nullIntList)
-import LLVM.IRBuilder.Internal.SnocList (SnocList(SnocList))
-import Debug.Trace (trace)
+import LLVM.IRBuilder.Internal.SnocList (SnocList)
 import qualified LLVM.AST.AddrSpace as AST
-import LLVM.AST.Constant (Constant(Null))
 import Data.String (fromString)
 
 

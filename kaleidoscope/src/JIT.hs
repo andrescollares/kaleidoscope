@@ -6,8 +6,6 @@ import qualified Data.ByteString as BS
 import Foreign.C.Types ( CInt(..) )
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
-import qualified LLVM.AST.Type as ASTType
-import LLVM.AST (Type (IntegerType, FloatingPointType, StructureType))
 import LLVM.Context ( withContext, Context )
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
@@ -18,7 +16,6 @@ import LLVM.PassManager
       withPassManager,
       PassSetSpec(optLevel) )
 import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
-import Data.String ( IsString(fromString) )
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
 

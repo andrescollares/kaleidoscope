@@ -1,1 +1,0 @@
-[Function (Name "factorial") [ParameterName "x"] (If (BinOp "<" (Var (Name "x")) (Float 1.0)) (Float 1.0) (BinOp "*" (Var (Name "x")) (Call (Name "factorial") [BinOp "-" (Var (Name "x")) (Float 1.0)]))),Call (Name "factorial") [Float 5.0]]

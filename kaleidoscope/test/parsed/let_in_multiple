@@ -1,1 +1,0 @@
-[Let (Name "a") (Float 1.0) (Let (Name "b") (Float 2.0) (Let (Name "c") (Float 3.0) (BinOp "+" (BinOp "+" (Var (Name "a")) (Var (Name "b"))) (Var (Name "c")))))]

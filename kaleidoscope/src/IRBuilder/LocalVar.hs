@@ -23,7 +23,6 @@ import Types
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
--- TODO: wtf is this xd
 definitionsToLocalVars :: SnocList Definition -> [LocalVarType]
 definitionsToLocalVars (SnocList defs) =
   map
@@ -50,7 +49,6 @@ llvmTypeToSyntaxType t = case t of
     _ -> error $ "Unsupported list type " ++ show n
   _ -> error $ "Unsupported type " ++ show t
 
--- Why would we want to have the function as a local var?
 functionLocalVar :: [AST.Operand] -> [(S.Type, ParameterName)] -> Name -> AST.Type -> [LocalVar]
 functionLocalVar operands functionParameters (Name n) t = localVarsFallback operands ++ [(Just n, getFunctionOperand (Name n) t (functionLocalVarParameters functionParameters, False))]
 functionLocalVar _ _ _ _ = error "Function lacks a name."
