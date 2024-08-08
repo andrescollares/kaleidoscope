@@ -25,7 +25,16 @@ getExpressionType (UnaryOp unOp (TupleI e1 e2)) localVars =
     "fst" -> getExpressionType e1 localVars
     "snd" -> getExpressionType e2 localVars
     _ -> error "Unsupported unary operation on Tuple"
-getExpressionType (UnaryOp _ e) localVars = getExpressionType e localVars
+getExpressionType (UnaryOp unOp (List (x:_))) localVars =
+  case unOp of
+    "head" -> getExpressionType x localVars
+    "tail" -> listPointerType x localVars
+    _ -> error "Unsupported unary operation on List"
+getExpressionType (UnaryOp unOp e) localVars =
+  case unOp of
+    "!" -> ASTType.i1
+    "-" -> getExpressionType e localVars
+    _ -> getExpressionType e localVars
 
 -- TODO: this is potentially O(2^n)!!!
 getExpressionType (BinOp _ a b) localVars =

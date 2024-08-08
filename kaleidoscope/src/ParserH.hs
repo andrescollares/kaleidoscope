@@ -26,8 +26,16 @@ unops = [
   [ unary "!" ],
   [ unary "-" ],
   [ unary "fst",
-    unary "snd"
-  ]]
+    unary "snd"],
+  [
+    unary "isInt",
+    unary "head",
+    unary "tail",
+    unary "isDouble",
+    unary "isBool",
+    unary "isTuple",
+    unary "isList"]
+  ]
 
 
 binops :: Ex.OperatorTable String () Identity Operand

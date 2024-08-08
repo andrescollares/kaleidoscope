@@ -6,6 +6,7 @@ data CliOptions = CliOptions
   { optimizationLevel      :: Word
   , inputFile      :: String
   , emitLLVM      :: Bool
+  , failOnErrors :: Bool
   }
 
 options :: Parser CliOptions
@@ -26,6 +27,10 @@ options = CliOptions
           ( long "quiet-llvm"
          <> short 'q'
          <> help "Hide LLVM IR output" )
+      <*> flag False True
+          ( long "fail-on-errors"
+          <> short 'e'
+          <> help "Fail on errors" )
 
 opts :: ParserInfo CliOptions
 opts = info (options <**> helper)

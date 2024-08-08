@@ -14,7 +14,7 @@ import IRBuilder.LocalVar
     getFunctionOperand,
     getLocalVarName
   )
-import Instructions (typedOperandInstruction)
+import Instructions (typedOperandInstruction, operandType)
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
     Global (Function, GlobalVariable),
@@ -89,7 +89,7 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
             _ -> error $ "Function " <> show fnName <> " not found."
         Nothing -> error $ "Function " <> show fnName <> " not found."
 
--- Unary Operands
+-- Unary Operands (Prefix Operands)
 genOperand (UnaryOp oper a) localVars = do
   op <- genOperand a localVars
   currentDefs <- liftModuleState $ gets builderDefs
@@ -102,16 +102,22 @@ genOperand (UnaryOp oper a) localVars = do
       M.fromList
         [
           ("-", fneg),
-          ("!", not'), -- FIXME: printing double instead of bool
+          ("!", not'),
           ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0))),
-          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1)))
+          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1))),
+          ("tail", \x -> do
+            i32_slot <- gep x [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+            load i32_slot 0),
+          ("head", \x -> do
+            i32_slot <- gep x [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
+            load i32_slot 0)
         ]
       where
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
         not' x = do
           icmp IP.EQ x (ConstantOperand (C.Int 1 0))
 
--- Binary Operands
+-- Binary Operands (Infix Operands)
 genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars

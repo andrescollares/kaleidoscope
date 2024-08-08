@@ -6,31 +6,23 @@ import Control.Monad.Trans ( MonadIO(liftIO) )
 -- import Emit
 
 import Data.Text (pack, strip, unpack)
-import IRBuilder.GenModule (genModule)
-import qualified LLVM.AST as AST
 import ParserH ( parseToplevel )
-import StdLibrary ( stdLibrary )
+import StdLibrary ( processLibrary )
 import Options.Applicative
 import CLI (getNextInput, opts, CliOptions (inputFile))
 import System.Console.Haskeline
+import Processor ( process )
+import qualified LLVM.AST as AST
+import LLVM.AST (Definition)
 
-process :: [AST.Definition] -> String -> CliOptions -> IO (Maybe (String, [AST.Definition]))
-process oldDefs source processOptions = do
-  let parsedSrc = parseToplevel source 
-  case parsedSrc of
-    Left err -> print err >> return Nothing
-    Right expressions -> do
-      (res, defs) <- genModule oldDefs expressions processOptions
-      return $ Just (res, defs)
-
-processFile :: String -> CliOptions -> IO (Maybe [AST.Definition])
-processFile fname processOptions = do
+processFile :: String -> CliOptions -> [Definition] -> IO (Maybe [AST.Definition])
+processFile fname processOptions defs = do
   file <- readFile fname
-  result <- process stdLibrary file processOptions
+  result <- process defs file processOptions
   return $ snd <$> result
 
-repl :: CliOptions -> IO ()
-repl replOptions = runInputT defaultSettings (loop "0" stdLibrary)
+repl :: CliOptions -> [Definition] -> IO ()
+repl replOptions defs = runInputT defaultSettings (loop "0" defs)
   where
     loop prevRes oldDefs = do
       outputStr "ready> "
@@ -57,9 +49,13 @@ repl replOptions = runInputT defaultSettings (loop "0" stdLibrary)
 main :: IO ()
 main = do
   parsedOptions <- execParser opts
-  case inputFile parsedOptions of
-    [] -> repl parsedOptions
-    fname -> processFile fname parsedOptions >> return ()
+  defs <- processLibrary "./src/lib/length.k"
+  case defs of
+    Just definitions -> do
+      case inputFile parsedOptions of
+        [] -> repl parsedOptions definitions
+        fname -> processFile fname parsedOptions definitions >> return ()
+    Nothing -> error "Could not process library"
 
 -- Print AST (chapter 2)
 printAST :: String -> IO ()
