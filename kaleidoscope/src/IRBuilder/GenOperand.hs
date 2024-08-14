@@ -5,7 +5,6 @@
 module IRBuilder.GenOperand where
 
 import Control.Monad.RWS (gets)
-import Data.ByteString.Short ( ShortByteString )
 import qualified Data.Map.Strict as M
 import IRBuilder.LocalVar
   ( LocalVar,
@@ -37,6 +36,7 @@ import List (nullIntList)
 import LLVM.IRBuilder.Internal.SnocList (SnocList)
 import qualified LLVM.AST.AddrSpace as AST
 import Data.String (fromString)
+import Debug.Trace (trace)
 
 
 -- Generates the Operands that genTopLevel needs.
@@ -74,9 +74,11 @@ genOperand (Var (Name nameString)) localVars = do
         Nothing -> error $ "Constant " <> show nameString <> " not found."
 
 -- Call
+-- functionArgs = [Int, Double, Bool, Tuple, List, (FunOp Name)]
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  let functionDefinition = getLocalVarName fnName localVars
+  -- Only match if fnName is same name as 
+  let functionDefinition = trace ("Local vars: " ++ show localVars) $ getLocalVarName fnName localVars
   case functionDefinition of
     Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
     Nothing -> do
@@ -92,13 +94,12 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
 -- Unary Operands (Prefix Operands)
 genOperand (UnaryOp oper a) localVars = do
   op <- genOperand a localVars
-  currentDefs <- liftModuleState $ gets builderDefs
-  case M.lookup oper (unops currentDefs) of
+  case M.lookup oper unops of
     Just f -> f op
     Nothing -> error "This shouldn't have matched here, unary operand doesn't exist."
   where
-    unops :: SnocList Definition -> M.Map ShortByteString (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
-    unops defs =
+    unops :: M.Map Name (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
+    unops =
       M.fromList
         [
           ("-", fneg),
@@ -123,9 +124,10 @@ genOperand (BinOp oper a b) localVars = do
   opB <- genOperand b localVars
   case M.lookup oper $ binops opA opB of
     Just f -> f opA opB
-    Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
+    -- TODO: Definition of a custom binary operator will not be supported
+    Nothing -> error "This shouldn't have matched here, binary operand doesn't exist." -- genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
   where
-    binops :: AST.Operand -> AST.Operand -> M.Map ShortByteString (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
+    binops :: AST.Operand -> AST.Operand -> M.Map Name (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
       -- TODO: This info is also in the ParserH binops, is it necessary for it to be there?
       M.fromList
@@ -227,6 +229,18 @@ genOperand (List (x:xs)) localVars = do
   -- where
   --   getConstant (ConstantOperand c) = c -- TODO: DRY
   --   getConstant _ = error "Only constants allowed inside tuples."
+
+-- def id(int x) -> int: x;
+-- def f2(fun f) -> int: f(2);
+genOperand (FunOp (Name fnName)) localVars = do
+  currentDefs <- liftModuleState $ gets builderDefs
+  let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
+  case maybeDef of
+    Just def -> do
+      case def of
+        -- (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name fnName) retT params
+        _ -> error $ "Function " <> show fnName <> " not found."
+    Nothing -> error $ "Function " <> show fnName <> " not found."
 
 
 
