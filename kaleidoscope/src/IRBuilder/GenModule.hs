@@ -31,6 +31,7 @@ import Types ( getExpressionType, getASTType )
 import CLI (CliOptions)
 import Data.Map.Strict (Map, fromList)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
+import Data.String (fromString)
 
 
 -- Generates the Module from the previous module and the new expressions
@@ -112,6 +113,30 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (Tuple t1 t2) body
     ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
+    )
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Integer) body)) = do
+  function
+    functionName
+    (first getASTType <$> functionArgs)
+    ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 }
+    ( \ops ->
+        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 })
+    )
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Double) body)) = do
+  function
+    functionName
+    (first getASTType <$> functionArgs)
+    ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "FloatList"), pointerAddrSpace = AddrSpace 0 }
+    ( \ops ->
+        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 })
+    )
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Boolean) body)) = do
+  function
+    functionName
+    (first getASTType <$> functionArgs)
+    ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "BoolList"), pointerAddrSpace = AddrSpace 0 }
+    ( \ops ->
+        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 })
     )
 
 -- Constant definition

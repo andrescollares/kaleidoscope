@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 struct intList {
   int32_t val;
@@ -41,5 +42,11 @@ int32_t printil(struct intList *list);
 int32_t printfl(struct doubleList *list);
 
 int32_t printbl(struct boolList *list);
+
+struct intList *_alloc_int_list_node();
+
+struct doubleList *_alloc_double_list_node();
+
+struct boolList *_alloc_bool_list_node();
 
 double writed(double d);

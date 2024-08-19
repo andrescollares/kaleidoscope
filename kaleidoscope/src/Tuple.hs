@@ -16,8 +16,8 @@ tupleAccessorOperand tupleOperand indexOperand = do
   where
   tupleType = operandType tupleOperand
 
-typeToString :: Type -> String
-typeToString (IntegerType 32) = "i32"
-typeToString (FloatingPointType DoubleFP) = "double"
-typeToString (IntegerType 1) = "bool"
-typeToString _ = error "Unsupported type"
+-- typeToString :: Type -> String
+-- typeToString (IntegerType 32) = "i32"
+-- typeToString (FloatingPointType DoubleFP) = "double"
+-- typeToString (IntegerType 1) = "bool"
+-- typeToString t = error "Unsupported type" ++ show t

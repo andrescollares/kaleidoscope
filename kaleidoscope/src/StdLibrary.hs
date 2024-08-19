@@ -41,6 +41,27 @@ stdLibrary =
           returnType = IntegerType 1,
           basicBlocks = []
         },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "_alloc_int_list_node"),
+          parameters = ([], False),
+          returnType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "_alloc_double_list_node"),
+          parameters = ([], False),
+          returnType = PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0),
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "_alloc_bool_list_node"),
+          parameters = ([], False),
+          returnType = PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0),
+          basicBlocks = []
+        },
     TypeDefinition (Name (fromString "IntList")) $ Just (StructureType False [
       IntegerType 32,
       PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)

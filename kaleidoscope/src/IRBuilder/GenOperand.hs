@@ -202,7 +202,8 @@ genOperand (List []) _ = nullIntList -- TODO: No
 --     intListType = ASTType.NamedTypeReference (AST.Name "IntList")
 --     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
 genOperand (List (x:xs)) localVars = do
-    var <- alloca intListType Nothing 0
+    -- var <- alloca intListType Nothing 0
+    var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType intListPtrType [] False)) (Name allocListNode))) []
     i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
     nodeValue <- genOperand x localVars
     store i32_slot 0 nodeValue
@@ -214,6 +215,11 @@ genOperand (List (x:xs)) localVars = do
     elementType = getExpressionType x [] -- TODO: local vars
     intListType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeName x)
     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
+    allocListNode = case elementType of
+      ASTType.FloatingPointType _ -> "_alloc_double_list_node"
+      ASTType.IntegerType 1 -> "_alloc_bool_list_node"
+      ASTType.IntegerType _ -> "_alloc_int_list_node"
+      _ -> error "Unknown type"
   -- do
   -- leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
   -- rightOp <- genOperand (List xs) localVars
