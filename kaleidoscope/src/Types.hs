@@ -55,7 +55,7 @@ getExpressionType (If _ e1 e2) localVars =
 getExpressionType (List (x:_)) localVars = listPointerType x localVars
 -- FIXME: (?) empty list defaults to int list
 getExpressionType (List []) _ = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-getExpressionType (FunOp _) _ = PointerType VoidType (AddrSpace 0)
+getExpressionType (FunOp _) _ = PointerType VoidType (AddrSpace 0) -- TODO: function pointer type
 -- getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 listPointerType :: S.Operand -> [LocalVarType] -> AST.Type

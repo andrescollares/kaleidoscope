@@ -63,6 +63,9 @@ getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
 getLocalVarName n = DL.find (`matchName` n)
 
 matchName :: LocalVar -> ShortByteString -> Bool
+-- TODO: More explicit matching
+matchName (Just _, ConstantOperand (C.GlobalReference PointerType {pointerReferent = ASTType.FunctionType {}, pointerAddrSpace = _} (Name funName))) n = funName == n
+-- matchName (Just _, puntero_anonimo_a_funcion) n = varName == n
 matchName (Just varName, _) n = varName == n
 matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n
 matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == show n
