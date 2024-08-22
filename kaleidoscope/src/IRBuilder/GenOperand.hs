@@ -202,7 +202,7 @@ genOperand (List []) _ = nullIntList -- TODO: No
 --     intListType = ASTType.NamedTypeReference (AST.Name "IntList")
 --     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
 genOperand (List (x:xs)) localVars = do
-    var <- alloca intListType Nothing 0
+    var <- alloca intListType Nothing 0 -- TODO: too many allocas -- TODO: only int list
     i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
     nodeValue <- genOperand x localVars
     store i32_slot 0 nodeValue
