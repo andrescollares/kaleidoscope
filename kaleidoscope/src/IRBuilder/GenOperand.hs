@@ -121,9 +121,15 @@ genOperand (UnaryOp oper a) localVars = do
 genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
-  case M.lookup oper $ binops opA opB of
-    Just f -> f opA opB
-    Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars
+  case oper of
+    ":" -> genOperand (List (a:rest)) localVars
+      where
+        rest = case b of
+          List xs -> xs
+          _ -> [b]
+    _ -> case M.lookup oper $ binops opA opB of
+        Just f -> f opA opB
+        Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars -- TODO: binary_ will not be used
   where
     binops :: AST.Operand -> AST.Operand -> M.Map ShortByteString (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
@@ -203,7 +209,7 @@ genOperand (List []) _ = nullIntList -- TODO: No
 --     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
 genOperand (List (x:xs)) localVars = do
     -- var <- alloca intListType Nothing 0
-    var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType intListPtrType [] False)) (Name allocListNode))) []
+    var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType listPtrType [] False)) (Name $ allocListNode elementType))) []
     i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
     nodeValue <- genOperand x localVars
     store i32_slot 0 nodeValue
@@ -213,13 +219,13 @@ genOperand (List (x:xs)) localVars = do
     return var
   where
     elementType = getExpressionType x [] -- TODO: local vars
-    intListType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeName x)
-    intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
-    allocListNode = case elementType of
-      ASTType.FloatingPointType _ -> "_alloc_double_list_node"
-      ASTType.IntegerType 1 -> "_alloc_bool_list_node"
-      ASTType.IntegerType _ -> "_alloc_int_list_node"
-      _ -> error "Unknown type"
+    listType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeName x)
+    listPtrType = ASTType.PointerType listType (AST.AddrSpace 0)
+    -- allocListNode = case elementType of
+    --   ASTType.FloatingPointType _ -> "_alloc_double_list_node"
+    --   ASTType.IntegerType 1 -> "_alloc_bool_list_node"
+    --   ASTType.IntegerType _ -> "_alloc_int_list_node"
+    --   _ -> error "Unknown type"
   -- do
   -- leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
   -- rightOp <- genOperand (List xs) localVars
@@ -231,3 +237,24 @@ genOperand (List (x:xs)) localVars = do
 
 
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
+
+allocListNode :: ASTType.Type -> ShortByteString 
+allocListNode elementType = case elementType of
+      ASTType.FloatingPointType _ -> "_alloc_double_list_node"
+      ASTType.IntegerType 1 -> "_alloc_bool_list_node"
+      ASTType.IntegerType _ -> "_alloc_int_list_node"
+      _ -> error "Unknown type"
+
+allocListNodeByOperandType :: AST.Operand -> ShortByteString
+allocListNodeByOperandType op = case operandType op of
+  ASTType.FloatingPointType _ -> "_alloc_double_list_node"
+  ASTType.IntegerType 1 -> "_alloc_bool_list_node"
+  ASTType.IntegerType _ -> "_alloc_int_list_node"
+  _ -> error "Unknown type"
+
+getListTypeForOperand :: AST.Operand -> ASTType.Type
+getListTypeForOperand op = case operandType op of
+  ASTType.FloatingPointType _ -> ASTType.NamedTypeReference (AST.Name "FloatList")
+  ASTType.IntegerType 1 -> ASTType.NamedTypeReference (AST.Name "BoolList")
+  ASTType.IntegerType _ -> ASTType.NamedTypeReference (AST.Name "IntList")
+  _ -> error "Unknown type"

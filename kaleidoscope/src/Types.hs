@@ -37,13 +37,13 @@ getExpressionType (UnaryOp unOp e) localVars =
     _ -> getExpressionType e localVars
 
 -- TODO: this is potentially O(2^n)!!!
-getExpressionType (BinOp _ a b) localVars =
-  if typeOfA == ASTType.double || typeOfB == ASTType.double
-    then ASTType.double
-    else typeOfA
+getExpressionType (BinOp name a b) localVars
+  | name == ":" = typeOfB
+  | typeOfA == ASTType.double || typeOfB == ASTType.double = ASTType.double
+  | otherwise = typeOfA
   where
-    typeOfA = getExpressionType a localVars
-    typeOfB = getExpressionType b localVars
+      typeOfA = getExpressionType a localVars
+      typeOfB = getExpressionType b localVars
 getExpressionType (Let varType varName _ e) localVars = getExpressionType e $ localVars ++ [(varName, varType)]
 getExpressionType (If _ e1 e2) localVars =
   if e1Type == getExpressionType e2 localVars
