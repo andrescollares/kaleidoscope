@@ -14,7 +14,7 @@ import IRBuilder.LocalVar
     getFunctionOperand,
     getLocalVarName
   )
-import Instructions (typedOperandInstruction, operandType)
+import Instructions (typedOperandInstruction)
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
     Global (Function, GlobalVariable),
@@ -31,12 +31,10 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import Syntax as S
-import Types (getASTType, getExpressionType, listPointerTypeName)
+import Types (getASTType)
 import Tuple (tupleAccessorOperand)
-import List (nullIntList)
+import List (nullIntList, prependNode, createListNode)
 import LLVM.IRBuilder.Internal.SnocList (SnocList)
-import qualified LLVM.AST.AddrSpace as AST
-import Data.String (fromString)
 
 
 -- Generates the Operands that genTopLevel needs.
@@ -118,18 +116,17 @@ genOperand (UnaryOp oper a) localVars = do
           icmp IP.EQ x (ConstantOperand (C.Int 1 0))
 
 -- Binary Operands (Infix Operands)
+genOperand (BinOp ":" a b) localVars = do
+  opA <- genOperand a localVars
+  opB <- genOperand b localVars
+  firstElem <- createListNode opA
+  prependNode firstElem opB
 genOperand (BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
-  case oper of
-    ":" -> genOperand (List (a:rest)) localVars
-      where
-        rest = case b of
-          List xs -> xs
-          _ -> [b]
-    _ -> case M.lookup oper $ binops opA opB of
-        Just f -> f opA opB
-        Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars -- TODO: binary_ will not be used
+  case M.lookup oper $ binops opA opB of
+      Just f -> f opA opB
+      Nothing -> genOperand (S.Call (Name ("binary_" <> oper)) [a, b]) localVars -- TODO: binary_ will not be used
   where
     binops :: AST.Operand -> AST.Operand -> M.Map ShortByteString (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
@@ -195,66 +192,15 @@ genOperand (Let (Tuple t1 t2) (Name varName) variableValue body) localVars = do
   genOperand body ((Just varName, loadedVar) : localVars)
 
 -- Lists
-genOperand (List []) _ = nullIntList -- TODO: No
--- genOperand (List [x]) localVars = do
---     var <- alloca intListType Nothing 0
---     i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
---     computedValue <- genOperand x localVars
---     store i32_slot 0 computedValue
---     null_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
---     store null_slot 0 (ConstantOperand $ Null intListPtrType)
---     return var
---   where
---     intListType = ASTType.NamedTypeReference (AST.Name "IntList")
---     intListPtrType = ASTType.PointerType intListType (AST.AddrSpace 0)
+genOperand (List []) _ = nullIntList
 genOperand (List (x:xs)) localVars = do
-    -- var <- alloca intListType Nothing 0
-    var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType listPtrType [] False)) (Name $ allocListNode elementType))) []
-    i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
-    nodeValue <- genOperand x localVars
-    store i32_slot 0 nodeValue
+    firstElem <- genOperand x localVars
+    var <- createListNode firstElem
     next_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
     nextValue <- genOperand (List xs) localVars
     store next_slot 0 nextValue
     return var
-  where
-    elementType = getExpressionType x [] -- TODO: local vars
-    listType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeName x)
-    listPtrType = ASTType.PointerType listType (AST.AddrSpace 0)
-    -- allocListNode = case elementType of
-    --   ASTType.FloatingPointType _ -> "_alloc_double_list_node"
-    --   ASTType.IntegerType 1 -> "_alloc_bool_list_node"
-    --   ASTType.IntegerType _ -> "_alloc_int_list_node"
-    --   _ -> error "Unknown type"
-  -- do
-  -- leftOp <- trace ("operand: " ++ show x) $ genOperand x localVars
-  -- rightOp <- genOperand (List xs) localVars
-  -- return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant leftOp, getConstant rightOp]})
-  -- where
-  --   getConstant (ConstantOperand c) = c -- TODO: DRY
-  --   getConstant _ = error "Only constants allowed inside tuples."
 
 
 
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
-
-allocListNode :: ASTType.Type -> ShortByteString 
-allocListNode elementType = case elementType of
-      ASTType.FloatingPointType _ -> "_alloc_double_list_node"
-      ASTType.IntegerType 1 -> "_alloc_bool_list_node"
-      ASTType.IntegerType _ -> "_alloc_int_list_node"
-      _ -> error "Unknown type"
-
-allocListNodeByOperandType :: AST.Operand -> ShortByteString
-allocListNodeByOperandType op = case operandType op of
-  ASTType.FloatingPointType _ -> "_alloc_double_list_node"
-  ASTType.IntegerType 1 -> "_alloc_bool_list_node"
-  ASTType.IntegerType _ -> "_alloc_int_list_node"
-  _ -> error "Unknown type"
-
-getListTypeForOperand :: AST.Operand -> ASTType.Type
-getListTypeForOperand op = case operandType op of
-  ASTType.FloatingPointType _ -> ASTType.NamedTypeReference (AST.Name "FloatList")
-  ASTType.IntegerType 1 -> ASTType.NamedTypeReference (AST.Name "BoolList")
-  ASTType.IntegerType _ -> ASTType.NamedTypeReference (AST.Name "IntList")
-  _ -> error "Unknown type"

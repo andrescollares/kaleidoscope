@@ -1,6 +1,6 @@
 module Instructions where
 
-import LLVM.AST (Operand (ConstantOperand, LocalReference), Type (IntegerType, FloatingPointType, elementTypes, StructureType, pointerReferent, pointerAddrSpace, NamedTypeReference), Name (Name))
+import LLVM.AST (Operand (ConstantOperand, LocalReference), Type (IntegerType, FloatingPointType, StructureType, pointerReferent, pointerAddrSpace, NamedTypeReference), Name (Name))
 import LLVM.AST.Constant ( Constant(Float, Int, Struct, memberValues, Null) )
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction ( sitofp, fptosi )
@@ -11,7 +11,6 @@ import LLVM.AST.AddrSpace
 
 type BinOpInstruction = (Operand -> Operand -> IRBuilderT ModuleBuilder Operand)
 
--- TODO: preconditon: Operands are only Float or Integer
 typedOperandInstruction :: Operand -> Operand -> BinOpInstruction -> BinOpInstruction -> BinOpInstruction
 typedOperandInstruction a b wholeInstr floatingInstr = do
   let aType = operandType a
@@ -22,7 +21,7 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
       (FloatingPointType _) -> \x y -> do
         x' <- sitofp x ASTType.double
         floatingInstr x' y
-      _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
+      _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
     (FloatingPointType _) -> case bType of
       (IntegerType 1) -> \x y -> do
         x' <- fptosi x ASTType.double
@@ -31,11 +30,11 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
         y' <- sitofp y ASTType.double
         floatingInstr x y'
       (FloatingPointType _) -> floatingInstr
-      _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
+      _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
     (ASTType.PointerType _ _) -> case bType of
       (ASTType.PointerType _ _) -> wholeInstr
       _ -> error "Pointers can only be compared to other pointers"
-    _ -> error $ "Invalid types for operand: " ++ (show aType) ++ " and " ++ (show bType)
+    _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
 
 operandType :: Operand -> ASTType.Type
 operandType op = case op of
