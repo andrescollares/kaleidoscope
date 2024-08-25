@@ -71,13 +71,19 @@ listPointerTypeName listElement = case (getExpressionType listElement []) of
   IntegerType { ASTType.typeBits = 32 } -> "IntList"
   IntegerType { ASTType.typeBits = 1 } -> "BoolList"
   FloatingPointType _ -> "FloatList"
-  _ -> error "Unsupported list element type"
+  _ -> error "Unsupported list element type: " <> show listElement
+
+listPointerTypeNameLLVM :: AST.Type -> String
+listPointerTypeNameLLVM (ASTType.IntegerType { ASTType.typeBits = 32 }) = "IntList"
+listPointerTypeNameLLVM (ASTType.IntegerType { ASTType.typeBits = 1 }) = "BoolList"
+listPointerTypeNameLLVM (ASTType.FloatingPointType _) = "FloatList"
+listPointerTypeNameLLVM x = error "Unsupported list element type: " <> show x
 
 listSyntaxPointerTypeName :: S.Type -> String
 listSyntaxPointerTypeName Integer = "IntList"
 listSyntaxPointerTypeName Boolean = "BoolList"
 listSyntaxPointerTypeName Double = "FloatList"
-listSyntaxPointerTypeName _ = error "Unsupported list element type"
+listSyntaxPointerTypeName x = error "Unsupported list element type: " <> show x
 
 getASTType :: S.Type -> AST.Type
 getASTType Double = ASTType.double
