@@ -1,1 +1,0 @@
-def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));

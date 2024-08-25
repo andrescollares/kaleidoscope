@@ -7,7 +7,7 @@ import Control.Monad.Trans ( MonadIO(liftIO) )
 
 import Data.Text (pack, strip, unpack)
 import ParserH ( parseToplevel )
-import StdLibrary ( processLibrary )
+import StdLibrary ( generateLibraries )
 import Options.Applicative
 import CLI (getNextInput, opts, CliOptions (inputFile))
 import System.Console.Haskeline
@@ -22,7 +22,7 @@ processFile fname processOptions defs = do
   return $ snd <$> result
 
 repl :: CliOptions -> [Definition] -> IO ()
-repl replOptions defs = runInputT defaultSettings (loop "0" defs)
+repl replOptions initialDefs = runInputT defaultSettings (loop "0" initialDefs)
   where
     loop prevRes oldDefs = do
       outputStr "ready> "
@@ -49,7 +49,7 @@ repl replOptions defs = runInputT defaultSettings (loop "0" defs)
 main :: IO ()
 main = do
   parsedOptions <- execParser opts
-  defs <- processLibrary "./src/lib/length.k"
+  defs <- generateLibraries
   case defs of
     Just definitions -> do
       case inputFile parsedOptions of

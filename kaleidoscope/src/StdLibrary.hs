@@ -15,11 +15,20 @@ import Processor (process)
 processLibrary :: String -> IO (Maybe [Definition])
 processLibrary fname = do
   file <- readFile fname
-  result <- process stdLibrary file (CliOptions {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
+  result <- process baseDefinitions file (CliOptions {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
   return $ snd <$> result
 
-stdLibrary :: [Definition]
-stdLibrary =
+files :: [String]
+files = ["./src/lib/array.k"]
+
+generateLibraries :: IO (Maybe [Definition])
+generateLibraries = do
+  defs <- mapM processLibrary files
+  return $ concat <$> sequence defs
+
+
+baseDefinitions :: [Definition]
+baseDefinitions =
   [ GlobalDefinition
       functionDefaults
         { name = Name (fromString "printi"),
@@ -117,9 +126,6 @@ stdLibrary =
         type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
         initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
       }
-      -- def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));
-      -- TODO: define length using the code above
-      -- TODO: head and tail should accept different list types
       -- GlobalDefinition
       --   functionDefaults {
       --     name = Name (fromString "tail"),
