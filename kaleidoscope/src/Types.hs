@@ -85,7 +85,7 @@ getASTType Integer = ASTType.i32
 getASTType Boolean = ASTType.i1
 getASTType (Tuple t1 t2) = ASTType.StructureType False [getASTType t1, getASTType t2]
 getASTType (ListType t) = PointerType (NamedTypeReference (Name (fromString $ listSyntaxPointerTypeName t))) (AddrSpace 0)
-getASTType FunType = ptr ( FunctionType { ASTType.resultType = ASTType.i32, ASTType.argumentTypes = [ASTType.i32], ASTType.isVarArg = False } ) -- TODO: generic function types
+getASTType (FunType argTypes retType) = ptr ( FunctionType { ASTType.resultType = getASTType retType, ASTType.argumentTypes = map getASTType argTypes, ASTType.isVarArg = False } )
 
 findLocalVarType :: [LocalVarType] -> Name -> S.Type
 findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVars of

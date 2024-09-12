@@ -38,7 +38,7 @@ data Type
   | Boolean
   | Tuple Type Type
   | ListType Type
-  | FunType
+  | FunType [Type] Type
   deriving stock (Eq, Ord, Show)
 
 -- | Enum Literal

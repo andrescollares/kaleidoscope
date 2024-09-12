@@ -115,7 +115,13 @@ listT = do
   return $ ListType listTp
 
 funT :: Parser Syntax.Type
-funT = reserved "fun" >> return FunType
+funT = do
+  reserved "fun"
+  args <- parens $ commaSep tp
+  reserved "->"
+  retType <- tp
+  return $ FunType args retType
+
 
 int :: Parser Operand
 int =
