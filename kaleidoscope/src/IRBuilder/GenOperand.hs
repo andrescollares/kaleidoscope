@@ -65,25 +65,26 @@ genOperand (Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef = trace ("current defs: " ++ show currentDefs) $ getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
         Just def -> do
           case def of
             (GlobalDefinition AST.GlobalVariable {G.type' = t}) -> load (ConstantOperand (C.GlobalReference (ASTType.ptr t) (Name nameString))) 0
-            _ -> error $ "Constant " <> show nameString <> " not found."
-        Nothing -> error $ "Constant " <> show nameString <> " not found."
+            (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name nameString) retT params
+            _ -> error $ "Constant " <> show nameString <> " not found as global variable." <> show def
+        Nothing -> error $ "Constant " <> show nameString <> " not found." <> show localVars
 
 -- Call
 -- functionArgs = [Int, Double, Bool, Tuple, List, (FunOp Name)]
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  -- Only match if fnName is same name as 
+  -- Only match if fnName is same name as the current function
   let functionDefinition = trace ("Local vars: " ++ show localVars) $ getLocalVarName fnName localVars
   case functionDefinition of
     Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
+      let maybeDef = trace ("current defs: " ++ show currentDefs) $ getFunctionFromDefs currentDefs (Name fnName)
       case maybeDef of
         Just def -> do
           case def of

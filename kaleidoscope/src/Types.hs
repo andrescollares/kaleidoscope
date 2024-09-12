@@ -4,11 +4,12 @@ module Types where
 
 import Data.String (fromString)
 import Data.List (find)
-import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference, IntegerType, FloatingPointType, VoidType), Definition (TypeDefinition) )
+import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference, IntegerType, FloatingPointType, VoidType, FunctionType), Definition (TypeDefinition) )
 import qualified LLVM.AST.Type as ASTType
 import Syntax as S
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
+import LLVM.AST.Type (ptr)
 
 
 type LocalVarType = (Name, S.Type)
@@ -55,7 +56,7 @@ getExpressionType (If _ e1 e2) localVars =
 getExpressionType (List (x:_)) localVars = listPointerType x localVars
 -- FIXME: (?) empty list defaults to int list
 getExpressionType (List []) _ = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-getExpressionType (FunOp _) _ = PointerType VoidType (AddrSpace 0) -- TODO: function pointer type
+getExpressionType (FunOp _) _ = PointerType VoidType (AddrSpace 0)
 -- getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 listPointerType :: S.Operand -> [LocalVarType] -> AST.Type
@@ -84,7 +85,7 @@ getASTType Integer = ASTType.i32
 getASTType Boolean = ASTType.i1
 getASTType (Tuple t1 t2) = ASTType.StructureType False [getASTType t1, getASTType t2]
 getASTType (ListType t) = PointerType (NamedTypeReference (Name (fromString $ listSyntaxPointerTypeName t))) (AddrSpace 0)
-getASTType FunType = ASTType.VoidType
+getASTType FunType = ptr ( FunctionType { ASTType.resultType = ASTType.i32, ASTType.argumentTypes = [ASTType.i32], ASTType.isVarArg = False } ) -- TODO: generic function types
 
 findLocalVarType :: [LocalVarType] -> Name -> S.Type
 findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVars of

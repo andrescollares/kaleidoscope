@@ -97,6 +97,7 @@ getConstantFromDefs defs constantName = find (`matchNameGlobal` constantName) de
   where
     matchNameGlobal :: Definition -> Name -> Bool
     matchNameGlobal (GlobalDefinition AST.GlobalVariable {G.name = n}) nameToMatch = n == nameToMatch
+    matchNameGlobal (GlobalDefinition AST.Function {G.name = n}) nameToMatch = n == nameToMatch
     matchNameGlobal _ _ = False
     find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
     find p (SnocList (x : xs)) res
