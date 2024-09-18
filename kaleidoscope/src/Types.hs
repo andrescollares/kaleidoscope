@@ -40,6 +40,7 @@ getExpressionType (UnaryOp unOp e) localVars =
 -- TODO: this is potentially O(2^n)!!!
 getExpressionType (BinOp name a b) localVars
   | name == ":" = typeOfB
+  | name `elem` ["==", "!=", "<", ">", "<=", ">="] = ASTType.i1
   | typeOfA == ASTType.double || typeOfB == ASTType.double = ASTType.double
   | otherwise = typeOfA
   where

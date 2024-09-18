@@ -157,6 +157,14 @@ genTopLevel (S.TopLevel (S.Constant (Tuple t1 t2) constantName (TupleI e1 e2))) 
     constantOperand (Int n) = C.Int 32 n
     constantOperand (Bool b) = C.Int 1 (if b then 1 else 0)
     constantOperand (TupleI _ _) = error "TODO: recursive tuple constant"
+genTopLevel (S.TopLevel (S.Constant (ListType Integer) constantName (List list))) = error "TODO: list constant"
+  -- List constants are not supported yet
+  -- LLVM-hs can't create a pointer constant
+  -- see: https://groups.google.com/g/llvm-dev/c/KGnZRoyaD48/m/XREo3ystxCAJ
+  -- global constantName listType
+  --   (C.Null listType)
+  -- where listType = ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 }
+  
 genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
 
 -- Main expression

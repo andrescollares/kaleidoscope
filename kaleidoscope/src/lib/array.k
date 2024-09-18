@@ -1,10 +1,10 @@
 def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));
 
-def includes_int([int] l, int elem) -> bool:
-  if l == [] then 
-    false
+def every([int] l, fun (int) -> bool f) -> bool:
+  if l == [] then
+    true
   else
-    (if (head l) == elem then
-      true
+    (if f(head l) then
+      every(tail l, f)
     else
-      includes_int(tail l, elem));
+      false);

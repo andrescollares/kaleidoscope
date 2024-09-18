@@ -62,7 +62,7 @@ genOperand (Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = trace ("current defs: " ++ show currentDefs) $ getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
         Just def -> do
           case def of
@@ -76,12 +76,12 @@ genOperand (Var (Name nameString)) localVars = do
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
   -- Only match if fnName is same name as the current function
-  let functionDefinition = trace ("Local vars: " ++ show localVars) $ getLocalVarName fnName localVars
+  let functionDefinition = getLocalVarName fnName localVars
   case functionDefinition of
     Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = trace ("current defs: " ++ show currentDefs) $ getFunctionFromDefs currentDefs (Name fnName)
+      let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
       case maybeDef of
         Just def -> do
           case def of
