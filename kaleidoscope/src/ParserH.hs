@@ -3,14 +3,21 @@
 module ParserH where
 
 import Data.Bifunctor (second)
-import Data.ByteString.Short (ShortByteString)
-import Data.Functor.Identity ( Identity )
-import Data.String ( IsString(fromString) )
+import Data.Functor.Identity (Identity)
+import Data.String (IsString (fromString))
+import LLVM.AST.Name (Name)
 import qualified LLVM.IRBuilder.Module as M
 import Lexer
-import Syntax ( Type(..), Declaration(..), Operand(..), Expr(..), )
+import Syntax (Declaration (..), Expr (..), Operand (..), Type (..))
 import Text.Parsec
-    ( (<|>), many, parse, try, ParseError, eof, optionMaybe )
+  ( ParseError,
+    eof,
+    many,
+    optionMaybe,
+    parse,
+    try,
+    (<|>),
+  )
 import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
@@ -22,26 +29,25 @@ unary :: String -> Ex.Operator String () Identity Operand
 unary s = Ex.Prefix (reservedOp s >> return (UnaryOp (fromString s)))
 
 unops :: Ex.OperatorTable String () Identity Operand
-unops = [
-  [ unary "!" ],
-  [ unary "-" ],
-  [ unary "fst",
-    unary "snd"],
-  [
-    unary "isInt",
-    unary "head",
-    unary "tail",
-    unary "isDouble",
-    unary "isBool",
-    unary "isTuple",
-    unary "isList"]
+unops =
+  [ [unary "!"],
+    [unary "-"],
+    [ unary "fst",
+      unary "snd"
+    ],
+    [ unary "isInt",
+      unary "head",
+      unary "tail",
+      unary "isDouble",
+      unary "isBool",
+      unary "isTuple",
+      unary "isList"
+    ]
   ]
-
 
 binops :: Ex.OperatorTable String () Identity Operand
 binops =
-  [ 
-    [ binary "*" Ex.AssocLeft,
+  [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
     ],
     [ binary "+" Ex.AssocLeft,
@@ -60,7 +66,7 @@ binops =
     ]
   ]
 
-op :: Parser ShortByteString
+op :: Parser Name
 op = do
   whitespace
   o <- operator
@@ -80,6 +86,7 @@ tp = do
     <|> try boolean
     <|> try tupleT
     <|> try listT
+    <|> try funT
 
 argument :: Parser (Type, String)
 argument = do
@@ -106,7 +113,16 @@ listT :: Parser Syntax.Type
 listT = do
   listTp <- brackets tp
   return $ ListType listTp
-  
+
+funT :: Parser Syntax.Type
+funT = do
+  reserved "fun"
+  args <- parens $ commaSep tp
+  reserved "->"
+  retType <- tp
+  return $ FunType args retType
+
+
 int :: Parser Operand
 int =
   Int <$> Lexer.int
@@ -200,7 +216,6 @@ letins = do
   reserved "in"
   body <- expr
   return $ foldr (\(t, n, v) -> Let t n v) body defs
-
 
 factor :: Parser Operand
 factor =

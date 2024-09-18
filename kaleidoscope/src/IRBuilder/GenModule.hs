@@ -33,14 +33,14 @@ import Data.Map.Strict (Map, fromList)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 import Data.String (fromString)
 
-
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
 genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
 genModule oldDefs expressions options = do
-  optMod <- optimizeModule unoptimizedAst options
+  -- mapM_ print expressions
+  optMod <-  optimizeModule unoptimizedAst options
   res <- runJIT optMod
   return (res, definitions)
   where
@@ -199,9 +199,5 @@ genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do
 
 genTopLevel _ = error "This shouldn't have matched here."
 
--- TODO: add print statement to show result value
 genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
-genLevel e localVars = do
-  generated <- genOperand e localVars
-  ret generated
-
+genLevel e localVars = genOperand e localVars >>= ret

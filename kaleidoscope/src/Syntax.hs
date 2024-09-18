@@ -2,7 +2,6 @@
 
 module Syntax where
 
-import Data.ByteString.Short (ShortByteString)
 import LLVM.AST.Name (Name)
 import LLVM.IRBuilder.Module (ParameterName)
 
@@ -21,8 +20,9 @@ data Operand
   | Var Name
   | Call Name [Operand]
   | If Operand Operand Operand
-  | UnaryOp ShortByteString Operand
-  | BinOp ShortByteString Operand Operand
+  | UnaryOp Name Operand
+  | BinOp Name Operand Operand
+  | FunOp Name
   deriving stock (Eq, Ord, Show)
 
 data Declaration
@@ -38,6 +38,7 @@ data Type
   | Boolean
   | Tuple Type Type
   | ListType Type
+  | FunType [Type] Type
   deriving stock (Eq, Ord, Show)
 
 -- | Enum Literal
