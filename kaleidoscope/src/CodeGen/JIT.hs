@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module JIT where
+module CodeGen.JIT where
 
 import qualified Data.ByteString as BS
 import Foreign.C.Types ( CInt(..) )
@@ -15,7 +15,7 @@ import LLVM.PassManager
       runPassManager,
       withPassManager,
       PassSetSpec(optLevel) )
-import CLI (CliOptions (CliOptions, optimizationLevel, emitLLVM))
+import CLIParameters (CLIParameters (CLIParameters, optimizationLevel, emitLLVM))
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
 
@@ -31,15 +31,12 @@ jit c oLevel = EE.withMCJIT c optlevel model ptrelim fastins
     ptrelim = Nothing -- frame pointer elimination
     fastins = Nothing -- fast instruction selection
 
-passes :: Word -> PassSetSpec
-passes level = defaultCuratedPassSetSpec {optLevel = Just level}
-
-optimizeModule :: AST.Module -> CliOptions -> IO AST.Module
-optimizeModule astModule CliOptions { optimizationLevel = level, emitLLVM = emit } = do
+optimizeModule :: AST.Module -> CLIParameters -> IO AST.Module
+optimizeModule astModule CLIParameters { optimizationLevel = level, emitLLVM = emit } = do
   withContext $ \context ->
     jit context level $ \_ ->
       withModuleFromAST context astModule $ \m ->
-        withPassManager (passes level) $ \pm -> do
+        withPassManager (defaultCuratedPassSetSpec {optLevel = Just level}) $ \pm -> do
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m

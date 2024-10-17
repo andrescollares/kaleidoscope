@@ -9,8 +9,8 @@ import LLVM.AST
 import Data.String
 
 import ParserH
-import JIT
-import IRBuilder.GenModule
+import CodeGen.JIT
+import CodeGen.GenModule
 import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
 import qualified LLVM.AST as AST

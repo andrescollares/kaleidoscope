@@ -26,27 +26,8 @@ float = Tok.float lexer
 bool :: Parser Bool
 bool = Tok.lexeme lexer $ (True <$ Tok.symbol lexer "true") <|> (False <$ Tok.symbol lexer "false")
 
--- tuple :: Parser (Type, Type)
--- tuple = Tok.parens lexer $ do
---   t1 <- 
---   _ <- Tok.comma lexer
---   t2 <- type'
---   return (t1, t2)
-
 identifier :: Parser String
 identifier = Tok.identifier lexer
-
--- type' :: Parser Type
--- type' = do
---   t <- identifier
---   case t of
---     "double" -> return Syntax.Double
---     "int" -> return Syntax.Integer
---     "bool" -> return Syntax.Boolean
---     "tuple" -> do
---         types <- parens $ commaSep type'
---         return $ Tuple (head types) (head $ tail types)
---     _ -> fail "unknown type" -- TODO: why is the syntax different here?
 
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module List where
+module CodeGen.DataStructures.List where
 
 import LLVM.IRBuilder
 import qualified LLVM.AST.Operand as ASTOperand
@@ -11,9 +11,8 @@ import LLVM.AST (Operand(ConstantOperand), Name (Name))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.AddrSpace as AST
 import Data.ByteString.Short (ShortByteString)
-import Types
 import Data.String
-import Instructions (operandType)
+import CodeGen.Utils.Types (operandType)
 
 nullIntList :: IRBuilderT ModuleBuilder ASTOperand.Operand
 nullIntList = do
@@ -33,13 +32,19 @@ createListNode nodeVal = do
     listType = ASTType.NamedTypeReference (AST.Name $ fromString $ listPointerTypeNameLLVM elementType)
     listPtrType = ASTType.PointerType listType (AST.AddrSpace 0)
 
+listPointerTypeNameLLVM :: AST.Type -> String
+listPointerTypeNameLLVM ASTType.IntegerType { ASTType.typeBits = 32 } = "IntList"
+listPointerTypeNameLLVM ASTType.IntegerType { ASTType.typeBits = 1 } = "BoolList"
+listPointerTypeNameLLVM (ASTType.FloatingPointType _) = "FloatList"
+listPointerTypeNameLLVM x = error "Unsupported list element type: " <> show x
+
 prependNode :: AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
 prependNode node list = do
   i32_slot <- gep node [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
   store i32_slot 0 list
   return node
 
-allocListNode :: ASTType.Type -> ShortByteString 
+allocListNode :: ASTType.Type -> ShortByteString
 allocListNode elementType = case elementType of
       ASTType.FloatingPointType _ -> "_alloc_double_list_node"
       ASTType.IntegerType 1 -> "_alloc_bool_list_node"

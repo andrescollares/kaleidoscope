@@ -1,25 +1,21 @@
 {-# LANGUAGE DerivingStrategies #-}
-
 {-# LANGUAGE OverloadedStrings #-}
 
+module CodeGen.LocalVar where
 
-module IRBuilder.LocalVar where
-
--- import Data.Maybe
-
-import Data.ByteString.Short ( ShortByteString )
-import qualified Data.List as DL
-import Data.String ( IsString(fromString) )
+import Data.ByteString.Short (ShortByteString)
+import qualified Data.List as List
+import Data.String (IsString (fromString))
 import qualified Data.Text as T
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Global as G (Global (name, type'), returnType)
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Internal.SnocList ( SnocList(SnocList) )
-import LLVM.IRBuilder.Module (ParameterName (ParameterName))
-import Syntax as S
-import Types
+import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
+import LLVM.IRBuilder.Module (ParameterName (..))
+import qualified Syntax as S
+import CodeGen.Utils.Types ( getASTType, LocalVarType )
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
@@ -38,14 +34,14 @@ definitionsToLocalVars (SnocList defs) =
 
 llvmTypeToSyntaxType :: ASTType.Type -> S.Type
 llvmTypeToSyntaxType t = case t of
-  ASTType.FloatingPointType {floatingPointType = DoubleFP} -> Double
-  ASTType.IntegerType {typeBits = 32} -> Integer
-  ASTType.IntegerType {typeBits = 1} -> Boolean
-  ASTType.StructureType { elementTypes = [t1, t2] } -> Tuple (llvmTypeToSyntaxType t1) (llvmTypeToSyntaxType t2)
-  ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (Name n) } -> case n of
-    "IntList" -> ListType Integer
-    "BoolList" -> ListType Boolean
-    "FloatList" -> ListType Double
+  ASTType.FloatingPointType {floatingPointType = DoubleFP} -> S.Double
+  ASTType.IntegerType {typeBits = 32} -> S.Integer
+  ASTType.IntegerType {typeBits = 1} -> S.Boolean
+  ASTType.StructureType {elementTypes = [t1, t2]} -> S.Tuple (llvmTypeToSyntaxType t1) (llvmTypeToSyntaxType t2)
+  ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (Name n)} -> case n of
+    "IntList" -> S.ListType S.Integer
+    "BoolList" -> S.ListType S.Boolean
+    "FloatList" -> S.ListType S.Double
     _ -> error $ "Unsupported list type " ++ show n
   _ -> error $ "Unsupported type " ++ show t
 
@@ -57,10 +53,12 @@ localVarsFallback :: [AST.Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
-functionLocalVarParameters = map (\(t, ParameterName n) -> Parameter (getASTType t) (Name n) [])
+functionLocalVarParameters = map (\(t, paramName) -> case paramName of
+  ParameterName n -> Parameter (getASTType t) (Name n) []
+  NoParameterName -> error "NoParameterName is not supported")
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
-getLocalVarName n = DL.find (`matchName` n)
+getLocalVarName n = List.find (`matchName` n)
 
 matchName :: LocalVar -> ShortByteString -> Bool
 -- TODO: More explicit matching

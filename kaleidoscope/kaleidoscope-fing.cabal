@@ -46,7 +46,10 @@ common common-options
 executable kaleidoscope-fing
     import: common-options
     main-is: Main.hs
-    other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple, List, CLI, Processor
+    other-modules: 
+        Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
+        , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
+        , CLIParameters, Processor, Repl, Srep
     hs-source-dirs: src
     build-depends:
         , bytestring  >=0.10
@@ -68,9 +71,12 @@ test-suite unit-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   hs-source-dirs:
-      test
-      , src
-  other-modules: Lexer, ParserH, Syntax, JIT, IRBuilder.GenModule, IRBuilder.GenOperand, IRBuilder.LocalVar, StdLibrary, Types, Instructions, Tuple, List, CLI, Processor
+    test
+    , src
+  other-modules: 
+    Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
+    , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
+    , CLIParameters, Processor, Repl, Srep
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     --   kaleidoscope-fing

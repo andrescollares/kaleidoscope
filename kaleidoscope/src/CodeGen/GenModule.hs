@@ -1,22 +1,19 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-module IRBuilder.GenModule where
-
--- import Data.Maybe
+module CodeGen.GenModule where
 
 import Control.Monad.RWS (gets)
 import Data.Bifunctor (first)
-import IRBuilder.GenOperand (genOperand)
-import IRBuilder.LocalVar
+import CodeGen.GenOperand (genOperand)
+import CodeGen.LocalVar
   ( LocalVar,
     definitionsToLocalVars,
     functionLocalVar,
   )
-import JIT (optimizeModule, runJIT)
+import CodeGen.JIT (optimizeModule, runJIT)
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
@@ -26,9 +23,9 @@ import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, typedef)
 import LLVM.IRBuilder.Monad (IRBuilderT)
-import Syntax as S
-import Types ( getExpressionType, getASTType )
-import CLI (CliOptions)
+import qualified Syntax as S
+import CodeGen.Utils.Types ( getExpressionType, getASTType )
+import CLIParameters (CLIParameters)
 import Data.Map.Strict (Map, fromList)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 import Data.String (fromString)
@@ -37,7 +34,7 @@ import Data.String (fromString)
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [Expr] -> CliOptions -> IO (String, [Definition])
+genModule :: [Definition] -> [S.Expr] -> CLIParameters -> IO (String, [Definition])
 genModule oldDefs expressions options = do
   -- mapM_ print expressions
   optMod <-  optimizeModule unoptimizedAst options
@@ -72,17 +69,17 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
-genTopLevel :: Expr -> ModuleBuilder AST.Operand
+genTopLevel :: S.Expr -> ModuleBuilder AST.Operand
 -- Extern definition
-genTopLevel (S.TopLevel (S.Extern externName externArgs Integer)) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs S.Integer)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i32
-genTopLevel (S.TopLevel (S.Extern externName externArgs Double)) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs S.Double)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.double
-genTopLevel (S.TopLevel (S.Extern externName externArgs Boolean)) = do
+genTopLevel (S.TopLevel (S.Extern externName externArgs S.Boolean)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 
 -- Function definition
-genTopLevel (S.TopLevel (S.Function functionName functionArgs Double body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Double body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -90,7 +87,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs Double body)) = do
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs Integer body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Integer body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -98,7 +95,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs Integer body)) = d
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs Boolean body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Boolean body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -106,7 +103,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs Boolean body)) = d
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (Tuple t1 t2) body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.Tuple t1 t2) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -114,7 +111,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (Tuple t1 t2) body
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Integer) body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Integer) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -122,7 +119,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Integer)
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 })
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Double) body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Double) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -130,7 +127,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Double) 
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 })
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Boolean) body)) = do
+genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Boolean) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -140,32 +137,32 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (ListType Boolean)
     )
 
 -- Constant definition
-genTopLevel (S.TopLevel (S.Constant Double constantName (Float val))) = do
+genTopLevel (S.TopLevel (S.Constant S.Double constantName (S.Float val))) = do
   global constantName ASTType.double (C.Float (F.Double val))
-genTopLevel (S.TopLevel (S.Constant Integer constantName (Int val))) = do
+genTopLevel (S.TopLevel (S.Constant S.Integer constantName (S.Int val))) = do
   global constantName ASTType.i32 (C.Int 32 val)
-genTopLevel (S.TopLevel (S.Constant Boolean constantName (Bool val))) = do
+genTopLevel (S.TopLevel (S.Constant S.Boolean constantName (S.Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
-genTopLevel (S.TopLevel (S.Constant (Tuple t1 t2) constantName (TupleI e1 e2))) = do
+genTopLevel (S.TopLevel (S.Constant (S.Tuple t1 t2) constantName (S.TupleI e1 e2))) = do
   global constantName (ASTType.StructureType False [getASTType t1, getASTType t2])
    (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [
       constantOperand e1,
       constantOperand e2
    ]})
   where
-    constantOperand (Float n) = C.Float (F.Double n)
-    constantOperand (Int n) = C.Int 32 n
-    constantOperand (Bool b) = C.Int 1 (if b then 1 else 0)
-    constantOperand (TupleI _ _) = error "TODO: recursive tuple constant"
-genTopLevel (S.TopLevel (S.Constant (ListType Integer) constantName (List list))) = error "TODO: list constant"
+    constantOperand (S.Float n) = C.Float (F.Double n)
+    constantOperand (S.Int n) = C.Int 32 n
+    constantOperand (S.Bool b) = C.Int 1 (if b then 1 else 0)
+    constantOperand (S.TupleI _ _) = error "TODO: recursive tuple constant"
+genTopLevel (S.TopLevel (S.Constant (S.ListType S.Integer) constantName (S.List list))) = error "TODO: list constant"
   -- List constants are not supported yet
   -- LLVM-hs can't create a pointer constant
   -- see: https://groups.google.com/g/llvm-dev/c/KGnZRoyaD48/m/XREo3ystxCAJ
   -- global constantName listType
   --   (C.Null listType)
   -- where listType = ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 }
-  
-genTopLevel (S.TopLevel (S.Constant {})) = error "Invalid constant definition"
+
+genTopLevel (S.TopLevel S.Constant {}) = error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Operand expression) = do
@@ -177,16 +174,16 @@ genTopLevel (S.Operand expression) = do
     eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
     -- typeDefs moduleDefs = findTypeAlias (Name "a") moduleDefs
     -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
-    printerWrapper exprs currentDefs = S.Call (printerFunctionName (eType currentDefs)) ([exprs] ++ (printerExtraParams (eType currentDefs)))
+    printerWrapper exprs currentDefs = S.Call (printerFunctionName (eType currentDefs)) (exprs : printerExtraParams (eType currentDefs))
     printerFunctionName (FloatingPointType _) = "printd"
-    printerFunctionName (IntegerType { ASTType.typeBits = 32 }) = "printi"
-    printerFunctionName (IntegerType { ASTType.typeBits = 1 }) = "printb"
+    printerFunctionName IntegerType { ASTType.typeBits = 32 } = "printi"
+    printerFunctionName IntegerType { ASTType.typeBits = 1 } = "printb"
     printerFunctionName (PointerType (NamedTypeReference (Name "IntList")) (AddrSpace 0)) = "printil"
     printerFunctionName (PointerType (NamedTypeReference (Name "FloatList")) (AddrSpace 0)) = "printfl"
     printerFunctionName (PointerType (NamedTypeReference (Name "BoolList")) (AddrSpace 0)) = "printbl"
-    printerFunctionName (StructureType { ASTType.elementTypes = _ }) = "print_tuple"
+    printerFunctionName StructureType { ASTType.elementTypes = _ } = "print_tuple"
     printerFunctionName _ = error "Unsupported type for print function"
-    printerExtraParams (StructureType { ASTType.elementTypes = [t1, t2] }) = case (t1, t2) of
+    printerExtraParams StructureType { ASTType.elementTypes = [t1, t2] } = case (t1, t2) of
       (IntegerType { ASTType.typeBits = 32 }, IntegerType { ASTType.typeBits = 32 }) -> [S.Int 1, S.Int 1]
       (IntegerType { ASTType.typeBits = 32 }, FloatingPointType { ASTType.floatingPointType = DoubleFP }) -> [S.Int 1, S.Int 2]
       (IntegerType { ASTType.typeBits = 32 }, IntegerType { ASTType.typeBits = 1 }) -> [S.Int 1, S.Int 3]

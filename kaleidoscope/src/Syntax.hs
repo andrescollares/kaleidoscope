@@ -40,6 +40,3 @@ data Type
   | ListType Type
   | FunType [Type] Type
   deriving stock (Eq, Ord, Show)
-
--- | Enum Literal
--- | Struct [(Name, Literal)]

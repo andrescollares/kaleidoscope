@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
-module Tuple where
+module CodeGen.DataStructures.Tuple where
 
 import LLVM.AST
 import qualified LLVM.AST.Constant as C
 import LLVM.IRBuilder
 import qualified LLVM.AST as AST
-import Instructions (operandType)
+import CodeGen.Utils.Types (operandType)
 
 tupleAccessorOperand :: Operand -> Operand -> IRBuilderT ModuleBuilder AST.Operand
 tupleAccessorOperand tupleOperand indexOperand = do
