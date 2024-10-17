@@ -3,6 +3,7 @@
 
 module CodeGen.LocalVar where
 
+import CodeGen.Utils.Types (LocalVarType, getASTType)
 import Data.ByteString.Short (ShortByteString)
 import qualified Data.List as List
 import Data.String (IsString (fromString))
@@ -15,7 +16,6 @@ import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ParameterName (..))
 import qualified Syntax as S
-import CodeGen.Utils.Types ( getASTType, LocalVarType )
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
@@ -53,9 +53,12 @@ localVarsFallback :: [AST.Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
 
 functionLocalVarParameters :: [(S.Type, ParameterName)] -> [Parameter]
-functionLocalVarParameters = map (\(t, paramName) -> case paramName of
-  ParameterName n -> Parameter (getASTType t) (Name n) []
-  NoParameterName -> error "NoParameterName is not supported")
+functionLocalVarParameters =
+  map
+    ( \(t, paramName) -> case paramName of
+        ParameterName n -> Parameter (getASTType t) (Name n) []
+        NoParameterName -> error "NoParameterName is not supported"
+    )
 
 getLocalVarName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
 getLocalVarName n = List.find (`matchName` n)

@@ -1,8 +1,9 @@
 module Srep where
+
 -- Single read eval print
 
-import LLVM.AST as AST (Definition)
 import CLIParameters (CLIParameters (..))
+import LLVM.AST as AST (Definition)
 import Processor (process)
 
 processFile :: String -> CLIParameters -> [AST.Definition] -> IO (Maybe [AST.Definition])

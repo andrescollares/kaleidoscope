@@ -2,23 +2,26 @@
 
 module CodeGen.JIT where
 
+import CLIParameters (CLIParameters (CLIParameters, emitLLVM, optimizationLevel))
 import qualified Data.ByteString as BS
-import Foreign.C.Types ( CInt(..) )
+import Foreign.C.Types (CInt (..))
 import Foreign.Ptr (FunPtr, castFunPtr)
 import qualified LLVM.AST as AST
-import LLVM.Context ( withContext, Context )
+import LLVM.Context (Context, withContext)
 import qualified LLVM.ExecutionEngine as EE
 import LLVM.Module as Mod
-    ( moduleAST, moduleLLVMAssembly, withModuleFromAST )
+  ( moduleAST,
+    moduleLLVMAssembly,
+    withModuleFromAST,
+  )
 import LLVM.PassManager
-    ( defaultCuratedPassSetSpec,
-      runPassManager,
-      withPassManager,
-      PassSetSpec(optLevel) )
-import CLIParameters (CLIParameters (CLIParameters, optimizationLevel, emitLLVM))
+  ( PassSetSpec (optLevel),
+    defaultCuratedPassSetSpec,
+    runPassManager,
+    withPassManager,
+  )
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
-
 
 runInteger :: FunPtr a -> CInt
 runInteger fn = haskFunInt (castFunPtr fn :: FunPtr CInt)
@@ -32,7 +35,7 @@ jit c oLevel = EE.withMCJIT c optlevel model ptrelim fastins
     fastins = Nothing -- fast instruction selection
 
 optimizeModule :: AST.Module -> CLIParameters -> IO AST.Module
-optimizeModule astModule CLIParameters { optimizationLevel = level, emitLLVM = emit } = do
+optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = emit} = do
   withContext $ \context ->
     jit context level $ \_ ->
       withModuleFromAST context astModule $ \m ->

@@ -1,13 +1,14 @@
 {-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
+
 module StdLib.BaseDefs where
 
-import LLVM.AST (Definition (..), Type (..), Name (..), Parameter (..), FloatingPointType (..))
-import LLVM.AST.Global (Global(..), functionDefaults, globalVariableDefaults)
-import qualified LLVM.AST.Constant as C
 import Data.String (fromString)
-import LLVM.AST.AddrSpace (AddrSpace(..))
-import LLVM.AST.Linkage (Linkage(..))
-import LLVM.AST.Visibility (Visibility(..))
+import LLVM.AST (Definition (..), FloatingPointType (..), Name (..), Parameter (..), Type (..))
+import LLVM.AST.AddrSpace (AddrSpace (..))
+import qualified LLVM.AST.Constant as C
+import LLVM.AST.Global (Global (..), functionDefaults, globalVariableDefaults)
+import LLVM.AST.Linkage (Linkage (..))
+import LLVM.AST.Visibility (Visibility (..))
 
 baseDefinitions :: [Definition]
 baseDefinitions =

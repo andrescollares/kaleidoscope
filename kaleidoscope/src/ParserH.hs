@@ -8,7 +8,7 @@ import Data.String (IsString (fromString))
 import LLVM.AST.Name (Name)
 import qualified LLVM.IRBuilder.Module as M
 import qualified Lexer as L
-import qualified Syntax  as S (Declaration (..), Expr (..), Operand (..), Type (..))
+import qualified Syntax as S (Declaration (..), Expr (..), Operand (..), Type (..))
 import Text.Parsec
   ( ParseError,
     eof,
@@ -120,7 +120,6 @@ funT = do
   args <- L.parens $ L.commaSep tp
   L.reserved "->"
   S.FunType args <$> tp
-
 
 int :: Parser S.Operand
 int =

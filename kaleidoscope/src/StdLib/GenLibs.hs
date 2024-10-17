@@ -1,10 +1,11 @@
 {-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
 
 module StdLib.GenLibs where
+
+import CLIParameters (CLIParameters (..))
 import LLVM.AST (Definition)
-import CLIParameters (CLIParameters(..))
-import StdLib.BaseDefs (baseDefinitions)
 import Processor (process)
+import StdLib.BaseDefs (baseDefinitions)
 
 generateLibraries :: IO (Maybe [Definition])
 generateLibraries = do

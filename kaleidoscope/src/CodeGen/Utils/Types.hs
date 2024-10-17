@@ -2,15 +2,14 @@
 
 module CodeGen.Utils.Types where
 
-import Data.String (fromString)
 import Data.List (find)
-import LLVM.AST as AST ( Name (Name), Type (PointerType, NamedTypeReference, IntegerType, FloatingPointType, VoidType, FunctionType, pointerReferent, pointerAddrSpace, StructureType), Operand (..) )
+import Data.String (fromString)
+import LLVM.AST as AST (Name (Name), Operand (..), Type (FloatingPointType, FunctionType, IntegerType, NamedTypeReference, PointerType, StructureType, VoidType, pointerAddrSpace, pointerReferent))
+import LLVM.AST.AddrSpace (AddrSpace (AddrSpace))
+import LLVM.AST.Constant as AST.Constant (Constant (..))
+import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
 import qualified Syntax as S
-import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
-import LLVM.AST.Type (ptr)
-import LLVM.AST.Constant as AST.Constant (Constant(..))
-
 
 type LocalVarType = (Name, S.Type)
 
@@ -26,7 +25,7 @@ getExpressionType (S.UnaryOp unOp (S.TupleI e1 e2)) localVars =
     "fst" -> getExpressionType e1 localVars
     "snd" -> getExpressionType e2 localVars
     _ -> error "Unsupported unary operation on Tuple"
-getExpressionType (S.UnaryOp unOp (S.List (x:_))) localVars =
+getExpressionType (S.UnaryOp unOp (S.List (x : _))) localVars =
   case unOp of
     "head" -> getExpressionType x localVars
     "tail" -> listPointerType x localVars
@@ -36,7 +35,6 @@ getExpressionType (S.UnaryOp unOp e) localVars =
     "!" -> ASTType.i1
     "-" -> getExpressionType e localVars
     _ -> getExpressionType e localVars
-
 -- TODO: this is potentially O(2^n)!!!
 getExpressionType (S.BinOp name a b) localVars
   | name == ":" = typeOfB
@@ -44,8 +42,8 @@ getExpressionType (S.BinOp name a b) localVars
   | typeOfA == ASTType.double || typeOfB == ASTType.double = ASTType.double
   | otherwise = typeOfA
   where
-      typeOfA = getExpressionType a localVars
-      typeOfB = getExpressionType b localVars
+    typeOfA = getExpressionType a localVars
+    typeOfB = getExpressionType b localVars
 getExpressionType (S.Let varType varName _ e) localVars = getExpressionType e $ localVars ++ [(varName, varType)]
 getExpressionType (S.If _ e1 e2) localVars =
   if e1Type == getExpressionType e2 localVars
@@ -54,10 +52,11 @@ getExpressionType (S.If _ e1 e2) localVars =
   where
     e1Type = getExpressionType e1 localVars
 -- getExpressionType (List [x]) localVars = getExpressionType x localVars
-getExpressionType (S.List (x:_)) localVars = listPointerType x localVars
+getExpressionType (S.List (x : _)) localVars = listPointerType x localVars
 -- FIXME: (?) empty list defaults to int list
 getExpressionType (S.List []) _ = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
 getExpressionType (S.FunOp _) _ = PointerType VoidType (AddrSpace 0)
+
 -- getExpressionType e localVars = error $ "Unsupported expression: " ++ show e ++ "Local vars: " ++ show localVars
 
 findLocalVarType :: [LocalVarType] -> Name -> S.Type
@@ -67,8 +66,8 @@ findLocalVarType localVars varName = case find (\(n, _) -> n == varName) localVa
 
 listPointerType :: S.Operand -> [LocalVarType] -> AST.Type
 listPointerType listElement localVars = case getExpressionType listElement localVars of -- TODO: local vars param
-  IntegerType { ASTType.typeBits = 32 } -> PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-  IntegerType { ASTType.typeBits = 1 } -> PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)
+  IntegerType {ASTType.typeBits = 32} -> PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+  IntegerType {ASTType.typeBits = 1} -> PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)
   FloatingPointType _ -> PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)
   _ -> error "Unsupported list element type"
 
@@ -78,7 +77,7 @@ getASTType S.Integer = ASTType.i32
 getASTType S.Boolean = ASTType.i1
 getASTType (S.Tuple t1 t2) = ASTType.StructureType False [getASTType t1, getASTType t2]
 getASTType (S.ListType t) = PointerType (NamedTypeReference (Name (fromString $ listSyntaxPointerTypeName t))) (AddrSpace 0)
-getASTType (S.FunType argTypes retType) = ptr ( FunctionType { ASTType.resultType = getASTType retType, ASTType.argumentTypes = map getASTType argTypes, ASTType.isVarArg = False } )
+getASTType (S.FunType argTypes retType) = ptr (FunctionType {ASTType.resultType = getASTType retType, ASTType.argumentTypes = map getASTType argTypes, ASTType.isVarArg = False})
 
 listSyntaxPointerTypeName :: S.Type -> String
 listSyntaxPointerTypeName S.Integer = "IntList"
@@ -97,7 +96,7 @@ operandType op = case op of
   ConstantOperand con -> case con of
     AST.Constant.Int _ _ -> ASTType.i32
     AST.Constant.Float _ -> ASTType.double
-    Struct { memberValues = [a, b] } -> StructureType False [operandType $ ConstantOperand a, operandType $ ConstantOperand b]
+    Struct {memberValues = [a, b]} -> StructureType False [operandType $ ConstantOperand a, operandType $ ConstantOperand b]
     -- TODO: empty list defaults to int list
     Null _ -> ASTType.PointerType {pointerReferent = NamedTypeReference (Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0}
     _ -> error $ "Unsupported constant operand type: " ++ show op

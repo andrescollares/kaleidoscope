@@ -1,13 +1,13 @@
 module Processor where
 
-import qualified LLVM.AST as AST (Definition) 
-import ParserH (parseToplevel)
+import CLIParameters (CLIParameters (CLIParameters, failOnErrors))
 import CodeGen.GenModule (genModule)
-import CLIParameters (CLIParameters(failOnErrors, CLIParameters))
+import qualified LLVM.AST as AST (Definition)
+import ParserH (parseToplevel)
 
 process :: [AST.Definition] -> String -> CLIParameters -> IO (Maybe (String, [AST.Definition]))
 process oldDefs source cliParameters = do
-  let parsedSrc = parseToplevel source 
+  let parsedSrc = parseToplevel source
   case parsedSrc of
     Left err -> do
       case cliParameters of
