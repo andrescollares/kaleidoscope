@@ -132,7 +132,6 @@ genOperand (S.BinOp oper a b) localVars = do
   where
     binops :: AST.Operand -> AST.Operand -> M.Map Name (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
-      -- TODO: This info is also in the ParserH binops, is it necessary for it to be there?
       M.fromList
         [ ("+", eitherType add fadd),
           ("-", eitherType sub fsub),
@@ -201,8 +200,7 @@ genOperand (S.List (x : xs)) localVars = do
   store next_slot 0 nextValue
   return var
 
--- def id(int x) -> int: x;
--- def f2(fun f) -> int: f(2);
+-- Function
 genOperand (S.FunOp (Name fnName)) localVars = do
   currentDefs <- liftModuleState $ gets builderDefs
   let maybeDef = getFunctionFromDefs currentDefs (Name fnName)

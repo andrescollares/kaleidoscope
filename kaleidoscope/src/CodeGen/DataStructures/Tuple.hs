@@ -16,9 +16,3 @@ tupleAccessorOperand tupleOperand indexOperand = do
   load tmp_input_w0 8
   where
     tupleType = operandType tupleOperand
-
--- typeToString :: Type -> String
--- typeToString (IntegerType 32) = "i32"
--- typeToString (FloatingPointType DoubleFP) = "double"
--- typeToString (IntegerType 1) = "bool"
--- typeToString t = error "Unsupported type" ++ show t
