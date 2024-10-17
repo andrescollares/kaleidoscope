@@ -49,7 +49,7 @@ executable kaleidoscope-fing
     other-modules: 
         Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
         , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
-        , CLIParameters, Processor, Repl, Srep
+        , CLIParameters, Processor
     hs-source-dirs: src
     build-depends:
         , bytestring  >=0.10
@@ -70,7 +70,7 @@ test-suite unit-test
   other-modules: 
     Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
     , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
-    , CLIParameters, Processor, Repl, Srep
+    , CLIParameters, Processor
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     base ^>=4.14

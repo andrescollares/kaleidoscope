@@ -6,8 +6,8 @@ import qualified LLVM.AST as AST (Definition)
 import ParserH (parseToplevel)
 
 process :: [AST.Definition] -> String -> CLIParameters -> IO (Maybe (String, [AST.Definition]))
-process oldDefs source cliParameters = do
-  let parsedSrc = parseToplevel source
+process oldDefs newSource cliParameters = do
+  let parsedSrc = parseToplevel newSource
   case parsedSrc of
     Left err -> do
       case cliParameters of

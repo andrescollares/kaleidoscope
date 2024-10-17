@@ -4,21 +4,20 @@ module Main where
 
 import CLIParameters (CLIParameters (..))
 import Control.Monad (void)
+import Control.Monad.Trans (MonadIO (liftIO))
+import Data.Text (pack, strip, unpack)
+import qualified LLVM.AST as AST (Definition)
 import Options.Applicative
-import Repl (repl)
-import Srep (processFile)
+import Processor (process)
 import StdLib.GenLibs (generateLibraries)
+import System.Console.Haskeline
 
 main :: IO ()
 main = do
   cliParameters <- execParser parserInfo
-  defs <- generateLibraries
-  case defs of
-    Just definitions -> do
-      case inputFile cliParameters of
-        [] -> repl cliParameters definitions
-        fname -> void (processFile fname cliParameters definitions)
-    Nothing -> error "Could not process library"
+  case inputFile cliParameters of
+    [] -> startRepl cliParameters
+    fname -> void (processFile fname cliParameters)
 
 parserInfo :: ParserInfo CLIParameters
 parserInfo =
@@ -58,3 +57,54 @@ parserParameters =
           <> short 'e'
           <> help "Fail on errors"
       )
+
+startRepl :: CLIParameters -> IO ()
+startRepl cliParameters = do
+  libs <- generateLibraries
+  runInputT defaultSettings (loop "0" libs)
+  where
+    loop prevRes oldDefs = do
+      outputStr "ready> "
+      minput <- getNextInput
+      case minput of
+        Nothing -> outputStrLn "Goodbye."
+        Just input -> do
+          case unpack $ strip $ pack input of
+            ('=' : rest) -> do
+              maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") cliParameters
+              case maybeDefs of
+                Just (_, defs) -> loop prevRes defs
+                Nothing -> loop prevRes oldDefs
+            _ -> do
+              maybeDefs <- liftIO $ process oldDefs input cliParameters
+              case maybeDefs of
+                Just (res, defs) -> loop res defs
+                Nothing -> loop prevRes oldDefs
+    removeLast :: String -> String
+    removeLast [] = []
+    removeLast [_] = []
+    removeLast (x : xs) = x : removeLast xs
+
+getNextInput :: InputT IO (Maybe String)
+getNextInput = do
+  nextInputLine <- getInputLine ""
+  case nextInputLine of
+    Just line -> case lastCharOrEmpty line of
+      ';' -> return $ Just line
+      _ -> do
+        nextLine <- getNextInput
+        case nextLine of
+          Nothing -> return $ Just line
+          Just next -> return $ Just $ line ++ ' ' : next
+    Nothing -> return Nothing
+
+lastCharOrEmpty :: String -> Char
+lastCharOrEmpty [] = ' '
+lastCharOrEmpty s = last s
+
+processFile :: String -> CLIParameters -> IO (Maybe [AST.Definition])
+processFile fname cliParameters = do
+  file <- readFile fname
+  libs <- generateLibraries
+  result <- process libs file cliParameters
+  return $ snd <$> result

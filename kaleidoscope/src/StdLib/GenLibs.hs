@@ -7,16 +7,16 @@ import LLVM.AST (Definition)
 import Processor (process)
 import StdLib.BaseDefs (baseDefinitions)
 
-generateLibraries :: IO (Maybe [Definition])
-generateLibraries = do
-  defs <- mapM processLibrary files
-  return $ concat <$> sequence defs
+generateLibraries :: IO [Definition]
+generateLibraries = fmap concat (mapM processLibrary libFiles)
 
-processLibrary :: String -> IO (Maybe [Definition])
+processLibrary :: String -> IO [Definition]
 processLibrary fname = do
   file <- readFile fname
   result <- process baseDefinitions file (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
-  return $ snd <$> result
+  case result of
+    Just (_, definitions) -> return definitions
+    Nothing -> error "Could not process library"
 
-files :: [String]
-files = ["./src/StdLib/array.k"]
+libFiles :: [String]
+libFiles = ["./src/StdLib/array.k"]
