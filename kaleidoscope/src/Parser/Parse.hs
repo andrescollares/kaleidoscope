@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module ParserH where
+module Parser.Parse where
 
 import Data.Bifunctor (second)
 import Data.Functor.Identity (Identity)
 import Data.String (IsString (fromString))
 import LLVM.AST.Name (Name)
 import qualified LLVM.IRBuilder.Module as M
-import qualified Lexer as L
+import qualified Parser.Lexer as L
 import qualified Syntax as S (Declaration (..), Expr (..), Operand (..), Type (..))
 import Text.Parsec
   ( ParseError,
@@ -175,7 +175,7 @@ constant = do
   L.reservedOp "const"
   tpi <- tp
   name <- L.identifier
-  value <- try floating <|> try ParserH.int <|> try ParserH.bool <|> try tuple <|> try list
+  value <- try floating <|> try int <|> try bool <|> try tuple <|> try list
   return $ S.Constant tpi (fromString name) value
 
 typedef :: Parser S.Declaration
@@ -217,8 +217,8 @@ letins = do
 factor :: Parser S.Operand
 factor =
   try floating
-    <|> try ParserH.int
-    <|> try ParserH.bool
+    <|> try int
+    <|> try bool
     <|> try tuple
     <|> try list
     <|> try call

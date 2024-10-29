@@ -5,11 +5,13 @@ module Syntax where
 import LLVM.AST.Name (Name)
 import LLVM.IRBuilder.Module (ParameterName)
 
+-- TODO: change name to TopLevel
 data Expr
   = Operand Operand
   | TopLevel Declaration
   deriving stock (Eq, Ord, Show)
 
+-- TODO: change name to Expr
 data Operand
   = Int Integer
   | Float Double
@@ -27,6 +29,7 @@ data Operand
 
 data Declaration
   = Function Name [(Type, ParameterName)] Type Operand
+  -- Internal function
   | Extern Name [(Type, ParameterName)] Type
   | Constant Type Name Operand
   | TypeDef Name Type -- TODO: BUG: type defs are optimized out if no instances are found. Even with optLevel 0

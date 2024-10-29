@@ -10,7 +10,7 @@ import qualified LLVM.AST as AST (Definition)
 import Options.Applicative
 import Processor (process)
 import StdLib.GenLibs (generateLibraries)
-import System.Console.Haskeline
+import System.Console.Haskeline (InputT, defaultSettings, getInputLine, outputStr, outputStrLn, runInputT)
 
 main :: IO ()
 main = do
@@ -70,11 +70,15 @@ startRepl cliParameters = do
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
           case unpack $ strip $ pack input of
+            -- TODO: remove this awful idea
             ('=' : rest) -> do
               maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") cliParameters
               case maybeDefs of
                 Just (_, defs) -> loop prevRes defs
                 Nothing -> loop prevRes oldDefs
+            -- TODO: load file definitions
+            -- ':' : 'l' : ' ' : fileName -> do
+            --   return $ processFile fileName cliParameters
             _ -> do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
               case maybeDefs of
@@ -102,6 +106,7 @@ lastCharOrEmpty :: String -> Char
 lastCharOrEmpty [] = ' '
 lastCharOrEmpty s = last s
 
+-- TODO: Compile to source file (.o or smth)
 processFile :: String -> CLIParameters -> IO (Maybe [AST.Definition])
 processFile fname cliParameters = do
   file <- readFile fname

@@ -25,7 +25,7 @@ common common-options
         , llvm-hs-pure  ^>=12.0
 
     ghc-options:
-        /usr/lib/io.so -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
+        /usr/lib/stdlib.so -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
         -Wincomplete-record-updates -Wredundant-constraints
         -Wnoncanonical-monad-instances -threaded -lstdc++ -dynamic
 
@@ -47,7 +47,7 @@ executable kaleidoscope-fing
     import: common-options
     main-is: Main.hs
     other-modules: 
-        Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
+        Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
         , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
         , CLIParameters, Processor
     hs-source-dirs: src
@@ -68,7 +68,7 @@ test-suite unit-test
     test
     , src
   other-modules: 
-    Lexer, ParserH, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
+    Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
     , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
     , CLIParameters, Processor
   ghc-options: -threaded -rtsopts -with-rtsopts=-N

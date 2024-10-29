@@ -19,4 +19,4 @@ processLibrary fname = do
     Nothing -> error "Could not process library"
 
 libFiles :: [String]
-libFiles = ["./src/StdLib/array.k"]
+libFiles = ["./src/StdLib/list.k"]

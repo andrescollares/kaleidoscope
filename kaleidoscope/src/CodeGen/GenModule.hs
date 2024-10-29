@@ -37,23 +37,26 @@ import qualified Syntax as S
 genModule :: [Definition] -> [S.Expr] -> CLIParameters -> IO (String, [Definition])
 genModule oldDefs expressions options = do
   -- mapM_ print expressions
-  optMod <- optimizeModule unoptimizedAst options
+  optMod <- optimizeModule (mkModule definitions) options
+  -- TODO: Technical debt, is res still necessary?
   res <- runJIT optMod
   return (res, definitions)
   where
+    -- TODO: Refactor, no se entiende
+
     -- TODO: Remove old duplicate functions
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
     oldDefsWithoutMain =
-      filter -- TODO: filter first
+      filter -- TODO: filter first match
         ( \case
             GlobalDefinition AST.Function {name = Name "main"} -> False
             _ -> True
         )
         oldDefs
+    -- NOTE: Could I use the source that's already compiled instead of the previous AST?
     definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
-    unoptimizedAst = mkModule definitions
-    mkModule ds = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = ds}
+    mkModule defs = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = defs}
 
 type TypeDefinitionMap = Map Name AST.Type
 

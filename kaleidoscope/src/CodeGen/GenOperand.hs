@@ -200,7 +200,7 @@ genOperand (S.List (x : xs)) localVars = do
   store next_slot 0 nextValue
   return var
 
--- Function
+-- Reference to a Function
 genOperand (S.FunOp (Name fnName)) localVars = do
   currentDefs <- liftModuleState $ gets builderDefs
   let maybeDef = getFunctionFromDefs currentDefs (Name fnName)

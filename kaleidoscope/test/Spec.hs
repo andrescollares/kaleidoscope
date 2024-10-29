@@ -2,22 +2,14 @@
 
 module Main where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty ( defaultMain, testGroup, TestTree )
+import Test.Tasty.HUnit ( testCase, (@?=) )
 
-import LLVM.AST
-import Data.String
-
-import ParserH
-import CodeGen.JIT
-import CodeGen.GenModule
 import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
-import qualified LLVM.AST as AST
-import qualified LLVM.AST.Type as ASTType
-import System.Process
-import System.Exit
-import System.Directory
+import System.Process ( system )
+import System.Exit ( ExitCode(ExitSuccess) )
+import System.Directory ( doesFileExist, getDirectoryContents )
 import Data.List (isSuffixOf)
 
 main :: IO ()

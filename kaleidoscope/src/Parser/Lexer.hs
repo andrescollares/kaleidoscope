@@ -1,4 +1,4 @@
-module Lexer where
+module Parser.Lexer where
 
 import Control.Applicative (many, (<|>))
 import Text.Parsec.Language (emptyDef)

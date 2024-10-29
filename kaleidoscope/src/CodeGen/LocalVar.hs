@@ -73,7 +73,7 @@ matchName (Nothing, LocalReference _ (UnName varNumber)) n = show varNumber == s
 matchName _ _ = False
 
 -- TODO: Rework this function later, don't use show
--- bytestring > 11.smth has implemented this function but llvm 12 doesn't permit bytestring > 11
+-- bytestring > 11.smth has implemented this function but llvm-hs 12 doesn't permit bytestring > 11
 removeEnding :: ShortByteString -> ShortByteString
 removeEnding variableName
   | T.isInfixOf "_" (T.pack $ show variableName) = fromString $ tail $ reverse $ tail $ dropWhile (/= '_') (reverse $ show variableName)

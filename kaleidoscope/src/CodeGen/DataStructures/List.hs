@@ -4,16 +4,16 @@ module CodeGen.DataStructures.List where
 
 import CodeGen.Utils.Types (operandType)
 import Data.ByteString.Short (ShortByteString)
-import Data.String
+import Data.String (IsString (fromString))
 import LLVM.AST (Name (Name), Operand (ConstantOperand))
 import qualified LLVM.AST as AST
-import LLVM.AST.AddrSpace
+import LLVM.AST.AddrSpace (AddrSpace (AddrSpace))
 import qualified LLVM.AST.AddrSpace as AST
 import LLVM.AST.Constant (Constant (Null))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Operand as ASTOperand
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder
+import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, store)
 
 nullIntList :: IRBuilderT ModuleBuilder ASTOperand.Operand
 nullIntList = do

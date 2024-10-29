@@ -3,7 +3,7 @@ module Processor where
 import CLIParameters (CLIParameters (CLIParameters, failOnErrors))
 import CodeGen.GenModule (genModule)
 import qualified LLVM.AST as AST (Definition)
-import ParserH (parseToplevel)
+import Parser.Parse (parseToplevel)
 
 process :: [AST.Definition] -> String -> CLIParameters -> IO (Maybe (String, [AST.Definition]))
 process oldDefs newSource cliParameters = do
