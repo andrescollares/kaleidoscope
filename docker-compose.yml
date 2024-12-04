@@ -5,3 +5,11 @@ services:
     stdin_open: true
     volumes:
       - ./kaleidoscope:/kaleidoscope
+      - cabal-cache:/root/.cabal
+      - ghc-cache:/root/.ghc
+      - apt-cache:/var/cache/apt
+
+volumes:
+  cabal-cache:
+  ghc-cache:
+  apt-cache:
