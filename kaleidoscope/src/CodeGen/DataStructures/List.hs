@@ -11,11 +11,10 @@ import LLVM.AST.AddrSpace (AddrSpace (AddrSpace))
 import qualified LLVM.AST.AddrSpace as AST
 import LLVM.AST.Constant (Constant (Null))
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Operand as ASTOperand
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, store)
 
-nullIntList :: IRBuilderT ModuleBuilder ASTOperand.Operand
+nullIntList :: IRBuilderT ModuleBuilder Operand
 nullIntList = do
   let intListType = ASTType.NamedTypeReference (AST.Name "IntList")
   let intListPtrType = ASTType.PointerType intListType (AddrSpace 0)

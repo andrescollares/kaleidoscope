@@ -8,7 +8,7 @@ import Data.String (IsString (fromString))
 import LLVM.AST.Name (Name)
 import qualified LLVM.IRBuilder.Module as M
 import qualified Parser.Lexer as L
-import qualified Syntax as S (Declaration (..), Expr (..), Operand (..), Type (..))
+import qualified Syntax as S (Declaration (..), TopLevel (..), Expr (..), Declaration (..), Type (..))
 import Text.Parsec
   ( ParseError,
     eof,
@@ -22,13 +22,13 @@ import qualified Text.Parsec.Expr as Ex
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Token as Tok
 
-binary :: String -> Ex.Assoc -> Ex.Operator String () Identity S.Operand
+binary :: String -> Ex.Assoc -> Ex.Operator String () Identity S.Expr
 binary s = Ex.Infix (L.reservedOp s >> return (S.BinOp (fromString s)))
 
-unary :: String -> Ex.Operator String () Identity S.Operand
+unary :: String -> Ex.Operator String () Identity S.Expr
 unary s = Ex.Prefix (L.reservedOp s >> return (S.UnaryOp (fromString s)))
 
-unops :: Ex.OperatorTable String () Identity S.Operand
+unops :: Ex.OperatorTable String () Identity S.Expr
 unops =
   [ [unary "!"],
     [unary "-"],
@@ -45,7 +45,7 @@ unops =
     ]
   ]
 
-binops :: Ex.OperatorTable String () Identity S.Operand
+binops :: Ex.OperatorTable String () Identity S.Expr
 binops =
   [ [ binary "*" Ex.AssocLeft,
       binary "/" Ex.AssocLeft
@@ -73,10 +73,10 @@ op = do
   L.whitespace
   return (fromString o)
 
-unop :: Ex.Operator String () Identity S.Operand
+unop :: Ex.Operator String () Identity S.Expr
 unop = Ex.Prefix (S.UnaryOp <$> op)
 
-binop :: Ex.Operator String () Identity S.Operand
+binop :: Ex.Operator String () Identity S.Expr
 binop = Ex.Infix (S.BinOp <$> op) Ex.AssocLeft
 
 tp :: Parser S.Type
@@ -121,34 +121,34 @@ funT = do
   L.reserved "->"
   S.FunType args <$> tp
 
-int :: Parser S.Operand
+int :: Parser S.Expr
 int =
   S.Int <$> L.int
 
-floating :: Parser S.Operand
+floating :: Parser S.Expr
 floating =
   S.Float <$> L.float
 
-bool :: Parser S.Operand
+bool :: Parser S.Expr
 bool =
   S.Bool <$> L.bool
 
-tuple :: Parser S.Operand
+tuple :: Parser S.Expr
 tuple = do
   elements <- L.parens $ L.commaSep expr
   case elements of
     [frst, scnd] -> return $ S.TupleI frst scnd
     _ -> fail "tuples must have exactly two elements"
 
-list :: Parser S.Operand
+list :: Parser S.Expr
 list = do
   elements <- L.brackets $ L.commaSep expr
   return $ S.List elements
 
-expr :: Parser S.Operand
+expr :: Parser S.Expr
 expr = Ex.buildExpressionParser (binops ++ unops ++ [[unop], [binop]]) factor
 
-variable :: Parser S.Operand
+variable :: Parser S.Expr
 variable =
   S.Var . fromString <$> L.identifier
 
@@ -178,30 +178,23 @@ constant = do
   value <- try floating <|> try int <|> try bool <|> try tuple <|> try list
   return $ S.Constant tpi (fromString name) value
 
-typedef :: Parser S.Declaration
-typedef = do
-  L.reserved "type"
-  name <- L.identifier
-  L.reservedOp "="
-  S.TypeDef (fromString name) <$> tp
-
-call :: Parser S.Operand
+call :: Parser S.Expr
 call = do
   name <- L.identifier
   -- parenthesis are optional for functions without arguments
   arguments <- L.parens $ L.commaSep expr
   return $ S.Call (fromString name) arguments
 
-ifthen :: Parser S.Operand
+ifthen :: Parser S.Expr
 ifthen = do
   L.reserved "if"
   cond <- expr
   L.reserved "then"
-  thenExpr <- expr
+  thenTopLevel <- expr
   L.reserved "else"
-  S.If cond thenExpr <$> expr
+  S.If cond thenTopLevel <$> expr
 
-letins :: Parser S.Operand
+letins :: Parser S.Expr
 letins = do
   L.reserved "let"
   defs <- L.commaSep $ do
@@ -214,7 +207,7 @@ letins = do
   body <- expr
   return $ foldr (\(t, n, v) -> S.Let t n v) body defs
 
-factor :: Parser S.Operand
+factor :: Parser S.Expr
 factor =
   try floating
     <|> try int
@@ -228,15 +221,15 @@ factor =
     <|> L.parens expr
 
 parseDeclaration :: Parser S.Declaration
-parseDeclaration = try function <|> try extern <|> try constant <|> try typedef
+parseDeclaration = try function <|> try extern <|> try constant
 
-parseExpr :: Parser S.Expr
-parseExpr = do
+parseTopLevel :: Parser S.TopLevel
+parseTopLevel = do
   declaration <- optionMaybe parseDeclaration
   case declaration of
-    Just d -> return $ S.TopLevel d
+    Just d -> return $ S.Declaration d
     Nothing -> do
-      S.Operand <$> (expr <|> factor)
+      S.Expr <$> (expr <|> factor)
 
 contents :: Parser a -> Parser a
 contents p = do
@@ -245,11 +238,11 @@ contents p = do
   eof
   return r
 
-toplevel :: Parser [S.Expr]
+toplevel :: Parser [S.TopLevel]
 toplevel = many $ do
-  def <- parseExpr
+  def <- parseTopLevel
   L.reservedOp ";"
   return def
 
-parseToplevel :: String -> Either ParseError [S.Expr]
+parseToplevel :: String -> Either ParseError [S.TopLevel]
 parseToplevel = parse (contents toplevel) "<stdin>"

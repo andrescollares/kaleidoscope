@@ -7,7 +7,6 @@ module CodeGen.GenModule where
 
 import CLIParameters (CLIParameters)
 import CodeGen.GenOperand (genOperand)
-import CodeGen.JIT (optimizeModule, runJIT)
 import CodeGen.LocalVar
   ( LocalVar,
     definitionsToLocalVars,
@@ -16,7 +15,7 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (getASTType, getExpressionType)
 import Control.Monad.RWS (gets)
 import Data.Bifunctor (first)
-import Data.Map.Strict (Map, fromList)
+import Data.Map.Strict (fromList)
 import Data.String (fromString)
 import LLVM.AST as AST hiding (function)
 import LLVM.AST.AddrSpace (AddrSpace (AddrSpace))
@@ -26,7 +25,7 @@ import LLVM.AST.Global (Global (name))
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global, typedef)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import qualified Syntax as S
 
@@ -34,34 +33,20 @@ import qualified Syntax as S
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
-genModule :: [Definition] -> [S.Expr] -> CLIParameters -> IO (String, [Definition])
-genModule oldDefs expressions options = do
-  -- mapM_ print expressions
-  optMod <- optimizeModule (mkModule definitions) options
-  -- TODO: Technical debt, is res still necessary?
-  res <- runJIT optMod
-  return (res, definitions)
+genModule :: [Definition] -> [S.TopLevel] -> [Definition]
+genModule oldDefs expressions = buildModuleDefinitions (remove_main oldDefs) modlState
   where
-    -- TODO: Refactor, no se entiende
+    remove_main (def:defs) = case def of
+      GlobalDefinition AST.Function {name = Name "main"} -> defs
+      _ -> def : remove_main defs
+    remove_main [] = []
 
-    -- TODO: Remove old duplicate functions
+    -- NOTE: Could I use the source that's already compiled instead of the previous AST?
     -- use old state and new expressions to generate the new state
     modlState = mapM genTopLevel expressions
-    oldDefsWithoutMain =
-      filter -- TODO: filter first match
-        ( \case
-            GlobalDefinition AST.Function {name = Name "main"} -> False
-            _ -> True
-        )
-        oldDefs
-    -- NOTE: Could I use the source that's already compiled instead of the previous AST?
-    definitions = buildModuleWithDefinitions oldDefsWithoutMain modlState
-    mkModule defs = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = defs}
 
-type TypeDefinitionMap = Map Name AST.Type
-
-buildModuleWithDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
-buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
+buildModuleDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
+buildModuleDefinitions prevDefs = execModuleBuilder oldModl
   where
     oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = defsMap}
     defsMap = fromList $ map (\(TypeDefinition definitionName (Just t)) -> (definitionName, t)) typeDefs
@@ -71,17 +56,17 @@ buildModuleWithDefinitions prevDefs = execModuleBuilder oldModl
 
 -- Generates functions, constants, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
-genTopLevel :: S.Expr -> ModuleBuilder AST.Operand
+genTopLevel :: S.TopLevel -> ModuleBuilder AST.Operand
 -- Extern definition
-genTopLevel (S.TopLevel (S.Extern externName externArgs S.Integer)) = do
+genTopLevel (S.Declaration (S.Extern externName externArgs S.Integer)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i32
-genTopLevel (S.TopLevel (S.Extern externName externArgs S.Double)) = do
+genTopLevel (S.Declaration (S.Extern externName externArgs S.Double)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.double
-genTopLevel (S.TopLevel (S.Extern externName externArgs S.Boolean)) = do
+genTopLevel (S.Declaration (S.Extern externName externArgs S.Boolean)) = do
   extern externName (map (getASTType . fst) externArgs) ASTType.i1
 
 -- Function definition
-genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Double body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs S.Double body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -89,7 +74,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Double body)) = 
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Integer body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs S.Integer body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -97,7 +82,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Integer body)) =
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Boolean body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs S.Boolean body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -105,7 +90,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs S.Boolean body)) =
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.Tuple t1 t2) body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs (S.Tuple t1 t2) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -113,7 +98,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.Tuple t1 t2) bo
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Integer) body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Integer) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -121,7 +106,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Inte
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0})
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Double) body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Double) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -129,7 +114,7 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Doub
     ( \ops ->
         genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0})
     )
-genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Boolean) body)) = do
+genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Boolean) body)) = do
   function
     functionName
     (first getASTType <$> functionArgs)
@@ -139,13 +124,13 @@ genTopLevel (S.TopLevel (S.Function functionName functionArgs (S.ListType S.Bool
     )
 
 -- Constant definition
-genTopLevel (S.TopLevel (S.Constant S.Double constantName (S.Float val))) = do
+genTopLevel (S.Declaration (S.Constant S.Double constantName (S.Float val))) = do
   global constantName ASTType.double (C.Float (F.Double val))
-genTopLevel (S.TopLevel (S.Constant S.Integer constantName (S.Int val))) = do
+genTopLevel (S.Declaration (S.Constant S.Integer constantName (S.Int val))) = do
   global constantName ASTType.i32 (C.Int 32 val)
-genTopLevel (S.TopLevel (S.Constant S.Boolean constantName (S.Bool val))) = do
+genTopLevel (S.Declaration (S.Constant S.Boolean constantName (S.Bool val))) = do
   global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
-genTopLevel (S.TopLevel (S.Constant (S.Tuple t1 t2) constantName (S.TupleI e1 e2))) = do
+genTopLevel (S.Declaration (S.Constant (S.Tuple t1 t2) constantName (S.TupleI e1 e2))) = do
   global
     constantName
     (ASTType.StructureType False [getASTType t1, getASTType t2])
@@ -162,18 +147,11 @@ genTopLevel (S.TopLevel (S.Constant (S.Tuple t1 t2) constantName (S.TupleI e1 e2
     constantOperand (S.Float n) = C.Float (F.Double n)
     constantOperand (S.Int n) = C.Int 32 n
     constantOperand (S.Bool b) = C.Int 1 (if b then 1 else 0)
-    constantOperand (S.TupleI _ _) = error "TODO: recursive tuple constant"
-genTopLevel (S.TopLevel (S.Constant (S.ListType S.Integer) constantName (S.List list))) = error "TODO: list constant"
--- List constants are not supported yet
--- LLVM-hs can't create a pointer constant
--- see: https://groups.google.com/g/llvm-dev/c/KGnZRoyaD48/m/XREo3ystxCAJ
--- global constantName listType
---   (C.Null listType)
--- where listType = ASTType.PointerType { pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0 }
 
-genTopLevel (S.TopLevel S.Constant {}) = error "Invalid constant definition"
+genTopLevel (S.Declaration S.Constant {}) = error "Invalid constant definition"
+
 -- Main expression
-genTopLevel (S.Operand expression) = do
+genTopLevel (S.Expr expression) = do
   currentDefs <- liftModuleState $ gets builderDefs
   function "main" [] (eType currentDefs) (\_ -> genLevel (printerWrapper expression currentDefs) [])
   where
@@ -205,13 +183,7 @@ genTopLevel (S.Operand expression) = do
       _ -> []
     printerExtraParams _ = []
 
--- -- Type definition: this is a no-op
-genTopLevel (S.TopLevel (S.TypeDef typeName typeDef)) = do
-  _ <- typedef typeName (Just $ getASTType typeDef)
-  global "dummy" ASTType.i32 (C.Int 32 0)
--- TODO: do nothing (no-op)
-
 genTopLevel _ = error "This shouldn't have matched here."
 
-genLevel :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genLevel :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = genOperand e localVars >>= ret

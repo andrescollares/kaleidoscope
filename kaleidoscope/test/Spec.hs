@@ -43,8 +43,8 @@ programTests = testCase "Program Tests" (do
         writeFile ("./test/output/" ++ f) actualOutput
     expectedOutput <- readFile $ "./test/output/" ++ f
     actualOutput @?= expectedOutput
+    system "rm ./test/tmp.out"
     ) (filterProgramFiles files)
   )
 
--- TODO: compare llvm output
 -- TODO: REPL features tests

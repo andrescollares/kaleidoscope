@@ -5,34 +5,30 @@ module Syntax where
 import LLVM.AST.Name (Name)
 import LLVM.IRBuilder.Module (ParameterName)
 
--- TODO: change name to TopLevel
-data Expr
-  = Operand Operand
-  | TopLevel Declaration
+data TopLevel
+  = Expr Expr
+  | Declaration Declaration
   deriving stock (Eq, Ord, Show)
 
--- TODO: change name to Expr
-data Operand
+data Expr
   = Int Integer
   | Float Double
   | Bool Bool
-  | TupleI Operand Operand
-  | List [Operand]
-  | Let Type Name Operand Operand
+  | TupleI Expr Expr
+  | List [Expr]
+  | Let Type Name Expr Expr
   | Var Name
-  | Call Name [Operand]
-  | If Operand Operand Operand
-  | UnaryOp Name Operand
-  | BinOp Name Operand Operand
+  | Call Name [Expr]
+  | If Expr Expr Expr
+  | UnaryOp Name Expr
+  | BinOp Name Expr Expr
   | FunOp Name
   deriving stock (Eq, Ord, Show)
 
 data Declaration
-  = Function Name [(Type, ParameterName)] Type Operand
-  -- Internal function
+  = Function Name [(Type, ParameterName)] Type Expr
   | Extern Name [(Type, ParameterName)] Type
-  | Constant Type Name Operand
-  | TypeDef Name Type -- TODO: BUG: type defs are optimized out if no instances are found. Even with optLevel 0
+  | Constant Type Name Expr
   deriving stock (Eq, Ord, Show)
 
 data Type

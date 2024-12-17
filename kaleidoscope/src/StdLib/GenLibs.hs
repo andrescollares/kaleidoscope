@@ -15,7 +15,7 @@ processLibrary fname = do
   file <- readFile fname
   result <- process baseDefinitions file (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
   case result of
-    Just (_, definitions) -> return definitions
+    Just definitions -> return definitions
     Nothing -> error "Could not process library"
 
 libFiles :: [String]

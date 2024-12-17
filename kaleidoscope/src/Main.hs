@@ -61,33 +61,26 @@ parserParameters =
 startRepl :: CLIParameters -> IO ()
 startRepl cliParameters = do
   libs <- generateLibraries
-  runInputT defaultSettings (loop "0" libs)
+  runInputT defaultSettings (loop libs)
   where
-    loop prevRes oldDefs = do
+    loop oldDefs = do
       outputStr "ready> "
       minput <- getNextInput
       case minput of
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
           case unpack $ strip $ pack input of
-            -- TODO: remove this awful idea
-            ('=' : rest) -> do
-              maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") cliParameters
+            (':' : 'l' : ' ' : fileName) -> do
+              maybeDefs <- liftIO $ processFile fileName cliParameters
               case maybeDefs of
-                Just (_, defs) -> loop prevRes defs
-                Nothing -> loop prevRes oldDefs
-            -- TODO: load file definitions
-            -- ':' : 'l' : ' ' : fileName -> do
-            --   return $ processFile fileName cliParameters
+                Just defs -> loop defs
+                Nothing -> loop oldDefs
+
             _ -> do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
               case maybeDefs of
-                Just (res, defs) -> loop res defs
-                Nothing -> loop prevRes oldDefs
-    removeLast :: String -> String
-    removeLast [] = []
-    removeLast [_] = []
-    removeLast (x : xs) = x : removeLast xs
+                Just defs -> loop defs
+                Nothing -> loop oldDefs
 
 getNextInput :: InputT IO (Maybe String)
 getNextInput = do
@@ -101,15 +94,14 @@ getNextInput = do
           Nothing -> return $ Just line
           Just next -> return $ Just $ line ++ ' ' : next
     Nothing -> return Nothing
-
-lastCharOrEmpty :: String -> Char
-lastCharOrEmpty [] = ' '
-lastCharOrEmpty s = last s
+  where
+    lastCharOrEmpty :: String -> Char
+    lastCharOrEmpty [] = ' '
+    lastCharOrEmpty s = last s
 
 -- TODO: Compile to source file (.o or smth)
 processFile :: String -> CLIParameters -> IO (Maybe [AST.Definition])
 processFile fname cliParameters = do
   file <- readFile fname
   libs <- generateLibraries
-  result <- process libs file cliParameters
-  return $ snd <$> result
+  process libs file cliParameters

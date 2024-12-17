@@ -35,7 +35,7 @@ import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
 
 -- Generates the Operands that genTopLevel needs.
-genOperand :: S.Operand -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
+genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
 -- Float
 genOperand (S.Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
 -- Integer
@@ -92,7 +92,7 @@ genOperand (S.UnaryOp oper a) localVars = do
   op <- genOperand a localVars
   case M.lookup oper unops of
     Just f -> f op
-    Nothing -> error "This shouldn't have matched here, unary operand doesn't exist."
+    Nothing -> error $ "Unary operation not defined: " <> show oper
   where
     unops :: M.Map Name (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
@@ -128,7 +128,7 @@ genOperand (S.BinOp oper a b) localVars = do
   opB <- genOperand b localVars
   case M.lookup oper $ binops opA opB of
     Just f -> f opA opB
-    Nothing -> error "TODO: binary_ will not be used"
+    Nothing -> error $ "Binary operation not defined: " <> show oper
   where
     binops :: AST.Operand -> AST.Operand -> M.Map Name (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     binops firstOp secondOp =
@@ -169,7 +169,6 @@ genOperand (S.Let S.Double (Name varName) variableValue body) localVars = do
   computedValue <- genOperand variableValue localVars
   store var 0 computedValue
   loadedVar <- load var 0
-  -- TODO: alloca -> store -> load: there's probably a better way to do this
   genOperand body ((Just varName, loadedVar) : localVars)
 genOperand (S.Let S.Integer (Name varName) variableValue body) localVars = do
   var <- alloca ASTType.i32 Nothing 0
