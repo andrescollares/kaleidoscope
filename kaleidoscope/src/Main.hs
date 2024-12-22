@@ -2,7 +2,7 @@
 
 module Main where
 
-import CLIParameters (CLIParameters (..))
+import CLIParameters (CLIParameters (..), parserParameters)
 import Control.Monad (void)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Text (pack, strip, unpack)
@@ -24,39 +24,6 @@ parserInfo =
   info
     (parserParameters <**> helper)
     (fullDesc <> progDesc "Kaleidoscope compiler" <> header "Kaleidoscope compiler")
-
-parserParameters :: Parser CLIParameters
-parserParameters =
-  CLIParameters
-    <$> option
-      auto
-      ( long "opt-level"
-          <> short 'o'
-          <> metavar "OPT"
-          <> value 3
-          <> help "Optimization level 0-3"
-      )
-    <*> strOption
-      ( long "file"
-          <> short 'f'
-          <> metavar "FILE"
-          <> value []
-          <> help "File to read from"
-      )
-    <*> flag
-      True
-      False
-      ( long "quiet-llvm"
-          <> short 'q'
-          <> help "Hide LLVM IR output"
-      )
-    <*> flag
-      False
-      True
-      ( long "fail-on-errors"
-          <> short 'e'
-          <> help "Fail on errors"
-      )
 
 startRepl :: CLIParameters -> IO ()
 startRepl cliParameters = do

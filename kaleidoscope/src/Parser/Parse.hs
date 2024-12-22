@@ -35,13 +35,8 @@ unops =
     [ unary "fst",
       unary "snd"
     ],
-    [ unary "isInt",
-      unary "head",
-      unary "tail",
-      unary "isDouble",
-      unary "isBool",
-      unary "isTuple",
-      unary "isList"
+    [ unary "head",
+      unary "tail"
     ]
   ]
 
@@ -65,6 +60,7 @@ binops =
       binary "||" Ex.AssocLeft
     ]
   ]
+
 
 op :: Parser Name
 op = do
