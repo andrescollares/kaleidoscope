@@ -2,6 +2,8 @@
 
 extern const char *__progname;
 
+// compile all: gcc -fPIC -shared -o /usr/lib/stdlib.so io.c list.c 
+
 // Print a char from a double
 double putchard(double d) {
   putchar((char)d);

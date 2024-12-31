@@ -159,9 +159,13 @@ genOperand (S.If cond thenExpr elseExpr) localVars = mdo
   br ifExit
   ifElse <- block `named` "if.else"
   computedElse <- genOperand elseExpr localVars
-  br ifExit
-  ifExit <- block `named` "if.exit"
-  phi [(computedThen, ifThen), (computedElse, ifElse)]
+  br elseExit
+  ifExit <- block `named` "if.if_exit"
+  br blockEnd
+  elseExit <- block `named` "if.else_exit"
+  br blockEnd
+  blockEnd <- block `named` "if.end"
+  phi [(computedThen, ifExit), (computedElse, elseExit)]
 
 -- Let in
 genOperand (S.Let S.Double (Name varName) variableValue body) localVars = do
