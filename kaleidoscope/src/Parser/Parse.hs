@@ -43,7 +43,8 @@ unops =
 binops :: Ex.OperatorTable String () Identity S.Expr
 binops =
   [ [ binary "*" Ex.AssocLeft,
-      binary "/" Ex.AssocLeft
+      binary "/" Ex.AssocLeft,
+      binary "%" Ex.AssocLeft
     ],
     [ binary "+" Ex.AssocLeft,
       binary "-" Ex.AssocLeft

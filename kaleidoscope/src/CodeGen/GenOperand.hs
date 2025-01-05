@@ -137,6 +137,7 @@ genOperand (S.BinOp oper a b) localVars = do
           ("-", eitherType sub fsub),
           ("*", eitherType mul fmul),
           ("/", eitherType udiv fdiv),
+          ("%", eitherType urem frem),
           ("<", eitherType (icmp IP.ULT) (fcmp ULT)),
           ("<=", eitherType (icmp IP.ULE) (fcmp ULE)),
           (">", eitherType (icmp IP.UGT) (fcmp UGT)),
