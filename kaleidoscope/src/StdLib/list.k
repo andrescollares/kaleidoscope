@@ -32,3 +32,18 @@ def filter_int([int] l, fun (int) -> bool f) -> [int]:
       head l : filter_int(tail l, f)
     else
       filter_int(tail l, f));
+
+def nth_int([int] l, int n) -> int:
+  if n == 0 then
+    head l
+  else
+    nth_int(tail l, n - 1);
+
+def reverse_acc_int([int] l, [int] acc) -> [int]:
+  if l == [] then
+    acc
+  else
+    reverse_acc_int(tail l, head l : acc);
+
+def reverse_int([int] l) -> [int]:
+  reverse_acc_int(l, []);
