@@ -97,7 +97,13 @@ genOperand (S.UnaryOp oper a) localVars = do
     unops :: M.Map Name (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
       M.fromList
-        [ ("-", fneg),
+        [ ("-", \x -> do
+            let opType = operandType x
+            case opType of
+              (IntegerType _) -> sub (ConstantOperand (C.Int 32 0)) x
+              (FloatingPointType _) -> fsub (ConstantOperand (C.Float (F.Double 0))) x
+              _ -> error $ "Invalid type for operand: " ++ show opType
+          ),
           ("!", not'),
           ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0))),
           ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1))),

@@ -55,6 +55,7 @@ executable kaleidoscope-fing
         , bytestring  >=0.10
         , llvm-hs     ^>=12.0
         , containers    >=0.6
+        , directory >=1.3
         , mtl >=2.2 && <2.3
         , text ^>= 1.2
         , haskeline >=0.7

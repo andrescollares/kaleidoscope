@@ -6,6 +6,8 @@ import CLIParameters (CLIParameters (..))
 import LLVM.AST (Definition)
 import Processor (process)
 import StdLib.BaseDefs (baseDefinitions)
+import System.Directory ( getDirectoryContents )
+import Data.List (isSuffixOf)
 
 generateLibraries :: IO [Definition]
 generateLibraries = do
@@ -13,7 +15,10 @@ generateLibraries = do
   processLibrary source
 
 generateSource :: IO String
-generateSource = fmap concat (mapM readFile libFiles)
+generateSource = do
+  files <- libFiles
+  sources <- mapM readFile files
+  return $ unlines sources
 
 processLibrary :: String -> IO [Definition]
 processLibrary source = do
@@ -22,5 +27,8 @@ processLibrary source = do
     Just definitions -> return definitions
     Nothing -> error "Could not process library"
 
-libFiles :: [String]
-libFiles = ["./src/StdLib/list.k", "./src/StdLib/tuple.k"]
+libFiles :: IO [String]
+libFiles = do
+  let libDir = "./src/StdLib/lib"
+  files <- getDirectoryContents libDir
+  return $ map ((libDir ++ "/") ++) (filter (\s -> ".k" `isSuffixOf` s) files)
