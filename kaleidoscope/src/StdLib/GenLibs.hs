@@ -8,15 +8,19 @@ import Processor (process)
 import StdLib.BaseDefs (baseDefinitions)
 
 generateLibraries :: IO [Definition]
-generateLibraries = fmap concat (mapM processLibrary libFiles)
+generateLibraries = do
+  source <- generateSource
+  processLibrary source
+
+generateSource :: IO String
+generateSource = fmap concat (mapM readFile libFiles)
 
 processLibrary :: String -> IO [Definition]
-processLibrary fname = do
-  file <- readFile fname
-  result <- process baseDefinitions file (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
+processLibrary source = do
+  result <- process baseDefinitions source (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
   case result of
     Just definitions -> return definitions
     Nothing -> error "Could not process library"
 
 libFiles :: [String]
-libFiles = ["./src/StdLib/list.k"]
+libFiles = ["./src/StdLib/list.k", "./src/StdLib/tuple.k"]

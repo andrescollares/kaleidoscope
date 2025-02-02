@@ -43,10 +43,17 @@ startRepl cliParameters = do
             --     Just (_, defs) -> loop prevRes defs
             --     Nothing -> loop prevRes oldDefs
             (':' : 'l' : ' ' : fileName) -> do
-              maybeDefs <- liftIO $ processFile fileName cliParameters
+              maybeDefs <- liftIO $ processFile cleanFileName cliParameters
               case maybeDefs of
                 Just defs -> loop defs
                 Nothing -> loop oldDefs
+              where
+                -- because ";" must be present in the end of the line
+                cleanFileName = removeLast fileName
+                removeLast :: String -> String
+                removeLast [] = []
+                removeLast [x] = []
+                removeLast (x : xs) = x : removeLast xs
 
             _ -> do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
