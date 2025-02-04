@@ -58,6 +58,7 @@ int32_t printil(struct intList *list) {
   }
   struct intList *current = list;
   struct intList *next = NULL;
+  // improvement: construct the string and print it in one go
   printf("[");
   while (current != NULL) {
     printf("%d", current->val);

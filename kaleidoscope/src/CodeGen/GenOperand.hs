@@ -33,6 +33,7 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
+import Debug.Trace
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -207,7 +208,8 @@ genOperand (S.List (x : xs)) localVars = do
   var <- createListNode firstElem
   next_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
   nextValue <- genOperand (S.List xs) localVars
-  store next_slot 0 nextValue
+  defs <- liftModuleState $ gets builderDefs
+  trace ("Defs: " <> show defs) $ store next_slot 0 nextValue
   return var
 
 -- Reference to a Function

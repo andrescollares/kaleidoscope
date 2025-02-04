@@ -1,0 +1,1 @@
+double_to_int(100.99);

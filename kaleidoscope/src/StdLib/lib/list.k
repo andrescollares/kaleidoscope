@@ -47,3 +47,15 @@ def reverse_acc_int([int] l, [int] acc) -> [int]:
 
 def reverse_int([int] l) -> [int]:
   reverse_acc_int(l, []);
+
+def foldl_int([int] l, int acc, fun (int, int) -> int f) -> int:
+  if l == [] then
+    acc
+  else
+    foldl_int(tail l, f(acc, head l), f);
+
+def foldr_int([int] l, int acc, fun (int, int) -> int f) -> int:
+    if l == [] then
+        acc
+    else
+        f(head l, foldr_int(tail l, acc, f));

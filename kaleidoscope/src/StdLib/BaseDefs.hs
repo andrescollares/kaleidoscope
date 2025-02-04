@@ -1,12 +1,16 @@
 {-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module StdLib.BaseDefs where
 
 import Data.String (fromString)
-import LLVM.AST (Definition (..), FloatingPointType (..), Name (..), Parameter (..), Type (..))
+import LLVM.AST (Definition (..),
+ FloatingPointType (..), Name (..), Parameter (..), 
+ Type (..), Operand(..), Named(Do), Terminator( Ret ), returnOperand, operand0, Named( (:=) ))
 import LLVM.AST.AddrSpace (AddrSpace (..))
+import qualified LLVM.AST.Instruction as I ( Instruction( SIToFP, FPToSI, metadata, type' ), Terminator (metadata') )
 import qualified LLVM.AST.Constant as C
-import LLVM.AST.Global (Global (..), functionDefaults, globalVariableDefaults)
+import LLVM.AST.Global (Global (..), functionDefaults, globalVariableDefaults, BasicBlock (..))
 import LLVM.AST.Linkage (Linkage (..))
 import LLVM.AST.Visibility (Visibility (..))
 
@@ -130,53 +134,30 @@ baseDefinitions =
           isConstant = True,
           type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
           initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "int_to_double"),
+          parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "x_0") []],False),
+          returnType = FloatingPointType DoubleFP,
+          basicBlocks = [
+            BasicBlock (UnName 0) [
+              UnName 1 := I.SIToFP {operand0 = LocalReference (IntegerType {typeBits = 32}) (Name "x_0")
+              , I.type' = FloatingPointType {floatingPointType = DoubleFP}, I.metadata = []
+              }
+              ] 
+              (Do (Ret {returnOperand = Just (LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (UnName 1)), I.metadata' = []}))]
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "double_to_int"),
+          parameters = ([Parameter (FloatingPointType {floatingPointType = DoubleFP}) (Name "x_0") []],False),
+          returnType = IntegerType {typeBits = 32},
+          basicBlocks = [
+            BasicBlock (UnName 0) [
+              UnName 1 := I.FPToSI {operand0 = LocalReference (FloatingPointType {floatingPointType = DoubleFP}) (Name "x_0"), I.type' = IntegerType {typeBits = 32}, I.metadata = []
+              }
+              ]
+              (Do (Ret { returnOperand = Just (LocalReference (IntegerType {typeBits = 32}) (UnName 1)), I.metadata' = []}))]
         }
-        -- GlobalDefinition
-        --   functionDefaults {
-        --     name = Name (fromString "tail"),
-        --     parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-        --     returnType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
-        --     basicBlocks = [
-        --       BasicBlock (Name (fromString "entry")) [
-        --         UnName 0 := Load {
-        --           volatile = False,
-        --           address = LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")),
-        --           maybeAtomicity = Nothing,
-        --           alignment = 0,
-        --           metadata = []
-        --         },
-        --         UnName 1 := ExtractValue {
-        --           aggregate = LocalReference (NamedTypeReference (Name (fromString "IntList"))) (UnName 0),
-        --           indices' = [1],
-        --           metadata = []
-        --         }
-        --       ] (
-        --         Do $ Ret (Just $ LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (UnName 1)) []
-        --       )
-        --     ]
-        --   },
-        -- GlobalDefinition
-        --   functionDefaults {
-        --     name = Name (fromString "head"),
-        --     parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-        --     returnType = IntegerType 32,
-        --     basicBlocks = [
-        --       BasicBlock (Name (fromString "entry")) [
-        --         UnName 0 := Load {
-        --           volatile = False,
-        --           address = LocalReference (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")),
-        --           maybeAtomicity = Nothing,
-        --           alignment = 0,
-        --           metadata = []
-        --         },
-        --         UnName 1 := ExtractValue {
-        --           aggregate = LocalReference (NamedTypeReference (Name (fromString "IntList"))) (UnName 0),
-        --           indices' = [0],
-        --           metadata = []
-        --         }
-        --       ] (
-        --         Do $ Ret (Just $ LocalReference (IntegerType 32) (UnName 1)) []
-        --       )
-        --     ]
-        --   }
   ]
