@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "list.h"
 
-double putchard(double x);
+double putchari(int32_t i);
 
 double printd(double d);
 
