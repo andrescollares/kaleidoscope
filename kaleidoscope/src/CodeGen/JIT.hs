@@ -2,7 +2,7 @@
 
 module CodeGen.JIT where
 
-import CLIParameters (CLIParameters (CLIParameters, emitLLVM, optimizationLevel))
+import CLIParameters (CLIParameters (CLIParameters, emitLLVM, optimizationLevel, compile, inputFile))
 import qualified Data.ByteString as BS
 import Foreign.C.Types (CInt (..))
 import Foreign.Ptr (FunPtr, castFunPtr)
@@ -20,6 +20,7 @@ import LLVM.PassManager
     runPassManager,
     withPassManager,
   )
+import System.Process (system)
 
 foreign import ccall "dynamic" haskFunInt :: FunPtr CInt -> CInt
 
@@ -35,7 +36,7 @@ jit c oLevel = EE.withMCJIT c optlevel model ptrelim fastins
     fastins = Nothing -- fast instruction selection
 
 optimizeModule :: AST.Module -> CLIParameters -> IO AST.Module
-optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = emit} = do
+optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = emit, compile = compileFile, inputFile = file} = do
   withContext $ \context ->
     jit context level $ \_ ->
       withModuleFromAST context astModule $ \m ->
@@ -43,19 +44,41 @@ optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = em
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m
-          if emit
-            then
-              ( do
-                  modBS <- moduleLLVMAssembly m
-                  -- Print the optimized module as LLVM assembly to stdout
-                  putStrLn "Optimized LLVM assembly:"
-                  putStrLn $ modBSToString modBS
-                  -- Return the optimized module
-                  return optmod
-              )
-            else return optmod
+          if emit && not compileFile then
+              do
+                modByteString <- moduleLLVMAssembly m
+                -- Print the optimized module as LLVM assembly to stdout
+                putStrLn "Optimized LLVM assembly:"
+                putStrLn $ modBSToString modByteString
+                -- Return the optimized module
+                return optmod 
+          else if compileFile && file /= ""
+              then do
+                let fileNameLLVM = "out.ll"
+                let fileNameObject = "outprogram.o"
+                modByteString <- moduleLLVMAssembly m
+                writeLLVM (modBSToString modByteString) fileNameLLVM
+                compileLLVMWithClang fileNameLLVM fileNameObject
+                return optmod
+              else
+                return optmod
   where
-    modBSToString modBS = map (toEnum . fromIntegral) (BS.unpack modBS)
+    modBSToString modByteString = map (toEnum . fromIntegral) (BS.unpack modByteString)
+
+writeLLVM :: String -> String -> IO ()
+writeLLVM moduleSrc fileName = do
+    writeFile fileName moduleSrc
+
+-- usage: cabal run kaleidoscope-fing -- -f ./test/programs/add_int_int.k -c
+-- clang /kaleidoscope/out.ll -o my_program -L/usr/lib -lstdlib -o outprogram
+-- ./outprogram.o
+compileLLVMWithClang :: String -> String -> IO ()
+compileLLVMWithClang fileNameLlvm fileNameObject  = do
+  _ <- system $ "clang " ++ fileNameLlvm ++ " -o " ++ fileNameObject ++ " " ++ linkedLibraryDirectory ++ " " ++ linkedLibraryName
+  return ()
+  where
+    linkedLibraryDirectory = "-L/usr/lib"
+    linkedLibraryName = "-lstdlib" -- the actual name of the library should be libstdlib.so
 
 runJIT :: AST.Module -> IO String
 runJIT astModule = do

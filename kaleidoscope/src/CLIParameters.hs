@@ -5,7 +5,8 @@ data CLIParameters = CLIParameters
   { optimizationLevel :: Word,
     inputFile :: String,
     emitLLVM :: Bool,
-    failOnErrors :: Bool
+    failOnErrors :: Bool,
+    compile :: Bool
   }
 
 parserParameters :: Parser CLIParameters
@@ -39,5 +40,12 @@ parserParameters =
       ( long "fail-on-errors"
           <> short 'e'
           <> help "Fail on errors"
+      )
+    <*> flag
+      False
+      True
+      ( long "compile"
+          <> short 'c'
+          <> help "Compile to native code"
       )
   

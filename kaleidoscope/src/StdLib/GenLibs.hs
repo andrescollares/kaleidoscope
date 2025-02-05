@@ -22,7 +22,7 @@ generateSource = do
 
 processLibrary :: String -> IO [Definition]
 processLibrary source = do
-  result <- process baseDefinitions source (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False})
+  result <- process baseDefinitions source (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False, compile = False})
   case result of
     Just definitions -> return definitions
     Nothing -> error "Could not process library"

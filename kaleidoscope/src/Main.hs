@@ -52,7 +52,7 @@ startRepl cliParameters = do
                 cleanFileName = removeLast fileName
                 removeLast :: String -> String
                 removeLast [] = []
-                removeLast [x] = []
+                removeLast [_] = []
                 removeLast (x : xs) = x : removeLast xs
 
             _ -> do

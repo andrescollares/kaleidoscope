@@ -38,7 +38,7 @@ COPY /kaleidoscope/src/StdLib/cbits /kaleidoscope/src/StdLib/cbits
 
 WORKDIR /kaleidoscope/src/StdLib/cbits
 # put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
-RUN gcc -fPIC -shared -o /usr/lib/stdlib.so io.c list.c
+RUN gcc -fPIC -shared -o /usr/lib/libstdlib.so io.c list.c
 
 WORKDIR /kaleidoscope
 
