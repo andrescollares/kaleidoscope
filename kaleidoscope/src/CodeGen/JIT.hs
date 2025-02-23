@@ -54,16 +54,25 @@ optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = em
                 return optmod 
           else if compileFile && file /= ""
               then do
-                let fileNameLLVM = "out.ll"
-                let fileNameObject = "outprogram.o"
+                let llvmSrc = fileNameLLVM file
+                let objectFile = fileNameExecutable file
                 modByteString <- moduleLLVMAssembly m
-                writeLLVM (modBSToString modByteString) fileNameLLVM
-                compileLLVMWithClang fileNameLLVM fileNameObject
+                writeLLVM (modBSToString modByteString) llvmSrc
+                compileLLVMWithClang llvmSrc objectFile
                 return optmod
               else
                 return optmod
   where
     modBSToString modByteString = map (toEnum . fromIntegral) (BS.unpack modByteString)
+
+fileNameExecutable :: String -> String
+fileNameExecutable = fileWithoutExtension
+
+fileNameLLVM :: String -> String
+fileNameLLVM file = fileWithoutExtension file ++ ".ll"
+
+fileWithoutExtension :: String -> String
+fileWithoutExtension = reverse . tail . dropWhile (/= '.') . reverse
 
 writeLLVM :: String -> String -> IO ()
 writeLLVM moduleSrc fileName = do
@@ -73,10 +82,12 @@ writeLLVM moduleSrc fileName = do
 -- clang /kaleidoscope/out.ll -o my_program -L/usr/lib -lstdlib -o outprogram
 -- ./outprogram.o
 compileLLVMWithClang :: String -> String -> IO ()
-compileLLVMWithClang fileNameLlvm fileNameObject  = do
-  _ <- system $ "clang " ++ fileNameLlvm ++ " -o " ++ fileNameObject ++ " " ++ linkedLibraryDirectory ++ " " ++ linkedLibraryName
+compileLLVMWithClang fileNameLlvm fileNameExecutable  = do
+  _ <- system cmd
+  putStrLn cmd
   return ()
   where
+    cmd = "clang " ++ fileNameLlvm ++ " -o " ++ fileNameExecutable ++ " " ++ linkedLibraryDirectory ++ " " ++ linkedLibraryName
     linkedLibraryDirectory = "-L/usr/lib"
     linkedLibraryName = "-lstdlib" -- the actual name of the library should be libstdlib.so
 
