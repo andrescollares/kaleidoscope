@@ -5,6 +5,8 @@ data CLIParameters = CLIParameters
   { optimizationLevel :: Word,
     inputFile :: String,
     emitLLVM :: Bool,
+    emitAST :: Bool,
+    emitLlvmDefs :: Bool,
     failOnErrors :: Bool,
     compile :: Bool
   }
@@ -28,11 +30,25 @@ parserParameters =
           <> help "File to read from"
       )
     <*> flag
-      True
       False
-      ( long "quiet-llvm"
-          <> short 'q'
-          <> help "Hide LLVM IR output"
+      True
+      ( long "llvm"
+          <> short 'l'
+          <> help "Show LLVM IR output"
+      )
+    <*> flag
+      False
+      True
+      ( long "ast"
+          <> short 'a'
+          <> help "Show AST representation"
+      )
+    <*> flag
+      False
+      True
+      ( long "defs"
+          <> short 'd'
+          <> help "Show LLVM Module definitions"
       )
     <*> flag
       False

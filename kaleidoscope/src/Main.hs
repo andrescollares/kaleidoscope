@@ -37,6 +37,7 @@ startRepl cliParameters = do
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
           case unpack $ strip $ pack input of
+            -- * removed feature
             -- ('=' : rest) -> do
             --   maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") replOptions
             --   case maybeDefs of
@@ -58,7 +59,12 @@ startRepl cliParameters = do
             _ -> do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
               case maybeDefs of
-                Just defs -> loop defs
+                Just defs -> do
+                  case cliParameters of
+                    CLIParameters {emitLlvmDefs = True} -> do
+                      liftIO (putStrLn $ "Last definition: " ++ show (last defs))
+                    _ -> return ()
+                  loop defs
                 Nothing -> loop oldDefs
 
 getNextInput :: InputT IO (Maybe String)
@@ -78,7 +84,6 @@ getNextInput = do
     lastCharOrEmpty [] = ' '
     lastCharOrEmpty s = last s
 
--- TODO: Compile to source file (.o or smth)
 processFile :: String -> CLIParameters -> IO (Maybe [AST.Definition])
 processFile fname cliParameters = do
   file <- readFile fname
