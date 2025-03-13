@@ -146,8 +146,7 @@ expr :: Parser S.Expr
 expr = Ex.buildExpressionParser (binops ++ unops ++ [[unop], [binop]]) factor
 
 variable :: Parser S.Expr
-variable =
-  S.Var . fromString <$> L.identifier
+variable = S.Var . fromString <$> L.identifier
 
 extern :: Parser S.Declaration
 extern = do
@@ -170,10 +169,9 @@ function = do
 constant :: Parser S.Declaration
 constant = do
   L.reservedOp "const"
-  tpi <- tp
   name <- L.identifier
   value <- try floating <|> try int <|> try bool <|> try tuple <|> try list
-  return $ S.Constant tpi (fromString name) value
+  return $ S.Constant (fromString name) value
 
 call :: Parser S.Expr
 call = do
@@ -195,14 +193,13 @@ letins :: Parser S.Expr
 letins = do
   L.reserved "let"
   defs <- L.commaSep $ do
-    tpi <- tp
     var <- L.identifier
     L.reservedOp "="
     val <- expr
-    return (tpi, fromString var, val)
+    return (fromString var, val)
   L.reserved "in"
   body <- expr
-  return $ foldr (\(t, n, v) -> S.Let t n v) body defs
+  return $ foldr (uncurry S.Let) body defs
 
 factor :: Parser S.Expr
 factor =

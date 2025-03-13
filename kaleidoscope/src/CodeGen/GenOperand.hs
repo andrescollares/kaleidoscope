@@ -5,17 +5,15 @@
 module CodeGen.GenOperand where
 
 import CodeGen.DataStructures.List (createListNode, nullIntList, prependNode)
-import CodeGen.DataStructures.Tuple (tupleAccessorOperand)
 import CodeGen.LocalVar
   ( LocalVar,
-    getConstantFromDefs,
-    getFunctionFromDefs,
     getFunctionOperand,
-    getLocalVarName,
+    getLocalVarByName,
   )
-import CodeGen.Utils.Types (getASTType, operandType)
+import CodeGen.Utils.Types (operandType)
 import Control.Monad.RWS (gets)
 import qualified Data.Map.Strict as M
+import Debug.Trace
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
     Global (Function, GlobalVariable),
@@ -33,59 +31,73 @@ import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
+import LLVM.IRBuilder.Constant (double, int32, bit)
+import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
+import qualified LLVM.AST.Global as AST.Global
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
--- Float
-genOperand (S.Float n) _ = return $ ConstantOperand (C.Float (F.Double n))
--- Integer
-genOperand (S.Int n) _ = return $ ConstantOperand (C.Int 32 n)
--- Bool
-genOperand (S.Bool b) _ = return $ ConstantOperand (C.Int 1 (if b then 1 else 0))
--- Tuple
-genOperand (S.TupleI a b) localVars = do
-  opA <- genOperand a localVars
-  opB <- genOperand b localVars
-  return $ ConstantOperand (C.Struct {C.structName = Nothing, C.isPacked = False, C.memberValues = [getConstant opA, getConstant opB]})
-  where
-    getConstant (ConstantOperand c) = c
-    getConstant _ = error "Only constants allowed inside tuples."
+-- Constants
+genOperand (S.Float n) _ = return $ double n
+genOperand (S.Int n) _ = return $ int32 n
+genOperand (S.Bool b) _ = return $ bit (if b then 1 else 0)
 
 -- Variables
 genOperand (S.Var (Name nameString)) localVars = do
-  -- if localVars has it then it's a local reference otherwise mark it as a global reference
+-- if localVars has it then it's a local reference otherwise mark it as a global reference
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
-  case getLocalVarName nameString localVars of
+  case getLocalVarByName nameString localVars of
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
       let maybeDef = getConstantFromDefs currentDefs (Name nameString)
       case maybeDef of
-        Just def -> do
-          case def of
-            (GlobalDefinition AST.GlobalVariable {G.type' = t}) -> load (ConstantOperand (C.GlobalReference (ASTType.ptr t) (Name nameString))) 0
-            (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name nameString) retT params
-            _ -> error $ "Constant " <> show nameString <> " not found as global variable." <> show def
+        Just (GlobalDefinition AST.GlobalVariable {G.type' = t}) -> load (ConstantOperand (C.GlobalReference (ASTType.ptr t) (Name nameString))) 0
+        Just (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name nameString) retT params
+        Just def -> error $ "Constant " <> show nameString <> " not found as global variable." <> show def
         Nothing -> error $ "Constant " <> show nameString <> " not found." <> show localVars
+  where
+    getConstantFromDefs :: SnocList Definition -> Name -> Maybe Definition
+    getConstantFromDefs defs constantName = find (`matchNameGlobal` constantName) defs Nothing
+      where
+        matchNameGlobal :: Definition -> Name -> Bool
+        matchNameGlobal (GlobalDefinition AST.GlobalVariable {AST.Global.name = n}) nameToMatch = n == nameToMatch
+        matchNameGlobal (GlobalDefinition AST.Function {AST.Global.name = n}) nameToMatch = n == nameToMatch
+        matchNameGlobal _ _ = False
+        find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
+        find p (SnocList (x : xs)) res
+          | p x = Just x
+          | otherwise = find p (SnocList xs) res
+        find _ (SnocList []) res = res
 
 -- Call
--- functionArgs = [Int, Double, Bool, Tuple, List, (FunOp Name)]
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
   largs <- mapM (`genOperand` localVars) functionArgs
-  -- Only match if fnName is same name as the current function
-  let functionDefinition = getLocalVarName fnName localVars
-  case functionDefinition of
-    Just (_, localVar) -> call localVar (map (\x -> (x, [])) largs)
+  currentDefs <- liftModuleState $ gets builderDefs
+  let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
+  case maybeDef of
+    Just (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> 
+      call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
+    Just _ -> error $ "Function " <> show fnName <> " not found."
     Nothing -> do
-      currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
-      case maybeDef of
-        Just def -> do
-          case def of
-            (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
-            _ -> error $ "Function " <> show fnName <> " not found."
+      let localVar = getLocalVarByName fnName localVars
+      case localVar of
+        -- This only happens if we're in a high level function where there's a function as an attribute.
+        Just (_, localFunctionVar) -> call localFunctionVar (map (\x -> (x, [])) largs)
         Nothing -> error $ "Function " <> show fnName <> " not found."
+  where
+    getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
+    getFunctionFromDefs defs functionName = find (`matchNameGlobal` functionName) defs Nothing
+      where
+        matchNameGlobal :: Definition -> Name -> Bool
+        matchNameGlobal (GlobalDefinition AST.Function {AST.Global.name = n}) nameToMatch = n == nameToMatch
+        matchNameGlobal _ _ = False
+        find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
+        find p (SnocList (x : xs)) res
+          | p x = Just x
+          | otherwise = find p (SnocList xs) res
+        find _ (SnocList []) res = res
 
 -- Unary Operands (Prefix Operands)
 genOperand (S.UnaryOp oper a) localVars = do
@@ -97,32 +109,32 @@ genOperand (S.UnaryOp oper a) localVars = do
     unops :: M.Map Name (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
       M.fromList
-        [ ("-", \x -> do
-            let opType = operandType x
-            case opType of
-              (IntegerType _) -> sub (ConstantOperand (C.Int 32 0)) x
+        [ ( "-", \x -> case operandType x of
+              (IntegerType _) -> sub (int32 0) x
               (FloatingPointType _) -> fsub (ConstantOperand (C.Float (F.Double 0))) x
-              _ -> error $ "Invalid type for operand: " ++ show opType
+              _ -> error $ "Invalid type for operand: " ++ show (operandType x)
           ),
           ("!", not'),
-          ("fst", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 0))),
-          ("snd", \x -> tupleAccessorOperand x (ConstantOperand (C.Int 32 1))),
-          ( "tail",
-            \x -> do
-              i32_slot <- gep x [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+          ( "fst", \tuplePtr -> do
+              tuple <- load tuplePtr 0
+              extractValue tuple [0]
+          ),
+          ("snd", \tuplePtr -> do
+              tuple <- load tuplePtr 0
+              extractValue tuple [1]
+          ),
+          ( "tail", \x -> do
+              i32_slot <- gep x [int32 0, int32 1]
               load i32_slot 0
           ),
-          ( "head",
-            \x -> do
-              i32_slot <- gep x [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
+          ( "head", \x -> do
+              i32_slot <- gep x [int32 0, int32 0]
               load i32_slot 0
           )
         ]
       where
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
-        not' x = do
-          icmp IP.EQ x (ConstantOperand (C.Int 1 0))
-
+        not' x = icmp IP.EQ x (bit 0)
 -- Binary Operands (Infix Operands)
 genOperand (S.BinOp ":" a b) localVars = do
   opA <- genOperand a localVars
@@ -156,8 +168,8 @@ genOperand (S.BinOp oper a b) localVars = do
         ]
       where
         eitherType = typedOperandInstruction firstOp secondOp
-
 -- If
+-- TODO: check for the extra if_exit and else_exit labels
 genOperand (S.If cond thenExpr elseExpr) localVars = mdo
   computedCond <- genOperand cond localVars
   condBr computedCond ifThen ifElse
@@ -173,53 +185,29 @@ genOperand (S.If cond thenExpr elseExpr) localVars = mdo
   br blockEnd
   blockEnd <- block `named` "if.end"
   phi [(computedThen, ifExit), (computedElse, elseExit)]
-
 -- Let in
-genOperand (S.Let S.Double (Name varName) variableValue body) localVars = do
-  var <- alloca ASTType.double Nothing 0
-  computedValue <- genOperand variableValue localVars
-  store var 0 computedValue
-  loadedVar <- load var 0
-  genOperand body ((Just varName, loadedVar) : localVars)
-genOperand (S.Let S.Integer (Name varName) variableValue body) localVars = do
-  var <- alloca ASTType.i32 Nothing 0
-  computedValue <- genOperand variableValue localVars
-  store var 0 computedValue
-  loadedVar <- load var 0
-  genOperand body ((Just varName, loadedVar) : localVars)
-genOperand (S.Let S.Boolean (Name varName) variableValue body) localVars = do
-  var <- alloca ASTType.i1 Nothing 0
-  computedValue <- genOperand variableValue localVars
-  store var 0 computedValue
-  loadedVar <- load var 0
-  genOperand body ((Just varName, loadedVar) : localVars)
-genOperand (S.Let (S.Tuple t1 t2) (Name varName) variableValue body) localVars = do
-  var <- alloca (ASTType.StructureType False [getASTType t1, getASTType t2]) Nothing 0
-  computedValue <- genOperand variableValue localVars
-  store var 0 computedValue
-  loadedVar <- load var 0
-  genOperand body ((Just varName, loadedVar) : localVars)
-
+genOperand (S.Let (Name varName) variableValue body) localVars = do
+  var <- genOperand variableValue localVars
+  genOperand body ((Just varName, var) : localVars)
+-- Tuple
+genOperand (S.TupleI a b) localVars = do
+  opA <- genOperand a localVars
+  opB <- genOperand b localVars
+  tupleStruct <- alloca (ASTType.StructureType False [operandType opA, operandType opB]) Nothing 0
+  opAPtr <- gep tupleStruct [int32 0, int32 0]
+  store opAPtr 0 opA
+  opBPtr <- gep tupleStruct [int32 0, int32 1]
+  store opBPtr 0 opB
+  return tupleStruct
 -- Lists
 genOperand (S.List []) _ = nullIntList
 genOperand (S.List (x : xs)) localVars = do
   firstElem <- genOperand x localVars
   var <- createListNode firstElem
-  next_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+  next_slot <- gep var [int32 0, int32 1]
   nextValue <- genOperand (S.List xs) localVars
   store next_slot 0 nextValue
   return var
-
--- Reference to a Function
-genOperand (S.FunOp (Name fnName)) localVars = do
-  currentDefs <- liftModuleState $ gets builderDefs
-  let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
-  case maybeDef of
-    Just def -> do
-      case def of
-        -- (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name fnName) retT params
-        _ -> error $ "Function " <> show fnName <> " not found."
-    Nothing -> error $ "Function " <> show fnName <> " not found."
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
 
 type BinOpInstruction = (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)

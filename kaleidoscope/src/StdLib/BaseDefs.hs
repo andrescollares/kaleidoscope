@@ -5,84 +5,44 @@ module StdLib.BaseDefs where
 
 import Data.String (fromString)
 import LLVM.AST (Definition (..),
- FloatingPointType (..), Name (..), Parameter (..), 
- Type (..), Operand(..), Named(Do), Terminator( Ret ), returnOperand, operand0, Named( (:=) ))
+ FloatingPointType (..), Name (..), Parameter (..),
+ Type (..), Operand(..), Named(Do), Terminator( Ret ), returnOperand, operand0, Named( (:=) ), mkName)
 import LLVM.AST.AddrSpace (AddrSpace (..))
 import qualified LLVM.AST.Instruction as I ( Instruction( SIToFP, FPToSI, metadata, type' ), Terminator (metadata') )
-import qualified LLVM.AST.Constant as C
-import LLVM.AST.Global (Global (..), functionDefaults, globalVariableDefaults, BasicBlock (..))
-import LLVM.AST.Linkage (Linkage (..))
-import LLVM.AST.Visibility (Visibility (..))
+import LLVM.AST.Global (Global (..), functionDefaults, BasicBlock (..))
+import LLVM.AST.Type (i32, ptr, i8)
+import LLVM.AST.Linkage (Linkage(External))
 
 baseDefinitions :: [Definition]
 baseDefinitions =
   [ 
-    -- io functions
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printi"),
-          parameters = ([Parameter (IntegerType 32) (Name (fromString "i")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printd"),
-          parameters = ([Parameter (FloatingPointType DoubleFP) (Name (fromString "d")) []], False),
-          returnType = FloatingPointType DoubleFP,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printb"),
-          parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
-          returnType = IntegerType 1,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "print_tuple"),
-          parameters =
-            ( [ Parameter
-                  ( StructureType
-                      { elementTypes =
-                          [ IntegerType 32,
-                            IntegerType 32
-                          ],
-                        isPacked = False
-                      }
-                  )
-                  (Name (fromString "tuple"))
-                  [],
-                Parameter (IntegerType 32) (Name (fromString "first_type")) [],
-                Parameter (IntegerType 32) (Name (fromString "second_type")) []
-              ],
-              False
-            ),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printil"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printfl"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printbl"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
+    GlobalDefinition functionDefaults
+    { name        = mkName "printf"
+    , linkage     = External
+    , parameters  = ([Parameter ty (mkName "") [] | ty <- [ptr i8]], True)
+    , returnType  = i32
+    },
+    -- GlobalDefinition
+    --   functionDefaults
+    --     { name = Name (fromString "printil"),
+    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+    --       returnType = IntegerType 32,
+    --       basicBlocks = []
+    --     },
+    -- GlobalDefinition
+    --   functionDefaults
+    --     { name = Name (fromString "printfl"),
+    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+    --       returnType = IntegerType 32,
+    --       basicBlocks = []
+    --     },
+    -- GlobalDefinition
+    --   functionDefaults
+    --     { name = Name (fromString "printbl"),
+    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+    --       returnType = IntegerType 32,
+    --       basicBlocks = []
+    --     },
     -- math functions
     GlobalDefinition
       functionDefaults

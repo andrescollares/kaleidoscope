@@ -1,28 +1,28 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-struct intList {
+typedef struct intList {
   int32_t val;
   struct intList *next;
-};
+} intList;
 
-struct doubleList {
+typedef struct doubleList {
   double val;
   struct doubleList *next;
-};
+} doubleList;
 
-struct boolList {
+typedef struct boolList {
   int8_t val;
   struct boolList *next;
-};
+} boolList;
 
-struct intTuple {
+typedef struct intTuple {
   int32_t a;
   int32_t b;
-};
+} intTuple;
 
-struct intList *_alloc_int_list_node();
+intList *_alloc_int_list_node();
 
-struct doubleList *_alloc_double_list_node();
+doubleList *_alloc_double_list_node();
 
-struct boolList *_alloc_bool_list_node();
+boolList *_alloc_bool_list_node();

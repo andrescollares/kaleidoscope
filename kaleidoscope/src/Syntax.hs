@@ -16,19 +16,18 @@ data Expr
   | Bool Bool
   | TupleI Expr Expr
   | List [Expr]
-  | Let Type Name Expr Expr
+  | Let Name Expr Expr
   | Var Name
   | Call Name [Expr]
   | If Expr Expr Expr
   | UnaryOp Name Expr
   | BinOp Name Expr Expr
-  | FunOp Name
   deriving stock (Eq, Ord, Show)
 
 data Declaration
   = Function Name [(Type, ParameterName)] Type Expr
   | Extern Name [(Type, ParameterName)] Type
-  | Constant Type Name Expr
+  | Constant Name Expr
   deriving stock (Eq, Ord, Show)
 
 data Type
