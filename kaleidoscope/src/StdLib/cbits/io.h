@@ -6,19 +6,11 @@
 
 double putchari(int32_t i);
 
-double printd(double d);
+int32_t printil(intList *list);
 
-int32_t printi(int32_t i);
+int32_t printfl(doubleList *list);
 
-int8_t printb(int8_t b);
-
-int32_t print_tuple(struct intTuple t, int32_t first_type, int32_t second_type);
-
-int32_t printil(struct intList *list);
-
-int32_t printfl(struct doubleList *list);
-
-int32_t printbl(struct boolList *list);
+int32_t printbl(boolList *list);
 
 double writed(double d);
 

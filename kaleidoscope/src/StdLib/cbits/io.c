@@ -11,53 +11,14 @@ double putchari(int32_t i) {
   return i;
 }
 
-// print a double
-double printd(double d) {
-  printf("%f\n", d);
-  return d;
-}
-
-// print an int32
-int32_t printi(int32_t i) {
-  printf("%d\n", i);
-  return i;
-}
-
-// print a boolean (int1)
-int8_t printb(int8_t b) {
-  printf("%s\n", b ? "true" : "false");
-  return b;
-}
-
-// print a tuple 
-int32_t print_tuple(struct intTuple t, int32_t first_type, int32_t second_type) {
-  if (first_type == K_INT) {
-    printf("(%d, ", t.a);
-  } else if (first_type == K_DOUBLE) {
-    printf("(%f, ", t.a);
-  } else if (first_type == K_BOOL) {
-    printf("(%s, ", t.a ? "true" : "false");
-  }
-
-  if (second_type == K_INT) {
-    printf("%d)\n", t.b);
-  } else if (second_type == K_DOUBLE) {
-    printf("%f)\n", t.b);
-  } else if (second_type == K_BOOL) {
-    printf("%s)\n", t.b ? "true" : "false");
-  }
-
-  return 0;
-}
-
 // print an int list
-int32_t printil(struct intList *list) {
+int32_t printil(intList *list) {
   if (list == NULL) {
     printf("[]\n");
     return 0;
   }
-  struct intList *current = list;
-  struct intList *next = NULL;
+  intList *current = list;
+  intList *next = NULL;
   // improvement: construct the string and print it in one go
   printf("[");
   while (current != NULL) {
@@ -72,13 +33,13 @@ int32_t printil(struct intList *list) {
 }
 
 // print a double list
-int32_t printfl(struct doubleList *list) {
+int32_t printfl(doubleList *list) {
   if (list == NULL) {
     printf("[]\n");
     return 0;
   }
-  struct doubleList *current = list;
-  struct doubleList *next = NULL;
+  doubleList *current = list;
+  doubleList *next = NULL;
   printf("[");
   while (current != NULL) {
     printf("%f", current->val);
@@ -92,13 +53,13 @@ int32_t printfl(struct doubleList *list) {
 }
 
 // print a boolean list
-int32_t printbl(struct boolList *list) {
+int32_t printbl(boolList *list) {
   if (list == NULL) {
     printf("[]\n");
     return 0;
   }
-  struct boolList *current = list;
-  struct boolList *next = NULL;
+  boolList *current = list;
+  boolList *next = NULL;
   printf("[");
   while (current != NULL) {
     printf("%s", current->val ? "true" : "false");

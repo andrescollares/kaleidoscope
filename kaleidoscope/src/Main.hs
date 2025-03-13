@@ -37,12 +37,6 @@ startRepl cliParameters = do
         Nothing -> outputStrLn "Goodbye."
         Just input -> do
           case unpack $ strip $ pack input of
-            -- * removed feature
-            -- ('=' : rest) -> do
-            --   maybeDefs <- liftIO $ process oldDefs ("const " ++ removeLast rest ++ " " ++ show prevRes ++ ";") replOptions
-            --   case maybeDefs of
-            --     Just (_, defs) -> loop prevRes defs
-            --     Nothing -> loop prevRes oldDefs
             (':' : 'l' : ' ' : fileName) -> do
               maybeDefs <- liftIO $ processFile cleanFileName cliParameters
               case maybeDefs of

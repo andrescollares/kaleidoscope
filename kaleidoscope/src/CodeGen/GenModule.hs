@@ -1,55 +1,55 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
 
 module CodeGen.GenModule where
 
-import CLIParameters (CLIParameters)
 import CodeGen.GenOperand (genOperand)
 import CodeGen.LocalVar
   ( LocalVar,
-    definitionsToLocalVars,
-    functionLocalVar,
+    localVarsFallback,
   )
-import CodeGen.Utils.Types (getASTType, getExpressionType)
-import Control.Monad.RWS (gets)
+import CodeGen.Utils.Types (getASTType, operandType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
-import Data.String (fromString)
+import Debug.Trace (trace)
 import LLVM.AST as AST hiding (function)
-import LLVM.AST.AddrSpace (AddrSpace (AddrSpace))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
-import LLVM.AST.Global (Global (name))
+import LLVM.AST.Global (Global (name), basicBlocks, parameters, returnType)
+import LLVM.AST.Type (i32, i8, ptr)
 import qualified LLVM.AST.Type as ASTType
+import LLVM.IRBuilder (ParameterName (ParameterName), call, globalStringPtr, extractValue, load, int32)
 import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), MonadModuleBuilder (liftModuleState), execModuleBuilder, extern, function, global)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import qualified Syntax as S
+import LLVM.AST.Attribute (ParameterAttribute(NoAlias))
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
 -- Has to execute the module
 -- Has to update the module state
 genModule :: [Definition] -> [S.TopLevel] -> [Definition]
-genModule oldDefs expressions = buildModuleDefinitions (remove_main oldDefs) modlState
+genModule oldDefs expressions = buildModuleDefinitions (removeMain oldDefs) newModlState
   where
-    remove_main (def:defs) = case def of
+    removeMain (def : defs) = case def of
       GlobalDefinition AST.Function {name = Name "main"} -> defs
-      _ -> def : remove_main defs
-    remove_main [] = []
-
-    -- NOTE: Could I use the source that's already compiled instead of the previous AST?
+      _ -> def : removeMain defs
+    removeMain [] = []
+    -- TODO: Could I use the source that's already compiled instead of the previous AST?
     -- use old state and new expressions to generate the new state
-    modlState = mapM genTopLevel expressions
+    newModlState = mapM genTopLevel expressions
 
 buildModuleDefinitions :: [Definition] -> ModuleBuilder a -> [Definition]
 buildModuleDefinitions prevDefs = execModuleBuilder oldModl
   where
-    oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = defsMap}
-    defsMap = fromList $ map (\(TypeDefinition definitionName (Just t)) -> (definitionName, t)) typeDefs
+    oldModl = ModuleBuilderState {builderDefs = SnocList (reverse prevDefs), builderTypeDefs = typeDefsMap}
+    -- TODO: Do we even have type definitions?
+    typeDefsMap = fromList $ map (\(TypeDefinition definitionName (Just t)) -> (definitionName, t)) typeDefs
     typeDefs = filter isTypeDef prevDefs
     isTypeDef (TypeDefinition _ _) = True
     isTypeDef _ = False
@@ -58,132 +58,82 @@ buildModuleDefinitions prevDefs = execModuleBuilder oldModl
 -- The result is a ModuleBuilder monad
 genTopLevel :: S.TopLevel -> ModuleBuilder AST.Operand
 -- Extern definition
-genTopLevel (S.Declaration (S.Extern externName externArgs S.Integer)) = do
-  extern externName (map (getASTType . fst) externArgs) ASTType.i32
-genTopLevel (S.Declaration (S.Extern externName externArgs S.Double)) = do
-  extern externName (map (getASTType . fst) externArgs) ASTType.double
-genTopLevel (S.Declaration (S.Extern externName externArgs S.Boolean)) = do
-  extern externName (map (getASTType . fst) externArgs) ASTType.i1
+genTopLevel (S.Declaration (S.Extern externName externArgs retType)) = do
+  extern externName (map (getASTType . fst) externArgs) (getASTType retType)
 
 -- Function definition
-genTopLevel (S.Declaration (S.Function functionName functionArgs S.Double body)) = do
+genTopLevel (S.Declaration (S.Function fnName fnArgs retType body)) = do
+  let astRetType = getASTType retType
+  -- Define the function signature first
+  emitDefn $
+    GlobalDefinition
+      functionDefaults
+        { name = fnName,
+          parameters = (map (\(t, ParameterName n) -> Parameter (getASTType t) (Name n) []) fnArgs, False),
+          returnType = astRetType,
+          basicBlocks = []
+        }
+  -- Generate the function body
   function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.double
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName ASTType.double
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs S.Integer body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.i32
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i32
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs S.Boolean body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.i1
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName ASTType.i1
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs (S.Tuple t1 t2) body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName ASTType.StructureType {AST.isPacked = False, AST.elementTypes = [getASTType t1, getASTType t2]}
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Integer) body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0}
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0})
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Double) body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "FloatList"), pointerAddrSpace = AddrSpace 0}
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0})
-    )
-genTopLevel (S.Declaration (S.Function functionName functionArgs (S.ListType S.Boolean) body)) = do
-  function
-    functionName
-    (first getASTType <$> functionArgs)
-    ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "BoolList"), pointerAddrSpace = AddrSpace 0}
-    ( \ops ->
-        genLevel body $ functionLocalVar ops functionArgs functionName (ASTType.PointerType {pointerReferent = ASTType.NamedTypeReference (AST.Name $ fromString "IntList"), pointerAddrSpace = AddrSpace 0})
-    )
+    fnName
+    (first getASTType <$> fnArgs)
+    astRetType
+    (genLevel body . localVarsFallback)
 
 -- Constant definition
-genTopLevel (S.Declaration (S.Constant S.Double constantName (S.Float val))) = do
-  global constantName ASTType.double (C.Float (F.Double val))
-genTopLevel (S.Declaration (S.Constant S.Integer constantName (S.Int val))) = do
-  global constantName ASTType.i32 (C.Int 32 val)
-genTopLevel (S.Declaration (S.Constant S.Boolean constantName (S.Bool val))) = do
-  global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
-genTopLevel (S.Declaration (S.Constant (S.Tuple t1 t2) constantName (S.TupleI e1 e2))) = do
-  global
-    constantName
-    (ASTType.StructureType False [getASTType t1, getASTType t2])
-    ( C.Struct
-        { C.structName = Nothing,
-          C.isPacked = False,
-          C.memberValues =
-            [ constantOperand e1,
-              constantOperand e2
-            ]
-        }
-    )
-  where
-    constantOperand (S.Float n) = C.Float (F.Double n)
-    constantOperand (S.Int n) = C.Int 32 n
-    constantOperand (S.Bool b) = C.Int 1 (if b then 1 else 0)
-
-genTopLevel (S.Declaration S.Constant {}) = error "Invalid constant definition"
+genTopLevel (S.Declaration (S.Constant constantName expr)) = do
+  case expr of
+    S.Float val -> global constantName ASTType.double (C.Float (F.Double val))
+    S.Int val -> global constantName ASTType.i32 (C.Int 32 val)
+    S.Bool val -> global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
+    _ -> error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Expr expression) = do
-  currentDefs <- liftModuleState $ gets builderDefs
-  function "main" [] (eType currentDefs) (\_ -> genLevel (printerWrapper expression currentDefs) [])
-  where
-    -- function "printResult" [] (eType currentDefs) (\_ -> genLevel (printerExpressions currentDefs) [])
-
-    -- Determine type of expression to be used as return type of main function
-    eType currentDefs = getExpressionType expression $ definitionsToLocalVars currentDefs
-    -- typeDefs moduleDefs = findTypeAlias (Name "a") moduleDefs
-    -- TODO: findTypeAlias can get a AST.Type to use when we use a name type alias
-    printerWrapper exprs currentDefs = S.Call (printerFunctionName (eType currentDefs)) (exprs : printerExtraParams (eType currentDefs))
-    printerFunctionName (FloatingPointType _) = "printd"
-    printerFunctionName IntegerType {ASTType.typeBits = 32} = "printi"
-    printerFunctionName IntegerType {ASTType.typeBits = 1} = "printb"
-    printerFunctionName (PointerType (NamedTypeReference (Name "IntList")) (AddrSpace 0)) = "printil"
-    printerFunctionName (PointerType (NamedTypeReference (Name "FloatList")) (AddrSpace 0)) = "printfl"
-    printerFunctionName (PointerType (NamedTypeReference (Name "BoolList")) (AddrSpace 0)) = "printbl"
-    printerFunctionName StructureType {ASTType.elementTypes = _} = "print_tuple"
-    printerFunctionName _ = error "Unsupported type for print function"
-    printerExtraParams StructureType {ASTType.elementTypes = [t1, t2]} = case (t1, t2) of
-      (IntegerType {ASTType.typeBits = 32}, IntegerType {ASTType.typeBits = 32}) -> [S.Int 1, S.Int 1]
-      (IntegerType {ASTType.typeBits = 32}, FloatingPointType {ASTType.floatingPointType = DoubleFP}) -> [S.Int 1, S.Int 2]
-      (IntegerType {ASTType.typeBits = 32}, IntegerType {ASTType.typeBits = 1}) -> [S.Int 1, S.Int 3]
-      (FloatingPointType {ASTType.floatingPointType = DoubleFP}, IntegerType {ASTType.typeBits = 32}) -> [S.Int 2, S.Int 1]
-      (FloatingPointType {ASTType.floatingPointType = DoubleFP}, FloatingPointType {ASTType.floatingPointType = DoubleFP}) -> [S.Int 2, S.Int 2]
-      (FloatingPointType {ASTType.floatingPointType = DoubleFP}, IntegerType {ASTType.typeBits = 1}) -> [S.Int 2, S.Int 3]
-      (IntegerType {ASTType.typeBits = 1}, IntegerType {ASTType.typeBits = 32}) -> [S.Int 3, S.Int 1]
-      (IntegerType {ASTType.typeBits = 1}, FloatingPointType {ASTType.floatingPointType = DoubleFP}) -> [S.Int 3, S.Int 2]
-      (IntegerType {ASTType.typeBits = 1}, IntegerType {ASTType.typeBits = 1}) -> [S.Int 3, S.Int 3]
-      _ -> []
-    printerExtraParams _ = []
-
-genTopLevel _ = error "This shouldn't have matched here."
+  function "main" [] i32 (\_ -> genMain expression [])
 
 genLevel :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
-genLevel e localVars = genOperand e localVars >>= ret
+genLevel e localVars = do
+  operand <- genOperand e localVars
+  ret operand
+
+genMain :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genMain e localVars = do
+  operand <- genOperand e localVars
+  genPrint operand
+  ret $ int32 0
+
+genPrint :: AST.Operand -> IRBuilderT ModuleBuilder ()
+genPrint operand = mdo
+  let fmtStr = getFmtStringForType (operandType operand) ++ "\n"
+  fmtStrGlobal <- globalStringPtr fmtStr "fmtStr"
+
+  printArgs <- operandToPrintfArg operand
+  _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf"))) 
+       ((ConstantOperand fmtStrGlobal, [NoAlias]) : printArgs)
+  return ()
+
+getFmtStringForType :: AST.Type -> String
+getFmtStringForType asttype = case asttype of
+  ASTType.IntegerType {ASTType.typeBits = 32} -> "%d"
+  ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
+  ASTType.IntegerType {ASTType.typeBits = 1} -> "%d"
+  ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
+    "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
+  _ -> error "Unsupported type for printf"
+
+operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
+operandToPrintfArg operand = case operandType operand of
+  ASTType.IntegerType {ASTType.typeBits = 32} -> return [(operand, [])]
+  ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> return [(operand, [])]
+  -- TODO: Add global variables with "true" and "false" strings to the module and a function that
+  --       takes an int1 and returns the corresponding int8* string, that way we can print booleans
+  ASTType.IntegerType {ASTType.typeBits = 1} -> return [(operand, [])]
+  ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} -> do
+    tuple <- load operand 0
+    val1 <- extractValue tuple [0]
+    val2 <- extractValue tuple [1]
+    args1 <- operandToPrintfArg val1
+    args2 <- operandToPrintfArg val2
+    return $ args1 ++ args2
+  _ -> error "Unsupported type for printf"
