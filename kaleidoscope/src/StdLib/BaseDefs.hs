@@ -12,6 +12,7 @@ import qualified LLVM.AST.Instruction as I ( Instruction( SIToFP, FPToSI, metada
 import LLVM.AST.Global (Global (..), functionDefaults, BasicBlock (..))
 import LLVM.AST.Type (i32, ptr, i8)
 import LLVM.AST.Linkage (Linkage(External))
+import LLVM.AST.Attribute (FunctionAttribute(OptimizeNone), ParameterAttribute (NonNull))
 
 baseDefinitions :: [Definition]
 baseDefinitions =
@@ -19,8 +20,9 @@ baseDefinitions =
     GlobalDefinition functionDefaults
     { name        = mkName "printf"
     , linkage     = External
-    , parameters  = ([Parameter ty (mkName "") [] | ty <- [ptr i8]], True)
+    , parameters  = ([Parameter ty (mkName "") [NonNull] | ty <- [ptr i8]], True)
     , returnType  = i32
+    , functionAttributes = [Right OptimizeNone]
     },
     -- GlobalDefinition
     --   functionDefaults
