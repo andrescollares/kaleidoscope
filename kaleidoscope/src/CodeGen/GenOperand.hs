@@ -19,7 +19,7 @@ import LLVM.AST as AST
     Global (Function, GlobalVariable),
     Name (Name),
     Operand (ConstantOperand),
-    Type (..),
+    Type (..), Instruction (Store)
   )
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
@@ -27,13 +27,14 @@ import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, U
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState)
+import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState, MonadIRBuilder, emitInstrVoid)
 import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
 import LLVM.IRBuilder.Constant (double, int32, bit)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import qualified LLVM.AST.Global as AST.Global
+import Data.Word (Word32)
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -195,10 +196,13 @@ genOperand (S.TupleI a b) localVars = do
   opB <- genOperand b localVars
   tupleStruct <- alloca (ASTType.StructureType False [operandType opA, operandType opB]) Nothing 0
   opAPtr <- gep tupleStruct [int32 0, int32 0]
-  store opAPtr 0 opA
+  storeVolatile opAPtr 0 opA
   opBPtr <- gep tupleStruct [int32 0, int32 1]
-  store opBPtr 0 opB
+  storeVolatile opBPtr 0 opB
   return tupleStruct
+  where
+    storeVolatile :: MonadIRBuilder m => Operand -> Word32 -> Operand -> m ()
+    storeVolatile addr align val = emitInstrVoid $ Store True addr val Nothing align []
 -- Lists
 genOperand (S.List []) _ = nullIntList
 genOperand (S.List (x : xs)) localVars = do

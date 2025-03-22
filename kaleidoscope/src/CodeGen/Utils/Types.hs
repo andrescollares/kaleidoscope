@@ -85,7 +85,7 @@ getASTType :: S.Type -> AST.Type
 getASTType S.Double = ASTType.double
 getASTType S.Integer = ASTType.i32
 getASTType S.Boolean = ASTType.i1
-getASTType (S.Tuple t1 t2) = ASTType.StructureType False [getASTType t1, getASTType t2]
+getASTType (S.Tuple t1 t2) = ASTType.PointerType (ASTType.StructureType False [getASTType t1, getASTType t2]) (AddrSpace 0)
 getASTType (S.ListType t) = ASTType.PointerType (ASTType.NamedTypeReference (AST.Name (fromString $ listSyntaxPointerTypeName t))) (AddrSpace 0)
 getASTType (S.FunType argTypes retType) = ASTType.ptr (ASTType.FunctionType {ASTType.resultType = getASTType retType, ASTType.argumentTypes = map getASTType argTypes, ASTType.isVarArg = False})
 
