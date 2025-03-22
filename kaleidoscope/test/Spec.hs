@@ -2,49 +2,85 @@
 
 module Main where
 
-import Test.Tasty ( defaultMain, testGroup, TestTree )
+import Test.Tasty ( defaultMain, testGroup, TestTree, localOption )
 import Test.Tasty.HUnit ( testCase, (@?=) )
 
 import LLVM.IRBuilder.Module (buildModule)
 import Control.Monad (void)
 import System.Process ( system )
 import System.Exit ( ExitCode(ExitSuccess) )
-import System.Directory ( doesFileExist, getDirectoryContents )
+import System.Directory ( doesFileExist, getDirectoryContents, listDirectory )
 import Data.List (isSuffixOf)
+import System.FilePath ((</>))
+import Test.Tasty.Runners (NumThreads(NumThreads))
 
+-- Main test suite
 main :: IO ()
-main = defaultMain tests
+main = do
+    files <- listDirectory programDir
+    let testFiles = filterProgramFiles files
+    putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
+    
+    let testCases = map generateTest testFiles
+    defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
 
-tests :: TestTree
-tests = testGroup "Tests" [programTests]
+-- Directory paths
+programDir :: FilePath
+programDir = "./test/programs"
+
+outputDir :: FilePath
+outputDir = "./test/output"
+
+tempOutput :: FilePath
+tempOutput = "./test/tmp.out"
+
+-- tests :: TestTree
+-- tests = testGroup "Tests" [programTests]
 
 filterProgramFiles :: [String] -> [String]
 filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
 
-programTests :: TestTree
-programTests = testCase "Program Tests" (do
-  files <- getDirectoryContents "./test/programs"
-  putStrLn $ "Testing " ++ show (length $ filterProgramFiles files) ++ " files"
-  system $ "echo Testing files: " ++ show (filterProgramFiles files)
-  mapM_ (\f -> do
-    system $ "echo Testing file: " ++ f
-    exitCode <- system $ "cabal run kaleidoscope-fing -- --file=./test/programs/" ++ f ++ " --quiet-llvm --fail-on-errors > ./test/tmp.out"
+-- Generate individual tests for each program file
+generateTest :: FilePath -> TestTree
+generateTest file = testCase ("Testing " ++ file) $ do
+    putStrLn $ "Testing file: " ++ file
+    let filePath = programDir </> file
+        outputFilePath = outputDir </> file
+    
+    -- Run the test command
+    exitCode <- system $ "cabal run kaleidoscope-fing -- --file=" ++ filePath ++ " --fail-on-errors > " ++ tempOutput
     putStrLn $ "\tExit code: " ++ show exitCode
     exitCode @?= ExitSuccess
-    actualOutput <- readFile "./test/tmp.out"
-    fileExists <- doesFileExist ("./test/output/" ++ f)
+
+    -- Read actual output
+    actualOutput <- readFile tempOutput
+
+    -- Check if expected output file exists
+    fileExists <- doesFileExist outputFilePath
     if fileExists
       then do
-        expectedOutput <- readFile $ "./test/output/" ++ f
+        expectedOutput <- readFile outputFilePath
         actualOutput @?= expectedOutput
       else do
-        putStrLn $ "No expected output file for " ++ f
-        putStrLn $ "Writing actual output to ./test/output/" ++ f
-        writeFile ("./test/output/" ++ f) actualOutput
-    expectedOutput <- readFile $ "./test/output/" ++ f
-    actualOutput @?= expectedOutput
-    system "rm ./test/tmp.out"
-    ) (filterProgramFiles files)
-  )
+        putStrLn $ "No expected output file for " ++ file
+        putStrLn $ "Writing actual output to " ++ outputFilePath
+        writeFile outputFilePath actualOutput
 
+    -- Final comparison to ensure correctness
+    expectedOutput <- readFile outputFilePath
+    actualOutput @?= expectedOutput
+
+    -- Cleanup
+    removeFile tempOutput
+
+removeFile :: FilePath -> IO ()
+removeFile file = do
+    fileExists <- doesFileExist file
+    if fileExists
+      then do
+        putStrLn $ "Removing file: " ++ file
+        system $ "rm " ++ file
+        return ()
+      else return ()
+  
 -- TODO: REPL features tests

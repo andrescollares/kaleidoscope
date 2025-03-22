@@ -14,6 +14,7 @@ import LLVM.AST.Type (i32, ptr, i8)
 import LLVM.AST.Linkage (Linkage(External))
 import LLVM.AST.Attribute (FunctionAttribute(OptimizeNone), ParameterAttribute (NonNull))
 
+
 baseDefinitions :: [Definition]
 baseDefinitions =
   [ 

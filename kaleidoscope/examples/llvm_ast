@@ -1,0 +1,87 @@
+GlobalDefinition (
+    Function {returnType = IntegerType {typeBits = 32}, name = Name "foo", 
+    parameters = ([Parameter (IntegerType {typeBits = 32}) (Name "x_0") []],False),
+    basicBlocks = [
+        BasicBlock (UnName 0) [
+        UnName 1 := Mul {nsw = False, nuw = False, operand0 = LocalReference (
+            IntegerType {typeBits = 32}) (Name "x_0"), 
+            operand1 = ConstantOperand (
+                Int {integerBits = 32, integerValue = 2}
+            )
+        }
+    ] (
+        Do ( Ret {returnOperand = Just (
+                LocalReference (IntegerType {typeBits = 32}) (UnName 1)
+            ), metadata' = []}
+        )
+    )]})
+
+
+GlobalDefinition ( 
+    Function { returnType = IntegerType {typeBits = 32}, name = Name "main", 
+    parameters = ([], False),
+    basicBlocks = [
+        BasicBlock (UnName 0) [
+        UnName 1 := Call {
+            function = Right (ConstantOperand (
+                GlobalReference (PointerType {pointerReferent = FunctionType {
+                    resultType = IntegerType {typeBits = 32}, 
+                    argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False
+                }, pointerAddrSpace = AddrSpace 0}) (Name "foo")
+            )), 
+            arguments = [(
+                ConstantOperand (Int {integerBits = 32, integerValue = 9}), []
+            )], 
+            functionAttributes = []
+        }, 
+        UnName 2 := Add {nsw = False, nuw = False, operand0 = LocalReference (
+            IntegerType {typeBits = 32}) (UnName 1), 
+            operand1 = ConstantOperand (
+                Int {integerBits = 32, integerValue = 2}
+            )
+        }, 
+        UnName 3 := Call {
+            function = Right (ConstantOperand (
+                GlobalReference (PointerType {pointerReferent = FunctionType {
+                    resultType = IntegerType {typeBits = 32}, 
+                    argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False
+                }, pointerAddrSpace = AddrSpace 0}) (Name "printi")
+            )), 
+            arguments = [(
+                LocalReference (IntegerType {typeBits = 32}) (UnName 2), []
+            )], 
+            functionAttributes = []
+        }
+    ] (
+        Do (Ret {returnOperand = Just (
+                LocalReference (IntegerType {typeBits = 32}) (UnName 3)
+            ), metadata' = []}
+        )
+    )], personalityFunction = Nothing
+}) 
+
+-- GlobalDefinition (
+-- Function {linkage = External, visibility = Default, dllStorageClass = Nothing, callingConvention = C, returnAttributes = [], returnType = IntegerType {typeBits = 32}, name = Name "main", parameters = (
+-- [],False), functionAttributes = [], section = Nothing, comdat = Nothing, alignment = 0, garbageCollectorName = Nothing, prefix = Nothing, basicBlocks = [BasicBlock (
+-- UnName 0) [UnName 1 := Call {tailCallKind = Nothing, callingConvention = C, returnAttributes = [], function = Right (
+-- ConstantOperand (
+-- GlobalReference (
+-- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}) (
+-- Name "foo"))), arguments = [(
+-- ConstantOperand (
+-- Int {integerBits = 32, integerValue = 9}),[])], functionAttributes = []},UnName 2 := Add {nsw = False, nuw = False, operand0 = LocalReference (
+-- IntegerType {typeBits = 32}) (
+-- UnName 1), operand1 = ConstantOperand (
+-- Int {integerBits = 32, integerValue = 2})},UnName 3 := Call {tailCallKind = Nothing, callingConvention = C, returnAttributes = [], function = Right (
+-- ConstantOperand (
+-- GlobalReference (
+-- PointerType {pointerReferent = FunctionType {resultType = IntegerType {typeBits = 32}, argumentTypes = [IntegerType {typeBits = 32}], isVarArg = False}, pointerAddrSpace = AddrSpace 0}) (
+-- Name "printi"))), arguments = [(
+-- LocalReference (
+-- IntegerType {typeBits = 32}) (
+-- UnName 2),[])], functionAttributes = []}] (
+-- Do (
+-- Ret {returnOperand = Just (
+-- LocalReference (
+-- IntegerType {typeBits = 32}) (
+-- UnName 3)), metadata' = []}))], personalityFunction = Nothing})
