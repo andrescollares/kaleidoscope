@@ -170,6 +170,7 @@ constant :: Parser S.Declaration
 constant = do
   L.reservedOp "const"
   name <- L.identifier
+  L.reservedOp "="
   value <- try floating <|> try int <|> try bool <|> try tuple <|> try list
   return $ S.Constant (fromString name) value
 

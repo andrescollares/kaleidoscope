@@ -1,1 +1,1 @@
-let int a = 4 in a + 1;
+let a = 4 in a + 1;

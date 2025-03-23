@@ -25,27 +25,27 @@ baseDefinitions =
     , returnType  = i32
     , functionAttributes = [Right OptimizeNone]
     },
-    -- GlobalDefinition
-    --   functionDefaults
-    --     { name = Name (fromString "printil"),
-    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-    --       returnType = IntegerType 32,
-    --       basicBlocks = []
-    --     },
-    -- GlobalDefinition
-    --   functionDefaults
-    --     { name = Name (fromString "printfl"),
-    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-    --       returnType = IntegerType 32,
-    --       basicBlocks = []
-    --     },
-    -- GlobalDefinition
-    --   functionDefaults
-    --     { name = Name (fromString "printbl"),
-    --       parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-    --       returnType = IntegerType 32,
-    --       basicBlocks = []
-    --     },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "printil"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = IntegerType 32,
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "printfl"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = IntegerType 32,
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "printbl"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = IntegerType 32,
+          basicBlocks = []
+        },
     -- math functions
     GlobalDefinition
       functionDefaults

@@ -14,7 +14,6 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (getASTType, operandType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
-import Debug.Trace (trace)
 import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
@@ -28,6 +27,13 @@ import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderSt
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import qualified Syntax as S
 import LLVM.AST.Attribute (ParameterAttribute(NoAlias))
+import LLVM.IRBuilder (gep)
+import Debug.Trace
+import qualified LLVM.AST.IntegerPredicate
+import LLVM.IRBuilder (icmp)
+import LLVM.AST.Constant (Constant(Null))
+import CodeGen.DataStructures.List (nullIntList)
+import LLVM.AST.AddrSpace (AddrSpace(..))
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -105,22 +111,32 @@ genMain e localVars = do
 
 genPrint :: AST.Operand -> IRBuilderT ModuleBuilder ()
 genPrint operand = mdo
-  let fmtStr = getFmtStringForType (operandType operand) ++ "\n"
-  fmtStrGlobal <- globalStringPtr fmtStr "fmtStr"
+  case operandType operand of
+    ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _ -> case n of
+      "IntList" -> listPrinterFunction operand "IntList"
+      "FloatList" -> listPrinterFunction operand "FloatList"
+      "BoolList" -> listPrinterFunction operand "BoolList"
+      _ -> error "Unsupported list type for print"
+    _ -> do
+      let fmtStr = getFmtStringForType $ operandType operand
+      fmtStrGlobal <- globalStringPtr (fmtStr ++ "\n") "fmtStr"
 
-  printArgs <- operandToPrintfArg operand
-  _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf"))) 
-       ((ConstantOperand fmtStrGlobal, [NoAlias]) : printArgs)
-  return ()
+      printArgs <- operandToPrintfArg operand
+      _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf"))) 
+          ((ConstantOperand fmtStrGlobal, [NoAlias]) : printArgs)
+      return ()
 
-getFmtStringForType :: AST.Type -> String
-getFmtStringForType asttype = case asttype of
+-- TODO: move this below to other file
+
+getFmtStringForType :: AST.Type  -> String
+getFmtStringForType opType = case opType of
   ASTType.IntegerType {ASTType.typeBits = 32} -> "%d"
   ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
   ASTType.IntegerType {ASTType.typeBits = 1} -> "%d"
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
     "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
-  _ -> error "Unsupported type for printf"
+  _ -> error "Unsupported type for printf format"
+
 
 operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
 operandToPrintfArg operand = case operandType operand of
@@ -136,4 +152,16 @@ operandToPrintfArg operand = case operandType operand of
     args1 <- operandToPrintfArg val1
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
-  _ -> error "Unsupported type for printf"
+  _ -> error "Unsupported type for printf argument"
+
+listPrinterFunction :: AST.Operand -> String -> IRBuilderT ModuleBuilder ()
+listPrinterFunction operand listPointerName = do
+  _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [PointerType {pointerReferent = NamedTypeReference (mkName listPointerName), pointerAddrSpace = AddrSpace 0}] False)) (mkName $ functionToPrintType listPointerName))) [(operand, [])]
+  return ()
+  where
+    functionToPrintType tp = case tp of
+      "IntList" -> "printil"
+      "FloatList" -> "printfl"
+      "BoolList" -> "printbl"
+      _ -> error "Unsupported list type"
+    

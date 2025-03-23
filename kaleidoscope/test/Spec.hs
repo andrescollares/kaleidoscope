@@ -43,13 +43,11 @@ filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
 -- Generate individual tests for each program file
 generateTest :: FilePath -> TestTree
 generateTest file = testCase ("Testing " ++ file) $ do
-    putStrLn $ "Testing file: " ++ file
     let filePath = programDir </> file
         outputFilePath = outputDir </> file
     
     -- Run the test command
     exitCode <- system $ "cabal run kaleidoscope-fing -- --file=" ++ filePath ++ " --fail-on-errors > " ++ tempOutput
-    putStrLn $ "\tExit code: " ++ show exitCode
     exitCode @?= ExitSuccess
 
     -- Read actual output
@@ -78,7 +76,6 @@ removeFile file = do
     fileExists <- doesFileExist file
     if fileExists
       then do
-        putStrLn $ "Removing file: " ++ file
         system $ "rm " ++ file
         return ()
       else return ()
