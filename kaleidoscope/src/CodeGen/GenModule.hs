@@ -117,6 +117,7 @@ genPrint operand = mdo
       "FloatList" -> listPrinterFunction operand "FloatList"
       "BoolList" -> listPrinterFunction operand "BoolList"
       _ -> error "Unsupported list type for print"
+    ASTType.IntegerType {ASTType.typeBits = 1} -> booleanPrinterFunction operand
     _ -> do
       let fmtStr = getFmtStringForType $ operandType operand
       fmtStrGlobal <- globalStringPtr (fmtStr ++ "\n") "fmtStr"
@@ -164,4 +165,9 @@ listPrinterFunction operand listPointerName = do
       "FloatList" -> "printfl"
       "BoolList" -> "printbl"
       _ -> error "Unsupported list type"
+
+booleanPrinterFunction :: AST.Operand -> IRBuilderT ModuleBuilder ()
+booleanPrinterFunction operand = do
+  _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType ASTType.i1 [ASTType.i1] False)) (mkName "printb"))) [(operand, [])]
+  return ()
     

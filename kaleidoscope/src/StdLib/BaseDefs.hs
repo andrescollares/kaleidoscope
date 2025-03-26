@@ -18,13 +18,21 @@ import LLVM.AST.Attribute (FunctionAttribute(OptimizeNone), ParameterAttribute (
 baseDefinitions :: [Definition]
 baseDefinitions =
   [ 
-    GlobalDefinition functionDefaults
-    { name        = mkName "printf"
-    , linkage     = External
-    , parameters  = ([Parameter ty (mkName "") [NonNull] | ty <- [ptr i8]], True)
-    , returnType  = i32
-    , functionAttributes = [Right OptimizeNone]
-    },
+    GlobalDefinition 
+      functionDefaults
+        { name        = mkName "printf"
+        , linkage     = External
+        , parameters  = ([Parameter ty (mkName "") [NonNull] | ty <- [ptr i8]], True)
+        , returnType  = i32
+        , functionAttributes = [Right OptimizeNone]
+        },
+    GlobalDefinition
+       functionDefaults
+         { name = Name (fromString "printb"),
+           parameters = ([Parameter (IntegerType 1) (Name (fromString "b")) []], False),
+           returnType = IntegerType 1,
+           basicBlocks = []
+         },
     GlobalDefinition
       functionDefaults
         { name = Name (fromString "printil"),
