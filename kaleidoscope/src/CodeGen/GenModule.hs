@@ -11,7 +11,7 @@ import CodeGen.LocalVar
   ( LocalVar,
     localVarsFallback,
   )
-import CodeGen.Utils.Types (getASTType, operandType)
+import CodeGen.Utils.Types (getASTType, operandType, getExpressionType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
 import LLVM.AST as AST hiding (function)
@@ -21,7 +21,7 @@ import LLVM.AST.Global (Global (name), basicBlocks, parameters, returnType)
 import LLVM.AST.Type (i32, i8, ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder (ParameterName (ParameterName), call, globalStringPtr, extractValue, load, int32)
-import LLVM.IRBuilder.Instruction (ret)
+import LLVM.IRBuilder.Instruction (ret, store)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function, global)
 import LLVM.IRBuilder.Monad (IRBuilderT)
@@ -92,11 +92,53 @@ genTopLevel (S.Declaration (S.Constant constantName expr)) = do
     S.Float val -> global constantName ASTType.double (C.Float (F.Double val))
     S.Int val -> global constantName ASTType.i32 (C.Int 32 val)
     S.Bool val -> global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
+    S.TupleI val1 val2 -> do
+      let tupleType = ASTType.PointerType (ASTType.StructureType False [getExpressionType val1 [], getExpressionType val2 []]) (AddrSpace 0)
+      global constantName tupleType (C.Null tupleType)
+      function "initTuple" [] i32 $ \_ -> genTupleConstantInitializerFunction expr []
     _ -> error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Expr expression) = do
   function "main" [] i32 (\_ -> genMain expression [])
+
+genTupleConstantInitializerFunction :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genTupleConstantInitializerFunction e localVars = do
+  -- tuple <- gep tupleReference [int32 0, int32 0]
+  val <- genOperand e localVars
+  store tupleReference 0 val
+  ret $ int32 0
+  where
+    tupleReference = (ConstantOperand (C.GlobalReference (ASTType.PointerType ( ASTType.PointerType (getExpressionType e []) (AddrSpace 0)) (AddrSpace 0)) "a"))
+
+-- PointerType {pointerReferent = PointerType {pointerReferent = StructureType {isPacked = False, elementTypes = [StructureType {isPacked = False, elementTypes = [IntegerType {typeBits = 32},IntegerType {typeBits = 32}]}]}, pointerAddrSpace = AddrSpace 0}, pointerAddrSpace = AddrSpace 0}
+-- PointerType {pointerReferent = PointerType {pointerReferent = StructureType {isPacked = False, elementTypes = [IntegerType {typeBits = 32},IntegerType {typeBits = 32}]}, pointerAddrSpace = AddrSpace 0}, pointerAddrSpace = AddrSpace 0}
+
+-- define i32 @initTuple() {
+--   %1 = alloca { i32, i32 }, align 8
+--   %2 = getelementptr { i32, i32 }, { i32, i32 }* %1, i32 0, i32 0
+--   store volatile i32 9, i32* %2, align 4
+--   %3 = getelementptr { i32, i32 }, { i32, i32 }* %1, i32 0, i32 1
+--   store volatile i32 0, i32* %3, align 4
+--   %4 = alloca { i32, { i32, i32 }* }, align 8
+--   %5 = getelementptr { i32, { i32, i32 }* }, { i32, { i32, i32 }* }* %4, i32 0, i32 0
+--   store volatile i32 9, i32* %5, align 4
+--   %6 = getelementptr { i32, { i32, i32 }* }, { i32, { i32, i32 }* }* %4, i32 0, i32 1
+--   store volatile { i32, i32 }* %1, { i32, i32 }** %6, align 8
+--   %7 = alloca { i32, i32 }, align 8
+--   %8 = getelementptr { i32, i32 }, { i32, i32 }* %7, i32 0, i32 0
+--   store volatile i32 9, i32* %8, align 4
+--   %9 = getelementptr { i32, i32 }, { i32, i32 }* %7, i32 0, i32 1
+--   store volatile i32 0, i32* %9, align 4
+--   %10 = alloca { i32, { i32, i32 }* }, align 8
+--   %11 = getelementptr { i32, { i32, i32 }* }, { i32, { i32, i32 }* }* %10, i32 0, i32 0
+--   store volatile i32 9, i32* %11, align 4
+--   %12 = getelementptr { i32, { i32, i32 }* }, { i32, { i32, i32 }* }* %10, i32 0, i32 1
+--   store volatile { i32, i32 }* %7, { i32, i32 }** %12, align 8
+--   store { i32, { i32, i32 }* }* %4, { i32, { i32, i32 } }** @a, align 8
+--   store { i32, { i32, i32 }* }* %10, { i32, { i32, i32 } }** @a, align 1
+--   ret i32 0
+-- }
 
 genLevel :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genLevel e localVars = do
@@ -105,6 +147,7 @@ genLevel e localVars = do
 
 genMain :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genMain e localVars = do
+  call ( ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [] False)) (mkName "initTuple"))) []
   operand <- genOperand e localVars
   genPrint operand
   ret $ int32 0
@@ -153,7 +196,7 @@ operandToPrintfArg operand = case operandType operand of
     args1 <- operandToPrintfArg val1
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
-  _ -> error "Unsupported type for printf argument"
+  _ -> error $ "Unsupported type for printf argument" ++ show (operandType operand)
 
 listPrinterFunction :: AST.Operand -> String -> IRBuilderT ModuleBuilder ()
 listPrinterFunction operand listPointerName = do
