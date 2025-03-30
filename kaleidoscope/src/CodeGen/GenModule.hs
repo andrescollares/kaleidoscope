@@ -20,7 +20,7 @@ import qualified LLVM.AST.Float as F
 import LLVM.AST.Global (Global (name), basicBlocks, parameters, returnType)
 import LLVM.AST.Type (i32, i8, ptr)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ParameterName (ParameterName), call, globalStringPtr, extractValue, load, int32)
+import LLVM.IRBuilder (ParameterName (ParameterName), call, globalStringPtr, extractValue, load, int32, liftModuleState)
 import LLVM.IRBuilder.Instruction (ret, store)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function, global)
@@ -34,6 +34,12 @@ import LLVM.IRBuilder (icmp)
 import LLVM.AST.Constant (Constant(Null))
 import CodeGen.DataStructures.List (nullIntList)
 import LLVM.AST.AddrSpace (AddrSpace(..))
+import Control.Monad.RWS (gets)
+import Data.List (isPrefixOf)
+import Data.String (fromString)
+import Data.ByteString.Short (unpack)
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Short as SBS
 
 -- Generates the Module from the previous module and the new expressions
 -- Has to optimize the module
@@ -87,29 +93,34 @@ genTopLevel (S.Declaration (S.Function fnName fnArgs retType body)) = do
     (genLevel body . localVarsFallback)
 
 -- Constant definition
-genTopLevel (S.Declaration (S.Constant constantName expr)) = do
+genTopLevel (S.Declaration (S.Constant (Name constantName) expr)) = do
   case expr of
-    S.Float val -> global constantName ASTType.double (C.Float (F.Double val))
-    S.Int val -> global constantName ASTType.i32 (C.Int 32 val)
-    S.Bool val -> global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
+    S.Float val -> global (Name constantName)  ASTType.double (C.Float (F.Double val))
+    S.Int val -> global (Name constantName)  ASTType.i32 (C.Int 32 val)
+    S.Bool val -> global (Name constantName)  ASTType.i1 (C.Int 1 (if val then 1 else 0))
     S.TupleI val1 val2 -> do
       let tupleType = ASTType.PointerType (ASTType.StructureType False [getExpressionType val1 [], getExpressionType val2 []]) (AddrSpace 0)
-      global constantName tupleType (C.Null tupleType)
-      function "initTuple" [] i32 $ \_ -> genTupleConstantInitializerFunction expr []
+      global (Name constantName)  tupleType (C.Null tupleType)
+      function functionName [] i32 $ \_ -> genTupleConstantInitializerFunction expr (BS.unpack (SBS.fromShort constantName)) []
+      where
+        functionName = Name $ fromString $ "_init_tuple_" ++ BS.unpack (SBS.fromShort constantName)
     _ -> error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Expr expression) = do
   function "main" [] i32 (\_ -> genMain expression [])
 
-genTupleConstantInitializerFunction :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
-genTupleConstantInitializerFunction e localVars = do
+genTupleConstantInitializerFunction :: S.Expr -> String -> [LocalVar] -> IRBuilderT ModuleBuilder ()
+genTupleConstantInitializerFunction e constantName localVars = do
   -- tuple <- gep tupleReference [int32 0, int32 0]
   val <- genOperand e localVars
   store tupleReference 0 val
   ret $ int32 0
   where
-    tupleReference = (ConstantOperand (C.GlobalReference (ASTType.PointerType ( ASTType.PointerType (getExpressionType e []) (AddrSpace 0)) (AddrSpace 0)) "a"))
+    tupleReference = (ConstantOperand (C.GlobalReference (ASTType.PointerType (getExpressionType e []) (AddrSpace 0)) (mkName constantName)))
+
+-- @a = global { i32, { i32, i32 } }* null
+
 
 -- PointerType {pointerReferent = PointerType {pointerReferent = StructureType {isPacked = False, elementTypes = [StructureType {isPacked = False, elementTypes = [IntegerType {typeBits = 32},IntegerType {typeBits = 32}]}]}, pointerAddrSpace = AddrSpace 0}, pointerAddrSpace = AddrSpace 0}
 -- PointerType {pointerReferent = PointerType {pointerReferent = StructureType {isPacked = False, elementTypes = [IntegerType {typeBits = 32},IntegerType {typeBits = 32}]}, pointerAddrSpace = AddrSpace 0}, pointerAddrSpace = AddrSpace 0}
@@ -147,10 +158,39 @@ genLevel e localVars = do
 
 genMain :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder ()
 genMain e localVars = do
-  call ( ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [] False)) (mkName "initTuple"))) []
+  currentDefs <- liftModuleState $ gets builderDefs
+  let constantDefs = getConstantsFromDefs currentDefs
+  case constantDefs of
+    Just defs -> generateCallFunctions defs
+    Nothing -> return ()
   operand <- genOperand e localVars
   genPrint operand
   ret $ int32 0
+  where
+  getConstantsFromDefs :: SnocList Definition -> Maybe [Definition]
+  getConstantsFromDefs defs = filter initializerPrefixMatch defs
+    where
+      initializerPrefixMatch :: Definition -> Bool
+      initializerPrefixMatch (GlobalDefinition global) = case global of
+        AST.Function {name = Name n} -> "_init_tuple_" `isPrefixOf` (BS.unpack (SBS.fromShort n))
+        _ -> False 
+      initializerPrefixMatch _ = False
+      filter :: (a -> Bool) -> SnocList a -> Maybe [a]
+      filter _ (SnocList []) = Nothing
+      filter f (SnocList (x : xs)) = case filter f (SnocList xs) of
+        Just ys -> Just (x : ys)
+        Nothing -> if f x then Just [x] else Nothing
+
+  generateCallFunctions :: [Definition] -> IRBuilderT ModuleBuilder ()
+  generateCallFunctions defs = mapM_ generateCallFunction defs
+    where
+      generateCallFunction :: Definition -> IRBuilderT ModuleBuilder ()
+      generateCallFunction (GlobalDefinition global) = case global of
+        (AST.Function {name = n}) -> call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [] False)) n)) [] >> return ()
+        _ -> return ()
+      generateCallFunction _ = return ()
+
+
 
 genPrint :: AST.Operand -> IRBuilderT ModuleBuilder ()
 genPrint operand = mdo
@@ -166,7 +206,7 @@ genPrint operand = mdo
       fmtStrGlobal <- globalStringPtr (fmtStr ++ "\n") "fmtStr"
 
       printArgs <- operandToPrintfArg operand
-      _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf"))) 
+      _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf")))
           ((ConstantOperand fmtStrGlobal, [NoAlias]) : printArgs)
       return ()
 
@@ -213,4 +253,4 @@ booleanPrinterFunction :: AST.Operand -> IRBuilderT ModuleBuilder ()
 booleanPrinterFunction operand = do
   _ <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType ASTType.i1 [ASTType.i1] False)) (mkName "printb"))) [(operand, [])]
   return ()
-    
+

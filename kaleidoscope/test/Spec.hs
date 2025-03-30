@@ -21,7 +21,7 @@ main = do
     let testFiles = filterProgramFiles files
     putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
     
-    let testCases = map generateTest testFiles
+    let testCases = map generateOptimizationVariants testFiles
     defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
 
 -- Directory paths
@@ -34,20 +34,26 @@ outputDir = "./test/output"
 tempOutput :: FilePath
 tempOutput = "./test/tmp.out"
 
+silentCabal :: String
+silentCabal = "cabal run -v0 kaleidoscope-fing -- --file="
+
 -- tests :: TestTree
 -- tests = testGroup "Tests" [programTests]
 
 filterProgramFiles :: [String] -> [String]
 filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
 
+generateOptimizationVariants :: FilePath -> TestTree
+generateOptimizationVariants file = testGroup file $ map (generateTest file) ["-o0", "-o3"]
+
 -- Generate individual tests for each program file
-generateTest :: FilePath -> TestTree
-generateTest file = testCase ("Testing " ++ file) $ do
+generateTest :: FilePath -> String -> TestTree
+generateTest file optLevel = testCase ("\t " ++ file ++ " " ++ optLevel) $ do
     let filePath = programDir </> file
         outputFilePath = outputDir </> file
     
     -- Run the test command
-    exitCode <- system $ "cabal run kaleidoscope-fing -- --file=" ++ filePath ++ " --fail-on-errors > " ++ tempOutput
+    exitCode <- system $ silentCabal ++ filePath ++ " " ++ optLevel ++ " --fail-on-errors > " ++ tempOutput
     exitCode @?= ExitSuccess
 
     -- Read actual output

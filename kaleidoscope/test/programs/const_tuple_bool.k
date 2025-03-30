@@ -1,3 +1,3 @@
-const tuple(double, double) a (true, false);
+const a = (true, false);
 
 a;

@@ -1,3 +1,3 @@
-const tuple(int, int) a (9, 10);
+const a = (9, 10);
 
 a;
