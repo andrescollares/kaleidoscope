@@ -1,11 +1,11 @@
 module StdLib.GenLibs where
 
 import CLIParameters (CLIParameters (..))
+import Data.List (isSuffixOf)
 import LLVM.AST (Definition)
 import Processor (process)
 import StdLib.BaseDefs (baseDefinitions)
-import System.Directory ( getDirectoryContents )
-import Data.List (isSuffixOf)
+import System.Directory (getDirectoryContents)
 
 generateLibraries :: IO [Definition]
 generateLibraries = do

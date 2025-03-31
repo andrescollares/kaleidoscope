@@ -8,7 +8,7 @@ import Data.String (IsString (fromString))
 import LLVM.AST.Name (Name)
 import qualified LLVM.IRBuilder.Module as M
 import qualified Parser.Lexer as L
-import qualified Syntax as S (Declaration (..), TopLevel (..), Expr (..), Declaration (..), Type (..))
+import qualified Syntax as S (Declaration (..), Expr (..), TopLevel (..), Type (..))
 import Text.Parsec
   ( ParseError,
     eof,
@@ -61,7 +61,6 @@ binops =
       binary "||" Ex.AssocLeft
     ]
   ]
-
 
 op :: Parser Name
 op = do

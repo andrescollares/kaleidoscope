@@ -11,12 +11,6 @@ double putchari(int32_t i) {
   return i;
 }
 
-// print a boolean (int1)
- int8_t printb(int8_t b) {
-   printf("%s\n", b ? "true" : "false");
-   return b;
- }
-
 // print an int list
 int32_t printil(intList *list) {
   if (list == NULL) {

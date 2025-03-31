@@ -6,8 +6,6 @@
 
 double putchari(int32_t i);
 
-int8_t printb(int8_t b);
-
 int32_t printil(intList *list);
 
 int32_t printfl(doubleList *list);

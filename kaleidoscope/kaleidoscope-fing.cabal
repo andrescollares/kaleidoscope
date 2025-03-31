@@ -48,7 +48,7 @@ executable kaleidoscope-fing
     main-is: Main.hs
     other-modules: 
         Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
-        , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
+        , CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
         , CLIParameters, Processor
     hs-source-dirs: src
     build-depends:
@@ -71,7 +71,7 @@ test-suite unit-test
     , src
   other-modules: 
     Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
-    , CodeGen.DataStructures.Tuple, CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
+    , CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
     , CLIParameters, Processor
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:

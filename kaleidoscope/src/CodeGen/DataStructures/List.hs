@@ -12,7 +12,7 @@ import qualified LLVM.AST.AddrSpace as AST
 import LLVM.AST.Constant (Constant (Null))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, store, int32)
+import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, int32, store)
 
 nullIntList :: IRBuilderT ModuleBuilder Operand
 nullIntList = do

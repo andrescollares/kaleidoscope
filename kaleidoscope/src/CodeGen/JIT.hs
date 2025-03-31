@@ -2,7 +2,7 @@
 
 module CodeGen.JIT where
 
-import CLIParameters (CLIParameters (CLIParameters, emitLLVM, optimizationLevel, compile, inputFile))
+import CLIParameters (CLIParameters (CLIParameters, compile, emitLLVM, inputFile, optimizationLevel))
 import qualified Data.ByteString as BS
 import Foreign.C.Types (CInt (..))
 import Foreign.Ptr (FunPtr, castFunPtr)
@@ -44,24 +44,24 @@ optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = em
           -- Optimization Pass
           _ <- runPassManager pm m
           optmod <- moduleAST m
-          if emit && not compileFile then
-              do
-                modByteString <- moduleLLVMAssembly m
-                -- Print the optimized module as LLVM assembly to stdout
-                putStrLn "Optimized LLVM assembly:"
-                putStrLn $ modBSToString modByteString
-                -- Return the optimized module
-                return optmod 
-          else if compileFile && file /= ""
-              then do
-                let llvmSrc = fileNameLLVM file
-                let objectFile = fileNameExecutable file
-                modByteString <- moduleLLVMAssembly m
-                writeLLVM (modBSToString modByteString) llvmSrc
-                compileLLVMWithClang llvmSrc objectFile
-                return optmod
-              else
-                return optmod
+          if emit && not compileFile
+            then do
+              modByteString <- moduleLLVMAssembly m
+              -- Print the optimized module as LLVM assembly to stdout
+              putStrLn "Optimized LLVM assembly:"
+              putStrLn $ modBSToString modByteString
+              -- Return the optimized module
+              return optmod
+            else
+              if compileFile && file /= ""
+                then do
+                  let llvmSrc = fileNameLLVM file
+                  let objectFile = fileNameExecutable file
+                  modByteString <- moduleLLVMAssembly m
+                  writeLLVM (modBSToString modByteString) llvmSrc
+                  compileLLVMWithClang llvmSrc objectFile
+                  return optmod
+                else return optmod
   where
     modBSToString modByteString = map (toEnum . fromIntegral) (BS.unpack modByteString)
 
@@ -76,13 +76,13 @@ fileWithoutExtension = reverse . tail . dropWhile (/= '.') . reverse
 
 writeLLVM :: String -> String -> IO ()
 writeLLVM moduleSrc fileName = do
-    writeFile fileName moduleSrc
+  writeFile fileName moduleSrc
 
 -- usage: cabal run kaleidoscope-fing -- -f ./test/programs/add_int_int.k -c
 -- clang /kaleidoscope/out.ll -o my_program -L/usr/lib -lstdlib -o outprogram
 -- ./outprogram.o
 compileLLVMWithClang :: String -> String -> IO ()
-compileLLVMWithClang fileNameLlvm fileNameExecutable  = do
+compileLLVMWithClang fileNameLlvm fileNameExecutable = do
   _ <- system cmd
   putStrLn cmd
   return ()

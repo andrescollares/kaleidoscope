@@ -13,27 +13,28 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (operandType)
 import Control.Monad.RWS (gets)
 import qualified Data.Map.Strict as M
+import Data.Word (Word32)
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
     Global (Function, GlobalVariable),
+    Instruction (Store),
     Name (Name),
     Operand (ConstantOperand),
-    Type (..), Instruction (Store)
+    Type (..),
   )
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.FloatingPointPredicate (FloatingPointPredicate (UEQ, UGE, UGT, ULE, ULT, UNE))
+import qualified LLVM.AST.Global as AST.Global
 import qualified LLVM.AST.Global as G
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ModuleBuilder, builderDefs, liftModuleState, MonadIRBuilder, emitInstrVoid)
+import LLVM.IRBuilder (ModuleBuilder, MonadIRBuilder, builderDefs, emitInstrVoid, liftModuleState)
+import LLVM.IRBuilder.Constant (bit, double, int32)
 import LLVM.IRBuilder.Instruction
+import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
-import LLVM.IRBuilder.Constant (double, int32, bit)
-import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
-import qualified LLVM.AST.Global as AST.Global
-import Data.Word (Word32)
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -41,10 +42,9 @@ genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
 genOperand (S.Float n) _ = return $ double n
 genOperand (S.Int n) _ = return $ int32 n
 genOperand (S.Bool b) _ = return $ bit (if b then 1 else 0)
-
 -- Variables
 genOperand (S.Var (Name nameString)) localVars = do
--- if localVars has it then it's a local reference otherwise mark it as a global reference
+  -- if localVars has it then it's a local reference otherwise mark it as a global reference
   -- local variable names end in "_number" so we need to take that into consideration
   -- also local variable names can have "_"
   case getLocalVarByName nameString localVars of
@@ -77,7 +77,7 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
   currentDefs <- liftModuleState $ gets builderDefs
   let maybeDef = getFunctionFromDefs currentDefs (Name fnName)
   case maybeDef of
-    Just (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> 
+    Just (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) ->
       call (getFunctionOperand (Name fnName) retT params) (map (\x -> (x, [])) largs)
     Just _ -> error $ "Function " <> show fnName <> " not found."
     Nothing -> do
@@ -109,25 +109,30 @@ genOperand (S.UnaryOp oper a) localVars = do
     unops :: M.Map Name (AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
     unops =
       M.fromList
-        [ ( "-", \x -> case operandType x of
+        [ ( "-",
+            \x -> case operandType x of
               (IntegerType _) -> sub (int32 0) x
               (FloatingPointType _) -> fsub (ConstantOperand (C.Float (F.Double 0))) x
               _ -> error $ "Invalid type for operand: " ++ show (operandType x)
           ),
           ("!", not'),
-          ( "fst", \tuplePtr -> do
+          ( "fst",
+            \tuplePtr -> do
               tuple <- load tuplePtr 0
               extractValue tuple [0]
           ),
-          ("snd", \tuplePtr -> do
+          ( "snd",
+            \tuplePtr -> do
               tuple <- load tuplePtr 0
               extractValue tuple [1]
           ),
-          ( "tail", \x -> do
+          ( "tail",
+            \x -> do
               i32_slot <- gep x [int32 0, int32 1]
               load i32_slot 0
           ),
-          ( "head", \x -> do
+          ( "head",
+            \x -> do
               i32_slot <- gep x [int32 0, int32 0]
               load i32_slot 0
           )

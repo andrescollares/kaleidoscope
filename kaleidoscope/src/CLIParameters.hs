@@ -1,4 +1,5 @@
 module CLIParameters where
+
 import Options.Applicative
 
 data CLIParameters = CLIParameters
@@ -64,4 +65,3 @@ parserParameters =
           <> short 'c'
           <> help "Compile to native code"
       )
-  

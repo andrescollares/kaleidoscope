@@ -49,7 +49,6 @@ startRepl cliParameters = do
                 removeLast [] = []
                 removeLast [_] = []
                 removeLast (x : xs) = x : removeLast xs
-
             _ -> do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
               case maybeDefs of

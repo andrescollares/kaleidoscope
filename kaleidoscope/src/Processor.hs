@@ -2,12 +2,12 @@
 
 module Processor where
 
-import CLIParameters (CLIParameters (CLIParameters, failOnErrors, compile, emitAST))
+import CLIParameters (CLIParameters (CLIParameters, compile, emitAST, failOnErrors))
 import CodeGen.GenModule (genModule)
+import CodeGen.JIT (optimizeModule, runJIT)
+import LLVM.AST (Module (moduleDefinitions, moduleName), defaultModule)
 import qualified LLVM.AST as AST (Definition)
 import Parser.Parse (parseToplevel)
-import LLVM.AST (Module(moduleName, moduleDefinitions), defaultModule)
-import CodeGen.JIT (optimizeModule, runJIT)
 
 process :: [AST.Definition] -> String -> CLIParameters -> IO (Maybe [AST.Definition])
 process oldDefs newSource cliParameters = do
@@ -31,6 +31,5 @@ process oldDefs newSource cliParameters = do
         else do
           _ <- runJIT optimizedModule
           return $ Just defs
-    where
-      CLIParameters {failOnErrors = failOnErrorsEnabled, compile = compileEnabled, emitAST = emitASTEnabled} = cliParameters
-      
+  where
+    CLIParameters {failOnErrors = failOnErrorsEnabled, compile = compileEnabled, emitAST = emitASTEnabled} = cliParameters
