@@ -97,7 +97,7 @@ runJIT astModule = do
     jit context 0 $ \executionEngine ->
       withModuleFromAST context astModule $ \m ->
         EE.withModuleInEngine executionEngine m $ \ee -> do
-          mainFn <- EE.getFunction ee (AST.Name "main")
+          mainFn <- EE.getFunction ee "main"
           case mainFn of
             Just fn -> do
               putStr $ if show (runInteger fn) == "" then "Error" else "\n"

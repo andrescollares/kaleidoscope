@@ -13,7 +13,6 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (operandType)
 import Control.Monad.RWS (gets)
 import qualified Data.Map.Strict as M
-import Debug.Trace
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
     Global (Function, GlobalVariable),

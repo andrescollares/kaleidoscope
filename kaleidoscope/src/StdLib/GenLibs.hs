@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
-
 module StdLib.GenLibs where
 
 import CLIParameters (CLIParameters (..))

@@ -3,7 +3,6 @@
 
 module CodeGen.LocalVar where
 
-import CodeGen.Utils.Types (getASTType)
 import Data.ByteString.Short (ShortByteString)
 import qualified Data.List as List
 import Data.String (IsString (fromString))
@@ -12,10 +11,6 @@ import LLVM.AST as AST hiding (function)
 import qualified LLVM.AST.Constant as C
 import LLVM.AST.Type (ptr)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
-import LLVM.IRBuilder.Module (ParameterName (..))
-import qualified Syntax as S
-import qualified LLVM.AST.Global as AST.Global
 
 type LocalVar = (Maybe ShortByteString, AST.Operand) -- alias, value
 
@@ -26,7 +21,6 @@ getLocalVarByName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
 getLocalVarByName n = List.find (`matchName` n)
   where
   matchName :: LocalVar -> ShortByteString -> Bool
-  -- TODO: More explicit matching
   matchName (Just _, ConstantOperand (C.GlobalReference PointerType {pointerReferent = ASTType.FunctionType {}, pointerAddrSpace = _} (Name funName))) n = funName == n
   matchName (Just varName, _) n = varName == n
   matchName (Nothing, LocalReference _ (Name varName)) n = removeEnding varName == n

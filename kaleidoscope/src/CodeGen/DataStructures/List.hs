@@ -12,7 +12,7 @@ import qualified LLVM.AST.AddrSpace as AST
 import LLVM.AST.Constant (Constant (Null))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, store)
+import LLVM.IRBuilder (IRBuilderT, ModuleBuilder, call, gep, store, int32)
 
 nullIntList :: IRBuilderT ModuleBuilder Operand
 nullIntList = do
@@ -24,7 +24,7 @@ nullIntList = do
 createListNode :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
 createListNode nodeVal = do
   var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType listPtrType [] False)) (Name $ allocListNode elementType))) []
-  i32_slot <- gep var [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)]
+  i32_slot <- gep var [int32 0, int32 0]
   store i32_slot 0 nodeVal
   return var
   where
