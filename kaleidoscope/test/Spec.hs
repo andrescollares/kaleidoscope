@@ -16,12 +16,12 @@ import Test.Tasty.Runners (NumThreads (NumThreads))
 -- Main test suite
 main :: IO ()
 main = do
-  files <- listDirectory programDir
-  let testFiles = filterProgramFiles files
-  putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
-
-  let testCases = map generateTest testFiles
-  defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
+    files <- listDirectory programDir
+    let testFiles = filterProgramFiles files
+    putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
+    
+    let testCases = map generateOptimizationVariants testFiles
+    defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
 
 -- Directory paths
 programDir :: FilePath
@@ -33,42 +33,48 @@ outputDir = "./test/output"
 tempOutput :: FilePath
 tempOutput = "./test/tmp.out"
 
+silentCabal :: String
+silentCabal = "cabal run -v0 kaleidoscope-fing -- --file="
+
 -- tests :: TestTree
 -- tests = testGroup "Tests" [programTests]
 
 filterProgramFiles :: [String] -> [String]
 filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
 
+generateOptimizationVariants :: FilePath -> TestTree
+generateOptimizationVariants file = testGroup file $ map (generateTest file) ["-o0", "-o3"]
+
 -- Generate individual tests for each program file
-generateTest :: FilePath -> TestTree
-generateTest file = testCase ("Testing " ++ file) $ do
-  let filePath = programDir </> file
-      outputFilePath = outputDir </> file
+generateTest :: FilePath -> String -> TestTree
+generateTest file optLevel = testCase ("\t " ++ file ++ " " ++ optLevel) $ do
+    let filePath = programDir </> file
+        outputFilePath = outputDir </> file
+    
+    -- Run the test command
+    exitCode <- system $ silentCabal ++ filePath ++ " " ++ optLevel ++ " --fail-on-errors > " ++ tempOutput
+    exitCode @?= ExitSuccess
 
-  -- Run the test command
-  exitCode <- system $ "cabal run kaleidoscope-fing -- --file=" ++ filePath ++ " --fail-on-errors > " ++ tempOutput
-  exitCode @?= ExitSuccess
+    -- Read actual output
+    actualOutput <- readFile tempOutput
 
-  -- Read actual output
-  actualOutput <- readFile tempOutput
+    -- Check if expected output file exists
+    fileExists <- doesFileExist outputFilePath
+    if fileExists
+      then do
+        expectedOutput <- readFile outputFilePath
+        actualOutput @?= expectedOutput
+      else do
+        putStrLn $ "No expected output file for " ++ file
+        putStrLn $ "Writing actual output to " ++ outputFilePath
+        writeFile outputFilePath actualOutput
 
-  -- Check if expected output file exists
-  fileExists <- doesFileExist outputFilePath
-  if fileExists
-    then do
-      expectedOutput <- readFile outputFilePath
-      actualOutput @?= expectedOutput
-    else do
-      putStrLn $ "No expected output file for " ++ file
-      putStrLn $ "Writing actual output to " ++ outputFilePath
-      writeFile outputFilePath actualOutput
+    -- Final comparison to ensure correctness
+    expectedOutput <- readFile outputFilePath
+    actualOutput @?= expectedOutput
 
-  -- Final comparison to ensure correctness
-  expectedOutput <- readFile outputFilePath
-  actualOutput @?= expectedOutput
-
-  -- Cleanup
-  removeFile tempOutput
+    -- Cleanup
+    removeFile tempOutput
 
 removeFile :: FilePath -> IO ()
 removeFile file = do

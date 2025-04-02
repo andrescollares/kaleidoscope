@@ -67,7 +67,7 @@ getExpressionType (S.If _ e1 e2) currentDefs =
 getExpressionType (S.List (x : _)) currentDefs = listPointerType x currentDefs
 -- FIXME: (?) empty list defaults to int list
 getExpressionType (S.List []) _ = ASTType.PointerType (ASTType.NamedTypeReference (AST.Name (fromString "IntList"))) (AddrSpace 0)
-getExpressionType (S.TupleI e1 e2) currentDefs = ASTType.StructureType False [getExpressionType e1 currentDefs, getExpressionType e2 currentDefs]
+getExpressionType (S.TupleI e1 e2) currentDefs = ASTType.PointerType (ASTType.StructureType False [getExpressionType e1 currentDefs, getExpressionType e2 currentDefs]) (AddrSpace 0)
 
 findLocalVarType :: [CurrentDef] -> AST.Name -> S.Type
 findLocalVarType currentDefs varName = case find (\(n, _) -> n == varName) currentDefs of
