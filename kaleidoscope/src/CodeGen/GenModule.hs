@@ -130,7 +130,7 @@ getFmtStringForType opType = case opType of
   ASTType.IntegerType {ASTType.typeBits = 32} -> "%d"
   ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
   -- FIXME: just "%s" results in an error ¯\_(ツ)_/¯
-  ASTType.IntegerType {ASTType.typeBits = 1} -> "%s "
+  ASTType.IntegerType {ASTType.typeBits = 1} -> "%se"
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
     "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
   _ -> error "Unsupported type for printf format"
@@ -141,8 +141,8 @@ operandToPrintfArg operand = case operandType operand of
   ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> return [(operand, [])]
   ASTType.IntegerType {ASTType.typeBits = 1} -> do
     -- Convert boolean to string pointer directly using select
-    ts <- globalStringPtr "true" "t_str"
-    fs <- globalStringPtr "false" "f_str"
+    ts <- globalStringPtr "tru" "t_str"
+    fs <- globalStringPtr "fals" "f_str"
 
     strPtr <- select operand (ConstantOperand ts) (ConstantOperand fs)
     return [(strPtr, [])]

@@ -1,9 +1,9 @@
 def divisibleAny(int n, int i) -> bool:
     if i < 2 then
-        false 
+        false
     else
         if n % i == 0 then
-            true 
+            true
         else
             divisibleAny(n, i - 1);
         
