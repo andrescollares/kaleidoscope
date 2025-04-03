@@ -16,14 +16,13 @@ import LLVM.AST as AST hiding (function)
 import LLVM.AST.AddrSpace (AddrSpace (..))
 import LLVM.AST.Attribute (ParameterAttribute)
 import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Float as F
 import LLVM.AST.Global (Global (name), basicBlocks, parameters, returnType)
 import LLVM.AST.Type (i32, i8, ptr)
 import qualified LLVM.AST.Type as ASTType
 import LLVM.IRBuilder (ParameterName (ParameterName), call, extractValue, globalStringPtr, int32, load, select)
 import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
-import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function, global)
+import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function)
 import LLVM.IRBuilder.Monad (IRBuilderT)
 import qualified Syntax as S
 
@@ -51,7 +50,7 @@ buildModuleDefinitions prevDefs = execModuleBuilder oldModl
     isTypeDef (TypeDefinition _ _) = True
     isTypeDef _ = False
 
--- Generates functions, constants, externs, definitions and a main function otherwise
+-- Generates functions, externs, definitions and a main function otherwise
 -- The result is a ModuleBuilder monad
 genTopLevel :: S.TopLevel -> ModuleBuilder AST.Operand
 -- Extern definition
@@ -76,14 +75,6 @@ genTopLevel (S.Declaration (S.Function fnName fnArgs retType body)) = do
     (first getASTType <$> fnArgs)
     astRetType
     (genLevel body . localVarsFallback)
-
--- Constant definition
-genTopLevel (S.Declaration (S.Constant constantName expr)) = do
-  case expr of
-    S.Float val -> global constantName ASTType.double (C.Float (F.Double val))
-    S.Int val -> global constantName ASTType.i32 (C.Int 32 val)
-    S.Bool val -> global constantName ASTType.i1 (C.Int 1 (if val then 1 else 0))
-    _ -> error "Invalid constant definition"
 
 -- Main expression
 genTopLevel (S.Expr expression) = do

@@ -165,14 +165,6 @@ function = do
   L.reserved ":"
   S.Function (fromString name) (second (M.ParameterName . fromString) <$> arguments) retType <$> expr
 
-constant :: Parser S.Declaration
-constant = do
-  L.reservedOp "const"
-  name <- L.identifier
-  L.reservedOp "="
-  value <- try floating <|> try int <|> try bool <|> try tuple <|> try list
-  return $ S.Constant (fromString name) value
-
 call :: Parser S.Expr
 call = do
   name <- L.identifier
@@ -215,7 +207,7 @@ factor =
     <|> L.parens expr
 
 parseDeclaration :: Parser S.Declaration
-parseDeclaration = try function <|> try extern <|> try constant
+parseDeclaration = try function <|> try extern
 
 parseTopLevel :: Parser S.TopLevel
 parseTopLevel = do

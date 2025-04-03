@@ -27,7 +27,6 @@ data Expr
 data Declaration
   = Function Name [(Type, ParameterName)] Type Expr
   | Extern Name [(Type, ParameterName)] Type
-  | Constant Name Expr
   deriving stock (Eq, Ord, Show)
 
 data Type

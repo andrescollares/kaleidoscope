@@ -16,7 +16,7 @@ import qualified Data.Map.Strict as M
 import Data.Word (Word32)
 import LLVM.AST as AST
   ( Definition (GlobalDefinition),
-    Global (Function, GlobalVariable),
+    Global (Function),
     Instruction (Store),
     Name (Name),
     Operand (ConstantOperand),
@@ -38,10 +38,12 @@ import qualified Syntax as S
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
+
 -- Constants
 genOperand (S.Float n) _ = return $ double n
 genOperand (S.Int n) _ = return $ int32 n
 genOperand (S.Bool b) _ = return $ bit (if b then 1 else 0)
+
 -- Variables
 genOperand (S.Var (Name nameString)) localVars = do
   -- if localVars has it then it's a local reference otherwise mark it as a global reference
@@ -51,25 +53,11 @@ genOperand (S.Var (Name nameString)) localVars = do
     Just (_, localVar) -> return localVar
     Nothing -> do
       currentDefs <- liftModuleState $ gets builderDefs
-      let maybeDef = getConstantFromDefs currentDefs (Name nameString)
+      let maybeDef = getFunctionFromDefs currentDefs (Name nameString)
       case maybeDef of
-        Just (GlobalDefinition AST.GlobalVariable {G.type' = t}) -> load (ConstantOperand (C.GlobalReference (ASTType.ptr t) (Name nameString))) 0
         Just (GlobalDefinition AST.Function {G.returnType = retT, G.parameters = params}) -> return $ getFunctionOperand (Name nameString) retT params
         Just def -> error $ "Constant " <> show nameString <> " not found as global variable." <> show def
         Nothing -> error $ "Constant " <> show nameString <> " not found." <> show localVars
-  where
-    getConstantFromDefs :: SnocList Definition -> Name -> Maybe Definition
-    getConstantFromDefs defs constantName = find (`matchNameGlobal` constantName) defs Nothing
-      where
-        matchNameGlobal :: Definition -> Name -> Bool
-        matchNameGlobal (GlobalDefinition AST.GlobalVariable {AST.Global.name = n}) nameToMatch = n == nameToMatch
-        matchNameGlobal (GlobalDefinition AST.Function {AST.Global.name = n}) nameToMatch = n == nameToMatch
-        matchNameGlobal _ _ = False
-        find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
-        find p (SnocList (x : xs)) res
-          | p x = Just x
-          | otherwise = find p (SnocList xs) res
-        find _ (SnocList []) res = res
 
 -- Call
 genOperand (S.Call (Name fnName) functionArgs) localVars = do
@@ -86,18 +74,6 @@ genOperand (S.Call (Name fnName) functionArgs) localVars = do
         -- This only happens if we're in a high level function where there's a function as an attribute.
         Just (_, localFunctionVar) -> call localFunctionVar (map (\x -> (x, [])) largs)
         Nothing -> error $ "Function " <> show fnName <> " not found."
-  where
-    getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
-    getFunctionFromDefs defs functionName = find (`matchNameGlobal` functionName) defs Nothing
-      where
-        matchNameGlobal :: Definition -> Name -> Bool
-        matchNameGlobal (GlobalDefinition AST.Function {AST.Global.name = n}) nameToMatch = n == nameToMatch
-        matchNameGlobal _ _ = False
-        find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
-        find p (SnocList (x : xs)) res
-          | p x = Just x
-          | otherwise = find p (SnocList xs) res
-        find _ (SnocList []) res = res
 
 -- Unary Operands (Prefix Operands)
 genOperand (S.UnaryOp oper a) localVars = do
@@ -244,3 +220,16 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
       (ASTType.PointerType _ _) -> wholeInstr
       _ -> error "Pointers can only be compared to other pointers"
     _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
+
+getFunctionFromDefs :: SnocList Definition -> Name -> Maybe Definition
+getFunctionFromDefs defs functionName = find (`matchNameGlobal` functionName) defs Nothing
+  where
+    find :: (a -> Bool) -> SnocList a -> Maybe a -> Maybe a
+    find p (SnocList (x : xs)) res
+      | p x = Just x
+      | otherwise = find p (SnocList xs) res
+    find _ (SnocList []) res = res
+
+    matchNameGlobal :: Definition -> Name -> Bool
+    matchNameGlobal (GlobalDefinition AST.Function {AST.Global.name = n}) nameToMatch = n == nameToMatch
+    matchNameGlobal _ _ = False
