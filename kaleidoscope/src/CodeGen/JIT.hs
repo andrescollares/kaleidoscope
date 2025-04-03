@@ -56,7 +56,7 @@ optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = em
               if compileFile && file /= ""
                 then do
                   let llvmSrc = fileNameLLVM file
-                  let objectFile = fileNameExecutable file
+                  let objectFile = fileWithoutExtension file
                   modByteString <- moduleLLVMAssembly m
                   writeLLVM (modBSToString modByteString) llvmSrc
                   compileLLVMWithClang llvmSrc objectFile
@@ -64,9 +64,6 @@ optimizeModule astModule CLIParameters {optimizationLevel = level, emitLLVM = em
                 else return optmod
   where
     modBSToString modByteString = map (toEnum . fromIntegral) (BS.unpack modByteString)
-
-fileNameExecutable :: String -> String
-fileNameExecutable = fileWithoutExtension
 
 fileNameLLVM :: String -> String
 fileNameLLVM file = fileWithoutExtension file ++ ".ll"

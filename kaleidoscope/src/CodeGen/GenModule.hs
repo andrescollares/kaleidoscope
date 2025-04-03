@@ -4,7 +4,6 @@
 
 module CodeGen.GenModule where
 
-import CodeGen.DataStructures.List (nullIntList)
 import CodeGen.GenOperand (genOperand)
 import CodeGen.LocalVar
   ( LocalVar,
@@ -13,18 +12,15 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (getASTType, operandType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
-import Debug.Trace
 import LLVM.AST as AST hiding (function)
 import LLVM.AST.AddrSpace (AddrSpace (..))
 import LLVM.AST.Attribute (ParameterAttribute)
-import LLVM.AST.Constant (Constant (Null))
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import LLVM.AST.Global (Global (name), basicBlocks, parameters, returnType)
-import qualified LLVM.AST.IntegerPredicate
 import LLVM.AST.Type (i32, i8, ptr)
 import qualified LLVM.AST.Type as ASTType
-import LLVM.IRBuilder (ParameterName (ParameterName), call, extractValue, gep, globalStringPtr, icmp, int32, load, select)
+import LLVM.IRBuilder (ParameterName (ParameterName), call, extractValue, globalStringPtr, int32, load, select)
 import LLVM.IRBuilder.Instruction (ret)
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Module (ModuleBuilder, ModuleBuilderState (ModuleBuilderState, builderDefs, builderTypeDefs), emitDefn, execModuleBuilder, extern, function, global)
@@ -129,7 +125,7 @@ getFmtStringForType :: AST.Type -> String
 getFmtStringForType opType = case opType of
   ASTType.IntegerType {ASTType.typeBits = 32} -> "%d"
   ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
-  -- FIXME: just "%s" results in an error ¯\_(ツ)_/¯
+  -- HACK: just "%s" results in an error ¯\_(ツ)_/¯
   ASTType.IntegerType {ASTType.typeBits = 1} -> "%se"
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
     "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"

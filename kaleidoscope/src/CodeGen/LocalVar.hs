@@ -18,7 +18,7 @@ localVarsFallback :: [AST.Operand] -> [LocalVar]
 localVarsFallback = map (\operand -> (Nothing, operand))
 
 getLocalVarByName :: ShortByteString -> [LocalVar] -> Maybe LocalVar
-getLocalVarByName n = List.find (`matchName` n)
+getLocalVarByName name = List.find (`matchName` name)
   where
     matchName :: LocalVar -> ShortByteString -> Bool
     matchName (Just _, ConstantOperand (C.GlobalReference PointerType {pointerReferent = ASTType.FunctionType {}, pointerAddrSpace = _} (Name funName))) n = funName == n

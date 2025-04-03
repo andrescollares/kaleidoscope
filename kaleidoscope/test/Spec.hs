@@ -16,12 +16,12 @@ import Test.Tasty.Runners (NumThreads (NumThreads))
 -- Main test suite
 main :: IO ()
 main = do
-    files <- listDirectory programDir
-    let testFiles = filterProgramFiles files
-    putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
-    
-    let testCases = map generateOptimizationVariants testFiles
-    defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
+  files <- listDirectory programDir
+  let testFiles = filterProgramFiles files
+  putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
+
+  let testCases = map generateOptimizationVariants testFiles
+  defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
 
 -- Directory paths
 programDir :: FilePath
@@ -48,33 +48,33 @@ generateOptimizationVariants file = testGroup file $ map (generateTest file) ["-
 -- Generate individual tests for each program file
 generateTest :: FilePath -> String -> TestTree
 generateTest file optLevel = testCase ("\t " ++ file ++ " " ++ optLevel) $ do
-    let filePath = programDir </> file
-        outputFilePath = outputDir </> file
-    
-    -- Run the test command
-    exitCode <- system $ silentCabal ++ filePath ++ " " ++ optLevel ++ " --fail-on-errors > " ++ tempOutput
-    exitCode @?= ExitSuccess
+  let filePath = programDir </> file
+      outputFilePath = outputDir </> file
 
-    -- Read actual output
-    actualOutput <- readFile tempOutput
+  -- Run the test command
+  exitCode <- system $ silentCabal ++ filePath ++ " " ++ optLevel ++ " --fail-on-errors > " ++ tempOutput
+  exitCode @?= ExitSuccess
 
-    -- Check if expected output file exists
-    fileExists <- doesFileExist outputFilePath
-    if fileExists
-      then do
-        expectedOutput <- readFile outputFilePath
-        actualOutput @?= expectedOutput
-      else do
-        putStrLn $ "No expected output file for " ++ file
-        putStrLn $ "Writing actual output to " ++ outputFilePath
-        writeFile outputFilePath actualOutput
+  -- Read actual output
+  actualOutput <- readFile tempOutput
 
-    -- Final comparison to ensure correctness
-    expectedOutput <- readFile outputFilePath
-    actualOutput @?= expectedOutput
+  -- Check if expected output file exists
+  fileExists <- doesFileExist outputFilePath
+  if fileExists
+    then do
+      expectedOutput <- readFile outputFilePath
+      actualOutput @?= expectedOutput
+    else do
+      putStrLn $ "No expected output file for " ++ file
+      putStrLn $ "Writing actual output to " ++ outputFilePath
+      writeFile outputFilePath actualOutput
 
-    -- Cleanup
-    removeFile tempOutput
+  -- Final comparison to ensure correctness
+  expectedOutput <- readFile outputFilePath
+  actualOutput @?= expectedOutput
+
+  -- Cleanup
+  removeFile tempOutput
 
 removeFile :: FilePath -> IO ()
 removeFile file = do
