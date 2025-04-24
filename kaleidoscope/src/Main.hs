@@ -53,10 +53,6 @@ startRepl cliParameters = do
               maybeDefs <- liftIO $ process oldDefs input cliParameters
               case maybeDefs of
                 Just defs -> do
-                  case cliParameters of
-                    CLIParameters {emitLlvmDefs = True} -> do
-                      liftIO (putStrLn $ "Last definition: " ++ show (last defs))
-                    _ -> return ()
                   loop defs
                 Nothing -> loop oldDefs
 

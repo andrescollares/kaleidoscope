@@ -118,20 +118,17 @@ genOperand (S.UnaryOp oper a) localVars = do
         not' x = icmp IP.EQ x (bit 0)
 -- Binary Operands (Infix Operands)
 genOperand (S.BinOp ":" x xs) localVars = do
-  case xs of
-    S.List _ -> do
-      xOper <- genOperand x localVars
-      xsOper <- genOperand xs localVars
+  xOper <- genOperand x localVars
+  xsOper <- genOperand xs localVars
 
-      newListStruct <- alloca (ASTType.StructureType False [operandType xOper, operandType xsOper]) Nothing 0
+  newListStruct <- alloca (ASTType.StructureType False [operandType xOper, operandType xsOper]) Nothing 0
 
-      xPtr <- gep newListStruct [int32 0, int32 0]
-      storeVolatile xPtr 0 xOper
-      xsPtr <- gep newListStruct [int32 0, int32 1]
-      storeVolatile xsPtr 0 xsOper
-      
-      return newListStruct
-    _ -> error "Invalid list syntax"
+  xPtr <- gep newListStruct [int32 0, int32 0]
+  storeVolatile xPtr 0 xOper
+  xsPtr <- gep newListStruct [int32 0, int32 1]
+  storeVolatile xsPtr 0 xsOper
+  
+  return newListStruct
 genOperand (S.BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars

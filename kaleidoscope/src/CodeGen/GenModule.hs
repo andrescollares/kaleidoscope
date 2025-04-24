@@ -9,9 +9,10 @@ import CodeGen.LocalVar
   ( LocalVar,
     localVarsFallback,
   )
-import CodeGen.Utils.Types (syntaxTypeToASTType, operandType)
+import CodeGen.Utils.Types (operandType, syntaxTypeToASTType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
+import Debug.Trace
 import LLVM.AST as AST hiding (function)
 import LLVM.AST.Attribute (ParameterAttribute)
 import qualified LLVM.AST.Constant as C
@@ -108,9 +109,18 @@ getFmtStringForType opType = case opType of
   ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
   -- HACK: just "%s" results in an error ¯\_(ツ)_/¯
   ASTType.IntegerType {ASTType.typeBits = 1} -> "%se"
+  ASTType.PointerType
+    { ASTType.pointerReferent =
+        ASTType.StructureType
+          { ASTType.elementTypes =
+              [ t1,
+                ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}
+                ]
+          }
+    } -> getFmtStringForType t1
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
     "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
-  ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> ""
+  ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> "[%s]"
   _ -> error "Unsupported type for printf format: " ++ show opType
 
 operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
@@ -124,8 +134,8 @@ operandToPrintfArg operand = case operandType operand of
 
     strPtr <- select operand (ConstantOperand ts) (ConstantOperand fs)
     return [(strPtr, [])]
-  ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, ASTType.VoidType]}} -> do
-    tuple <- load operand 0
+  ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}]}} -> do
+    tuple <- trace (show operand) $ load operand 0
     val1 <- extractValue tuple [0]
     operandToPrintfArg val1
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} -> do
@@ -136,5 +146,6 @@ operandToPrintfArg operand = case operandType operand of
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
   ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> do
-    return []
+    emptyListStr <- globalStringPtr " " "empty_list_str"
+    return $ [(ConstantOperand emptyListStr, [])]
   _ -> error $ "Unsupported type for printf argument: " ++ show (operandType operand)
