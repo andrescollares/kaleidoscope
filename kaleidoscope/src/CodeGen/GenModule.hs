@@ -12,7 +12,6 @@ import CodeGen.LocalVar
 import CodeGen.Utils.Types (operandType, syntaxTypeToASTType)
 import Data.Bifunctor (first)
 import Data.Map.Strict (fromList)
-import Debug.Trace
 import LLVM.AST as AST hiding (function)
 import LLVM.AST.Attribute (ParameterAttribute)
 import qualified LLVM.AST.Constant as C
@@ -117,11 +116,19 @@ getFmtStringForType opType = case opType of
                 ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}
                 ]
           }
-    } -> getFmtStringForType t1
+    } -> " " ++ getFmtStringForType t1 ++ "]\r["
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
-    "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
+    -- FIXME: this could be pretty slow
+    if isList opType
+      then " " ++ getFmtStringForType t1 ++ "," ++ getFmtStringForType t2
+      else "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
   ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> "[%s]"
   _ -> error "Unsupported type for printf format: " ++ show opType
+  where
+    isList :: ASTType.Type -> Bool
+    isList ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, next]}} = isList next
+    isList ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} = True
+    isList _ = False
 
 operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
 operandToPrintfArg operand = case operandType operand of
@@ -135,7 +142,7 @@ operandToPrintfArg operand = case operandType operand of
     strPtr <- select operand (ConstantOperand ts) (ConstantOperand fs)
     return [(strPtr, [])]
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}]}} -> do
-    tuple <- trace (show operand) $ load operand 0
+    tuple <- load operand 0
     val1 <- extractValue tuple [0]
     operandToPrintfArg val1
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} -> do
@@ -146,6 +153,7 @@ operandToPrintfArg operand = case operandType operand of
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
   ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> do
+    -- HACK: printf breaks if I don't provide sufficient arguments
     emptyListStr <- globalStringPtr " " "empty_list_str"
-    return $ [(ConstantOperand emptyListStr, [])]
+    return [(ConstantOperand emptyListStr, [])]
   _ -> error $ "Unsupported type for printf argument: " ++ show (operandType operand)
