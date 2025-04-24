@@ -17,7 +17,6 @@ import LLVM.AST
     operand0,
     returnOperand,
   )
-import LLVM.AST.AddrSpace (AddrSpace (..))
 import LLVM.AST.Attribute (FunctionAttribute (OptimizeNone))
 import LLVM.AST.Global (BasicBlock (..), Global (..), functionDefaults)
 import qualified LLVM.AST.Instruction as I (Instruction (FPToSI, SIToFP, metadata, type'), Terminator (metadata'))
@@ -33,27 +32,6 @@ baseDefinitions =
           parameters = ([Parameter ty (mkName "fmtStr") [] | ty <- [ptr i8]], True),
           returnType = i32,
           functionAttributes = [Right OptimizeNone]
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printil"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printfl"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "printbl"),
-          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
-          returnType = IntegerType 32,
-          basicBlocks = []
         },
     -- math functions
     GlobalDefinition
@@ -113,62 +91,6 @@ baseDefinitions =
           returnType = IntegerType 32,
           basicBlocks = []
         },
-    -- list building functions
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "_alloc_int_list_node"),
-          parameters = ([], False),
-          returnType = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "_alloc_double_list_node"),
-          parameters = ([], False),
-          returnType = PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0),
-          basicBlocks = []
-        },
-    GlobalDefinition
-      functionDefaults
-        { name = Name (fromString "_alloc_bool_list_node"),
-          parameters = ([], False),
-          returnType = PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0),
-          basicBlocks = []
-        },
-    -- type definitions
-    TypeDefinition (Name (fromString "IntList")) $
-      Just
-        ( StructureType
-            False
-            [ IntegerType 32,
-              PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-            ]
-        ),
-    TypeDefinition (Name (fromString "FloatList")) $
-      Just
-        ( StructureType
-            False
-            [ FloatingPointType DoubleFP,
-              PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)
-            ]
-        ),
-    TypeDefinition (Name (fromString "BoolList")) $
-      Just
-        ( StructureType
-            False
-            [ IntegerType 1,
-              PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)
-            ]
-        ),
-    -- GlobalDefinition
-    --   globalVariableDefaults
-    --     { name = Name (fromString "VoidIntList"),
-    --       linkage = External,
-    --       visibility = Default,
-    --       isConstant = True,
-    --       type' = PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0),
-    --       initializer = Just $ C.Null $ PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)
-    --     },
 
     -- type casting functions
     GlobalDefinition

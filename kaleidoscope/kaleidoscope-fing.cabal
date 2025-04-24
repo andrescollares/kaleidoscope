@@ -25,7 +25,7 @@ common common-options
         , llvm-hs-pure  ^>=12.0
 
     ghc-options:
-        /usr/lib/libstdlib.so -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
+        -Wall -Wcompat -Widentities -Wincomplete-uni-patterns
         -Wincomplete-record-updates -Wredundant-constraints
         -Wnoncanonical-monad-instances -threaded -lstdc++ -dynamic
 
@@ -48,8 +48,7 @@ executable kaleidoscope-fing
     main-is: Main.hs
     other-modules: 
         Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
-        , CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
-        , CLIParameters, Processor
+        , StdLib.GenLibs , StdLib.BaseDefs, CLIParameters, Processor
     hs-source-dirs: src
     build-depends:
         , bytestring  >=0.10
@@ -71,8 +70,7 @@ test-suite unit-test
     , src
   other-modules: 
     Parser.Parse, Parser.Lexer, Syntax, CodeGen.JIT, CodeGen.GenModule, CodeGen.GenOperand, CodeGen.LocalVar, CodeGen.Utils.Types
-    , CodeGen.DataStructures.List, StdLib.GenLibs , StdLib.BaseDefs
-    , CLIParameters, Processor
+    , StdLib.GenLibs , StdLib.BaseDefs, CLIParameters, Processor
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     base ^>=4.14

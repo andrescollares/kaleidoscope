@@ -4,7 +4,6 @@
 
 module CodeGen.GenOperand where
 
-import CodeGen.DataStructures.List (createListNode, nullIntList, prependNode)
 import CodeGen.LocalVar
   ( LocalVar,
     getFunctionOperand,
@@ -35,6 +34,7 @@ import LLVM.IRBuilder.Instruction
 import LLVM.IRBuilder.Internal.SnocList (SnocList (SnocList))
 import LLVM.IRBuilder.Monad (IRBuilderT, block, named)
 import qualified Syntax as S
+import qualified LLVM.AST.Constant as Constant
 
 -- Generates the Operands that genTopLevel needs.
 genOperand :: S.Expr -> [LocalVar] -> IRBuilderT ModuleBuilder AST.Operand
@@ -117,11 +117,21 @@ genOperand (S.UnaryOp oper a) localVars = do
         not' :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
         not' x = icmp IP.EQ x (bit 0)
 -- Binary Operands (Infix Operands)
-genOperand (S.BinOp ":" a b) localVars = do
-  opA <- genOperand a localVars
-  opB <- genOperand b localVars
-  firstElem <- createListNode opA
-  prependNode firstElem opB
+genOperand (S.BinOp ":" x xs) localVars = do
+  case xs of
+    S.List _ -> do
+      xOper <- genOperand x localVars
+      xsOper <- genOperand xs localVars
+
+      newListStruct <- alloca (ASTType.StructureType False [operandType xOper, operandType xsOper]) Nothing 0
+
+      xPtr <- gep newListStruct [int32 0, int32 0]
+      storeVolatile xPtr 0 xOper
+      xsPtr <- gep newListStruct [int32 0, int32 1]
+      storeVolatile xsPtr 0 xsOper
+      
+      return newListStruct
+    _ -> error "Invalid list syntax"
 genOperand (S.BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
@@ -150,7 +160,7 @@ genOperand (S.BinOp oper a b) localVars = do
       where
         eitherType = typedOperandInstruction firstOp secondOp
 -- If
--- TODO: check for the extra if_exit and else_exit labels
+-- NOTE: Extra if_exit and else_exit labels are necessary
 genOperand (S.If cond thenExpr elseExpr) localVars = mdo
   computedCond <- genOperand cond localVars
   condBr computedCond ifThen ifElse
@@ -174,25 +184,33 @@ genOperand (S.Let (Name varName) variableValue body) localVars = do
 genOperand (S.TupleI a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars
+
   tupleStruct <- alloca (ASTType.StructureType False [operandType opA, operandType opB]) Nothing 0
+
   opAPtr <- gep tupleStruct [int32 0, int32 0]
   storeVolatile opAPtr 0 opA
   opBPtr <- gep tupleStruct [int32 0, int32 1]
   storeVolatile opBPtr 0 opB
+
   return tupleStruct
-  where
-    storeVolatile :: MonadIRBuilder m => Operand -> Word32 -> Operand -> m ()
-    storeVolatile addr align val = emitInstrVoid $ Store True addr val Nothing align []
 -- Lists
-genOperand (S.List []) _ = nullIntList
+genOperand (S.List []) _ = return $ ConstantOperand $ Constant.Null (ASTType.ptr ASTType.VoidType)
 genOperand (S.List (x : xs)) localVars = do
   firstElem <- genOperand x localVars
-  var <- createListNode firstElem
-  next_slot <- gep var [int32 0, int32 1]
-  nextValue <- genOperand (S.List xs) localVars
-  store next_slot 0 nextValue
-  return var
+  rest <- genOperand (S.List xs) localVars
+
+  listStruct <- alloca (ASTType.StructureType False [operandType firstElem, operandType rest]) Nothing 0
+
+  firstElemPtr <- gep listStruct [int32 0, int32 0]
+  storeVolatile firstElemPtr 0 firstElem
+  restPtr <- gep listStruct [int32 0, int32 1]
+  storeVolatile restPtr 0 rest
+
+  return listStruct
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
+
+storeVolatile :: MonadIRBuilder m => Operand -> Word32 -> Operand -> m ()
+storeVolatile addr align val = emitInstrVoid $ Store True addr val Nothing align []
 
 type BinOpInstruction = (AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand)
 

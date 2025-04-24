@@ -36,4 +36,5 @@ data Type
   | Tuple Type Type
   | ListType Type
   | FunType [Type] Type
+  | Void
   deriving stock (Eq, Ord, Show)

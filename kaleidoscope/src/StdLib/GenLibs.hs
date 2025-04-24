@@ -6,6 +6,7 @@ import LLVM.AST (Definition)
 import Processor (process)
 import StdLib.BaseDefs (baseDefinitions)
 import System.Directory (getDirectoryContents)
+import Debug.Trace (trace)
 
 generateLibraries :: IO [Definition]
 generateLibraries = do
@@ -20,7 +21,7 @@ generateSource = do
 
 processLibrary :: String -> IO [Definition]
 processLibrary source = do
-  result <- process baseDefinitions source (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False, emitAST = False, emitLlvmDefs = False, compile = False})
+  result <- trace source $ process baseDefinitions "" (CLIParameters {inputFile = "", failOnErrors = False, optimizationLevel = 3, emitLLVM = False, emitAST = False, emitLlvmDefs = False, compile = False})
   case result of
     Just definitions -> return definitions
     Nothing -> error "Could not process library"
