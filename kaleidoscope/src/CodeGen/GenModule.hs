@@ -92,7 +92,7 @@ genMain e localVars = do
 
 genPrint :: AST.Operand -> IRBuilderT ModuleBuilder ()
 genPrint operand = mdo
-  let fmtStr = getFmtStringForType $ operandType operand
+  let fmtStr = getFmtString $ operandType operand
   fmtStrGlobal <- globalStringPtr (fmtStr ++ "\n") "fmtStr"
 
   printArgs <- operandToPrintfArg operand
@@ -102,12 +102,20 @@ genPrint operand = mdo
       ((ConstantOperand fmtStrGlobal, []) : printArgs)
   return ()
 
-getFmtStringForType :: AST.Type -> String
-getFmtStringForType opType = case opType of
-  ASTType.IntegerType {ASTType.typeBits = 32} -> "%d"
-  ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} -> "%f"
-  -- HACK: just "%s" results in an error ¯\_(ツ)_/¯
-  ASTType.IntegerType {ASTType.typeBits = 1} -> "%se"
+getFmtString :: AST.Type -> String
+getFmtString opType =
+  case opType of
+    ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
+      if isList t2
+        then "[" ++ getFmtStringForList opType ++ "]"
+        else "(" ++ getFmtString t1 ++ ", " ++ getFmtString t2 ++ ")"
+    -- Empty list
+    ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> "[%s]"
+    _ -> getFmtStringForAtom opType
+
+getFmtStringForList :: ASTType.Type -> String
+-- Last node of a list
+getFmtStringForList
   ASTType.PointerType
     { ASTType.pointerReferent =
         ASTType.StructureType
@@ -116,19 +124,36 @@ getFmtStringForType opType = case opType of
                 ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}
                 ]
           }
-    } -> " " ++ getFmtStringForType t1 ++ "]\r["
-  ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
-    -- FIXME: this could be pretty slow
-    if isList opType
-      then " " ++ getFmtStringForType t1 ++ "," ++ getFmtStringForType t2
-      else "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
-  ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> "[%s]"
-  _ -> error "Unsupported type for printf format: " ++ show opType
-  where
-    isList :: ASTType.Type -> Bool
-    isList ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, next]}} = isList next
-    isList ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} = True
-    isList _ = False
+    } =
+    if isList t1
+      then getFmtString t1
+      else case t1 of
+        ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} ->
+          getFmtString t1
+        _ -> getFmtStringForList t1
+-- Tuple or node of a list
+getFmtStringForList ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} =
+  if isList t1
+    then getFmtString t1 ++ ", " ++ getFmtStringForList t2
+    else case t1 of
+      ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} ->
+        getFmtString t1 ++ ", " ++ getFmtStringForList t2
+      _ -> getFmtStringForList t1 ++ ", " ++ getFmtStringForList t2
+getFmtStringForList opType = getFmtStringForAtom opType
+
+getFmtStringForAtom :: ASTType.Type -> String
+getFmtStringForAtom ASTType.IntegerType {ASTType.typeBits = 32} = "%d"
+getFmtStringForAtom ASTType.FloatingPointType {ASTType.floatingPointType = ASTType.DoubleFP} = "%f"
+-- HACK: just "%s" results in an error ¯\_(ツ)_/¯
+getFmtStringForAtom ASTType.IntegerType {ASTType.typeBits = 1} = "%se"
+getFmtStringForAtom opType = error "Unsupported type for printf format: " ++ show opType
+
+isList :: ASTType.Type -> Bool
+isList ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, next]}} =
+  isList next
+isList ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} =
+  True
+isList _ = False
 
 operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
 operandToPrintfArg operand = case operandType operand of
@@ -141,10 +166,12 @@ operandToPrintfArg operand = case operandType operand of
 
     strPtr <- select operand (ConstantOperand ts) (ConstantOperand fs)
     return [(strPtr, [])]
+  -- Last Node of a list
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}}]}} -> do
     tuple <- load operand 0
     val1 <- extractValue tuple [0]
     operandToPrintfArg val1
+  -- Tuple and list Node
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [_, _]}} -> do
     tuple <- load operand 0
     val1 <- extractValue tuple [0]
@@ -152,6 +179,7 @@ operandToPrintfArg operand = case operandType operand of
     args1 <- operandToPrintfArg val1
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
+  -- Empty list
   ASTType.PointerType {ASTType.pointerReferent = ASTType.PointerType {ASTType.pointerReferent = ASTType.VoidType}} -> do
     -- HACK: printf breaks if I don't provide sufficient arguments
     emptyListStr <- globalStringPtr " " "empty_list_str"
