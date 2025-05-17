@@ -24,7 +24,7 @@ process oldDefs newSource cliParameters = do
         else return ()
 
       -- Create module, compile it and execute it using the JIT
-      let newModule = defaultModule {moduleName = "kaleidoscope", moduleDefinitions = defs}
+      let newModule = defaultModule {moduleName = "lambdakal", moduleDefinitions = defs}
       optimizedModule <- optimizeModule newModule cliParameters
       if compileEnabled
         then return $ Just defs

@@ -6,6 +6,6 @@ source-repository-package
         llvm-hs
     tag: 423220bffac4990d019fc088c46c5f25310d5a33
 
-packages: ./kaleidoscope-fing.cabal
+packages: ./lambdakal.cabal
 
 tests: True

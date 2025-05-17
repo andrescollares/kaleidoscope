@@ -34,20 +34,20 @@ RUN make && make install
 RUN cabal update && cabal install cabal-install
 
 # Compile the C sources
-COPY /kaleidoscope/src/StdLib/cbits /kaleidoscope/src/StdLib/cbits
+COPY /lambdakal/src/StdLib/cbits /lambdakal/src/StdLib/cbits
 
-WORKDIR /kaleidoscope/src/StdLib/cbits
+WORKDIR /lambdakal/src/StdLib/cbits
 # put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
 RUN gcc -fPIC -shared -o /usr/lib/libstdlib.so io.c list.c
 
-WORKDIR /kaleidoscope
+WORKDIR /lambdakal
 
 # Add just the .cabal file to capture dependencies
-COPY /kaleidoscope/cabal.project /kaleidoscope/kaleidoscope-fing.cabal ./
+COPY /lambdakal/cabal.project /lambdakal/lambdakal.cabal ./
 
 RUN cabal build --only-dependencies -j8
 
-COPY /kaleidoscope /kaleidoscope
+COPY /lambdakal /lambdakal
 RUN cabal install
 
 CMD ["bash"]

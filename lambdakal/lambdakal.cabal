@@ -1,5 +1,5 @@
 cabal-version:      3.8
-name:               kaleidoscope-fing
+name:               lambdakal
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
@@ -43,7 +43,7 @@ common common-options
 
     default-language: Haskell2010
 
-executable kaleidoscope-fing
+executable lambdakal
     import: common-options
     main-is: Main.hs
     other-modules: 

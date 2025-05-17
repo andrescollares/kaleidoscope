@@ -1,4 +1,6 @@
-# LLVM+Haskell Kaleidoscope project
+# LambdaKal
+
+LLVM+Haskell programming language based on Kaleidoscope
 
 Andrés Collares & Agustín Gazzano
 
@@ -29,13 +31,13 @@ cabal run
 ### Available options
 
 ```
-cabal run kaleidoscope-fing -- --help
+cabal run lambdakal -- --help
 ```
 
 ### Running code samples
 
 ```
-cabal run kaleidoscope-fing -- --file "./test/programs/recursive_fib.k"
+cabal run lambdakal -- --file "./test/programs/recursive_fib.k"
 ```
 
 ### Test suite

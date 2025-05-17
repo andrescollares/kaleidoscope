@@ -25,6 +25,6 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [] -> writeFile "/kaleidoscope/test/generator/out.k" $ programString 100
-    [iterations] -> writeFile "/kaleidoscope/test/generator/out.k" $ programString (read iterations)
+    [] -> writeFile "/lambdakal/test/generator/out.k" $ programString 100
+    [iterations] -> writeFile "/lambdakal/test/generator/out.k" $ programString (read iterations)
     _ -> putStrLn "Usage: GenPrograms [iterations]"

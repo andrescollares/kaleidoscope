@@ -7,5 +7,5 @@ do
     # generate program
     runhaskell ./test/generator/GenPrograms.hs $i
     # run program and time execution
-    time cabal run kaleidoscope-fing "./test/generator/out.k"
+    time cabal run lambdakal "./test/generator/out.k"
 done

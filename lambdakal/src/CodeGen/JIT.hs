@@ -75,8 +75,8 @@ writeLLVM :: String -> String -> IO ()
 writeLLVM moduleSrc fileName = do
   writeFile fileName moduleSrc
 
--- usage: cabal run kaleidoscope-fing -- -f ./test/programs/add_int_int.k -c
--- clang /kaleidoscope/out.ll -o my_program -L/usr/lib -lstdlib -o outprogram
+-- usage: cabal run lambdakal -- -f ./test/programs/add_int_int.k -c
+-- clang /lambdakal/out.ll -o my_program -L/usr/lib -lstdlib -o outprogram
 -- ./outprogram.o
 compileLLVMWithClang :: String -> String -> IO ()
 compileLLVMWithClang fileNameLlvm fileNameExecutable = do

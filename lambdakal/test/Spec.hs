@@ -34,7 +34,7 @@ tempOutput :: FilePath
 tempOutput = "./test/tmp.out"
 
 silentCabal :: String
-silentCabal = "cabal run -v0 kaleidoscope-fing -- --file="
+silentCabal = "cabal run -v0 lambdakal -- --file="
 
 -- tests :: TestTree
 -- tests = testGroup "Tests" [programTests]

@@ -4,7 +4,7 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - ./kaleidoscope:/kaleidoscope
+      - ./lambdakal:/lambdakal
       - cabal-cache:/root/.cabal
       - ghc-cache:/root/.ghc
       - apt-cache:/var/cache/apt

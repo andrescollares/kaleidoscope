@@ -23,7 +23,7 @@ parserInfo :: ParserInfo CLIParameters
 parserInfo =
   info
     (parserParameters <**> helper)
-    (fullDesc <> progDesc "Kaleidoscope compiler" <> header "Kaleidoscope compiler")
+    (fullDesc <> progDesc "LambdaKal compiler" <> header "LambdaKal compiler")
 
 startRepl :: CLIParameters -> IO ()
 startRepl cliParameters = do
