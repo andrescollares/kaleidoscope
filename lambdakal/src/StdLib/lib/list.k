@@ -1,4 +1,4 @@
- def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));
+def length([int] l) -> int: if l == [] then 0 else 1 + length(tail(l));
   
 def all([int] l, fun (int) -> bool f) -> bool:
   if l == [] then
@@ -59,3 +59,47 @@ def foldr_int([int] l, int acc, fun (int, int) -> int f) -> int:
         acc
     else
         f(head l, foldr_int(tail l, acc, f));
+
+def min_index_int([int] arr, int start) -> int:
+  if start >= length(arr) - 1 then
+    start
+  else
+    if nth_int(arr, start) < nth_int(arr, min_index_int(arr, start + 1)) then
+      start
+    else
+      min_index_int(arr, start + 1);
+
+def _internal_find_min_int([int] arr, int min_val, int min_idx, int len, int acc) -> tuple(int, int):
+  if len == 0 then
+    (min_val, min_idx)
+  else
+    let current_val = head(arr) in
+    if current_val < min_val then
+      _internal_find_min_int(tail(arr), current_val, acc, len - 1, acc + 1)
+    else
+      _internal_find_min_int(tail(arr), min_val, min_idx, len - 1, acc + 1);
+
+def find_min_int([int] arr, int min_val) -> tuple(int, int):
+  let len = length(arr) in
+  _internal_find_min_int(arr, min_val, 0, len, 0);
+
+def remove_nth_int([int] arr, int n) -> [int]:
+  if n == 0 then
+    tail(arr)
+  else
+    head(arr) : remove_nth_int(tail(arr), n - 1);
+
+def _internal_selection_sort([int] arr, int len) -> [int]:
+  if len == 0 then
+    []
+  else
+    let min_tuple = find_min_int(arr, 9999999, 0, length(arr), 0) in
+    let min_val = fst(min_tuple) in
+    let min_idx = snd(min_tuple) in
+    let rest = remove_nth_int(arr, min_idx) in
+    min_val : _internal_selection_sort(rest, len - 1);
+
+
+def selection_sort_int([int] arr) -> [int]:
+  let len = length(arr) in
+  _internal_selection_sort(arr, len);
