@@ -93,7 +93,7 @@ def _internal_selection_sort([int] arr, int len) -> [int]:
   if len == 0 then
     []
   else
-    let min_tuple = find_min_int(arr, 9999999, 0, length(arr), 0) in
+    let min_tuple = find_min_int(arr, 9999999) in
     let min_val = fst(min_tuple) in
     let min_idx = snd(min_tuple) in
     let rest = remove_nth_int(arr, min_idx) in

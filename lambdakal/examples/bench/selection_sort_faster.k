@@ -34,4 +34,4 @@ def rand_array(int n) -> [int]:
   else
     (rand() / 100000) : rand_array(n - 1);
 
-selection_sort(rand_array(10000));
+selection_sort(rand_array(1000));
