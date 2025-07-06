@@ -4,4 +4,4 @@ def fib(int x) -> int:
    else
       fib(x-1) + fib(x-2);
 
-fib(36);
+fib(40);

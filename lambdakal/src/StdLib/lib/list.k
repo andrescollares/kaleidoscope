@@ -69,19 +69,18 @@ def min_index_int([int] arr, int start) -> int:
     else
       min_index_int(arr, start + 1);
 
-def _internal_find_min_int([int] arr, int min_val, int min_idx, int len, int acc) -> tuple(int, int):
-  if len == 0 then
+def _internal_find_min_int([int] arr, int min_val, int min_idx, int acc) -> tuple(int, int):
+  if arr == [] then
     (min_val, min_idx)
   else
     let current_val = head(arr) in
     if current_val < min_val then
-      _internal_find_min_int(tail(arr), current_val, acc, len - 1, acc + 1)
+      _internal_find_min_int(tail(arr), current_val, acc, acc + 1)
     else
-      _internal_find_min_int(tail(arr), min_val, min_idx, len - 1, acc + 1);
+      _internal_find_min_int(tail(arr), min_val, min_idx, acc + 1);
 
 def find_min_int([int] arr, int min_val) -> tuple(int, int):
-  let len = length(arr) in
-  _internal_find_min_int(arr, min_val, 0, len, 0);
+  _internal_find_min_int(arr, min_val, 0, 0);
 
 def remove_nth_int([int] arr, int n) -> [int]:
   if n == 0 then
@@ -89,17 +88,12 @@ def remove_nth_int([int] arr, int n) -> [int]:
   else
     head(arr) : remove_nth_int(tail(arr), n - 1);
 
-def _internal_selection_sort([int] arr, int len) -> [int]:
-  if len == 0 then
+def selection_sort_int([int] arr) -> [int]:
+  if arr == [] then
     []
   else
     let min_tuple = find_min_int(arr, 9999999) in
     let min_val = fst(min_tuple) in
     let min_idx = snd(min_tuple) in
     let rest = remove_nth_int(arr, min_idx) in
-    min_val : _internal_selection_sort(rest, len - 1);
-
-
-def selection_sort_int([int] arr) -> [int]:
-  let len = length(arr) in
-  _internal_selection_sort(arr, len);
+    min_val : selection_sort_int(rest);
