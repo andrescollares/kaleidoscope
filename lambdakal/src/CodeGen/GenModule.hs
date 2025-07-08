@@ -94,21 +94,25 @@ genMain e localVars = do
 genPrint :: AST.Operand -> IRBuilderT ModuleBuilder ()
 genPrint operand = mdo
   case operandType operand of
-    ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _ -> case n of
-      "IntList" -> listPrinterFunction operand "IntList"
-      "FloatList" -> listPrinterFunction operand "FloatList"
-      "BoolList" -> listPrinterFunction operand "BoolList"
-      _ -> error "Unsupported list type for print"
+    ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _ ->
+      handleListType n
+    ASTType.PointerType (ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _) _ ->
+      handleListType n
     _ -> do
       let fmtStr = getFmtStringForType $ operandType operand
       fmtStrGlobal <- globalStringPtr (fmtStr ++ "\n") "fmtStr"
-
       printArgs <- operandToPrintfArg operand
       _ <-
         call
           (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType i32 [ptr i8] True)) (mkName "printf")))
           ((ConstantOperand fmtStrGlobal, []) : printArgs)
       return ()
+  where
+    handleListType n = case n of
+      "IntList"   -> listPrinterFunction operand "IntList"
+      "FloatList" -> listPrinterFunction operand "FloatList"
+      "BoolList"  -> listPrinterFunction operand "BoolList"
+      _           -> error "Unsupported list type for print"
 
 -- TODO: move this below to other file
 
@@ -140,7 +144,7 @@ operandToPrintfArg operand = case operandType operand of
     args1 <- operandToPrintfArg val1
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
-  _ -> error "Unsupported type for printf argument"
+  _ -> error $ "Unsupported type for printf argument: " ++ show (operandType operand)
 
 listPrinterFunction :: AST.Operand -> String -> IRBuilderT ModuleBuilder ()
 listPrinterFunction operand listPointerName = do

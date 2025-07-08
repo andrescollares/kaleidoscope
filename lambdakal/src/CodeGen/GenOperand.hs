@@ -217,7 +217,10 @@ typedOperandInstruction a b wholeInstr floatingInstr = do
       (FloatingPointType _) -> floatingInstr
       _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
     (ASTType.PointerType _ _) -> case bType of
-      (ASTType.PointerType _ _) -> wholeInstr
+      (ASTType.PointerType _ _) -> \x y -> do
+        x' <- ptrtoint x ASTType.i32
+        y' <- ptrtoint y ASTType.i32
+        wholeInstr x' y'
       _ -> error "Pointers can only be compared to other pointers"
     _ -> error $ "Invalid types for operand: " ++ show aType ++ " and " ++ show bType
 
