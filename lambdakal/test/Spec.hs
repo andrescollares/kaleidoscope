@@ -17,10 +17,21 @@ import Test.Tasty.Runners (NumThreads (NumThreads))
 main :: IO ()
 main = do
   files <- listDirectory programDir
-  let testFiles = filterProgramFiles files
-  putStrLn $ "Found " ++ show (length testFiles) ++ " test files."
+  let shallowTestFiles = filterProgramFiles files
+  putStrLn $ "Found " ++ show (length shallowTestFiles) ++ " test files."
 
-  let testCases = map generateOptimizationVariants testFiles
+  let directories = filterDirectories files
+  putStrLn $ "Found " ++ show (length directories) ++ " directories."
+
+  -- let filesInDirectories = concatMap (\dir -> map (dir </>) $ filterProgramFiles files) directories
+  filesInDirectories <- fmap concat $ mapM (\dir -> do
+    contents <- getDirectoryContents (programDir </> dir)
+    let filePaths = map (dir </>) $ filterProgramFiles contents
+    return $ filter (not . null) filePaths) directories
+  putStrLn $ "Found " ++ show (length filesInDirectories) ++ " files in directories."
+  putStrLn $ head filesInDirectories
+
+  let testCases = map generateOptimizationVariants $ filesInDirectories ++ shallowTestFiles
   defaultMain $ localOption (NumThreads 1) $ testGroup "Program Tests" testCases
 
 -- Directory paths
@@ -41,6 +52,9 @@ silentCabal = "cabal run -v0 lambdakal -- --file="
 
 filterProgramFiles :: [String] -> [String]
 filterProgramFiles = filter (\s -> ".k" `isSuffixOf` s)
+
+filterDirectories :: [FilePath] -> [FilePath]
+filterDirectories = filter (\f -> not (f `elem` [".", ".."]) && not (isSuffixOf ".k" f))
 
 generateOptimizationVariants :: FilePath -> TestTree
 generateOptimizationVariants file = testGroup file $ map (generateTest file) ["-o0", "-o3"]
@@ -65,7 +79,7 @@ generateTest file optLevel = testCase ("\t " ++ file ++ " " ++ optLevel) $ do
       expectedOutput <- readFile outputFilePath
       actualOutput @?= expectedOutput
     else do
-      putStrLn $ "No expected output file for " ++ file
+      putStrLn $ "\nNo expected output file for " ++ file
       putStrLn $ "Writing actual output to " ++ outputFilePath
       writeFile outputFilePath actualOutput
 

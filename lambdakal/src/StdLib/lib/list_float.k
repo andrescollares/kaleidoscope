@@ -33,7 +33,7 @@ def filter_double([double] l, fun (double) -> bool f) -> [double]:
     else
       filter_double(tail l, f));
 
-def nth_double([double] l, double n) -> double:
+def nth_double([double] l, int n) -> double:
   if n == 0 then
     head l
   else
@@ -92,7 +92,7 @@ def selection_sort_double([double] arr) -> [double]:
   if arr == [] then
     []
   else
-    let min_tuple = find_min_double(arr, 9999999) in
+    let min_tuple = find_min_double(arr, 999999.0) in
     let min_val = fst(min_tuple) in
     let min_idx = snd(min_tuple) in
     let rest = remove_nth_double(arr, min_idx) in

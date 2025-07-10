@@ -1,0 +1,1 @@
+selection_sort_double([1.23, 0.0, 2.45, 0.11, 4.5]);
