@@ -124,7 +124,9 @@ getFmtStringForType opType = case opType of
   ASTType.IntegerType {ASTType.typeBits = 1} -> "%se"
   ASTType.PointerType {ASTType.pointerReferent = ASTType.StructureType {ASTType.elementTypes = [t1, t2]}} ->
     "(" ++ getFmtStringForType t1 ++ ", " ++ getFmtStringForType t2 ++ ")"
-  _ -> error "Unsupported type for printf format"
+  ASTType.PointerType {ASTType.pointerReferent = NamedTypeReference (Name _), pointerAddrSpace = _} -> "%s"
+  ASTType.PointerType (ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _) _ -> "[]"
+  _ -> error $ "Unsupported type for printf format: "  ++ show opType
 
 operandToPrintfArg :: AST.Operand -> IRBuilderT ModuleBuilder [(AST.Operand, [ParameterAttribute])]
 operandToPrintfArg operand = case operandType operand of
@@ -144,6 +146,22 @@ operandToPrintfArg operand = case operandType operand of
     args1 <- operandToPrintfArg val1
     args2 <- operandToPrintfArg val2
     return $ args1 ++ args2
+  ASTType.PointerType {ASTType.pointerReferent = NamedTypeReference (Name "IntList"), pointerAddrSpace = _} -> do
+    pritfString <- call intListToString [(operand, [])]
+    return [(pritfString, [])]
+    where
+      intListToString = (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType (ptr i8) [PointerType {pointerReferent = NamedTypeReference (Name "IntList"), pointerAddrSpace = AddrSpace 0}] False)) (Name "intListToString")))
+  ASTType.PointerType {ASTType.pointerReferent = NamedTypeReference (Name "FloatList"), pointerAddrSpace = _} -> do
+    pritfString <- call floatListToString [(operand, [])]
+    return [(pritfString, [])]
+    where
+      floatListToString = (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType (ptr i8) [PointerType {pointerReferent = NamedTypeReference (Name "FloatList"), pointerAddrSpace = AddrSpace 0}] False)) (Name "floatListToString")))
+  ASTType.PointerType {ASTType.pointerReferent = NamedTypeReference (Name "BoolList"), pointerAddrSpace = _} -> do
+    pritfString <- call boolListToString [(operand, [])]
+    return [(pritfString, [])]
+    where
+      boolListToString = (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType (ptr i8) [PointerType {pointerReferent = NamedTypeReference (Name "BoolList"), pointerAddrSpace = AddrSpace 0}] False)) (Name "boolListToString")))
+  ASTType.PointerType (ASTType.PointerType (ASTType.NamedTypeReference (AST.Name n)) _) _ -> return [(operand, [])]
   _ -> error $ "Unsupported type for printf argument: " ++ show (operandType operand)
 
 listPrinterFunction :: AST.Operand -> String -> IRBuilderT ModuleBuilder ()

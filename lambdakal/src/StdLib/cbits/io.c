@@ -32,6 +32,31 @@ int32_t printil(intList *list) {
   printf("]\n");
 }
 
+// generates the string representation of an int list to pass to the printf function
+// TODO: replace printil with printf & this function
+
+char *intListToString(intList *list) {
+  if (list == NULL) {
+    return "[]";
+  }
+  intList *current = list;
+  intList *next = NULL;
+  char *result = malloc(1024); // allocate a buffer for the string
+  strcpy(result, "[");
+  while (current != NULL) {
+    char buffer[32];
+    sprintf(buffer, "%d", current->val);
+    strcat(result, buffer);
+    next = current->next;
+    if (next != NULL) {
+      strcat(result, ", ");
+    }
+    current = next;
+  }
+  strcat(result, "]");
+  return result;
+}
+
 // print a double list
 int32_t printfl(doubleList *list) {
   if (list == NULL) {
@@ -52,6 +77,28 @@ int32_t printfl(doubleList *list) {
   printf("]\n");
 }
 
+char *floatListToString(doubleList *list) {
+  if (list == NULL) {
+    return "[]";
+  }
+  doubleList *current = list;
+  doubleList *next = NULL;
+  char *result = malloc(1024); // allocate a buffer for the string
+  strcpy(result, "[");
+  while (current != NULL) {
+    char buffer[32];
+    sprintf(buffer, "%f", current->val);
+    strcat(result, buffer);
+    next = current->next;
+    if (next != NULL) {
+      strcat(result, ", ");
+    }
+    current = next;
+  }
+  strcat(result, "]");
+  return result;
+}
+
 // print a boolean list
 int32_t printbl(boolList *list) {
   if (list == NULL) {
@@ -70,6 +117,26 @@ int32_t printbl(boolList *list) {
     current = next;
   }
   printf("]\n");
+}
+
+char* boolListToString(boolList *list) {
+  if (list == NULL) {
+    return "[]";
+  }
+  boolList *current = list;
+  boolList *next = NULL;
+  char *result = malloc(1024); // allocate a buffer for the string
+  strcpy(result, "[");
+  while (current != NULL) {
+    strcat(result, current->val ? "true" : "false");
+    next = current->next;
+    if (next != NULL) {
+      strcat(result, ", ");
+    }
+    current = next;
+  }
+  strcat(result, "]");
+  return result;
 }
 
 // write a double to a file

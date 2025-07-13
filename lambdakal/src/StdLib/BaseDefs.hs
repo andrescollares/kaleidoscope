@@ -55,6 +55,27 @@ baseDefinitions =
           returnType = IntegerType 32,
           basicBlocks = []
         },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "intListToString"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "IntList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = ptr i8,
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "floatListToString"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "FloatList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = ptr i8,
+          basicBlocks = []
+        },
+    GlobalDefinition
+      functionDefaults
+        { name = Name (fromString "boolListToString"),
+          parameters = ([Parameter (PointerType (NamedTypeReference (Name (fromString "BoolList"))) (AddrSpace 0)) (Name (fromString "list")) []], False),
+          returnType = ptr i8,
+          basicBlocks = []
+        },
     -- math functions
     GlobalDefinition
       functionDefaults

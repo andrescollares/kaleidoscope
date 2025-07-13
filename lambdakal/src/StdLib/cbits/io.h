@@ -12,4 +12,10 @@ int32_t printfl(doubleList *list);
 
 int32_t printbl(boolList *list);
 
+char* intListToString(intList *list);
+
+char* floatListToString(doubleList *list);
+
+char* boolListToString(boolList *list);
+
 double writed(double d);
