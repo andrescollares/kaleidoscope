@@ -16,6 +16,6 @@ selectionSort xs = minElem : selectionSort (delete minElem xs)
 
 main :: IO ()
 main = do
-  let sortedList = selectionSort (randomArray 10000)
+  let sortedList = selectionSort (randomArray 5000)
   print sortedList
 

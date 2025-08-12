@@ -1,0 +1,134 @@
+def length_double([double] l) -> int: if l == [] then 0 else 1 + length_double(tail(l));
+  
+def all_double([double] l, fun (double) -> bool f) -> bool:
+  if l == [] then
+    true
+  else
+    (if f(head l) then
+      all_double(tail l, f)
+    else
+      false);
+
+def any_double([double] l, fun (double) -> bool f) -> bool:
+  if l == [] then
+    false
+  else
+    (if f(head l) then
+      true
+    else
+      any_double(tail l, f));
+
+def map_double([double] l, fun (double) -> double f) -> [double]:
+  if l == [] then
+    []
+  else
+    f(head l) : map_double(tail l, f);
+
+def filter_double([double] l, fun (double) -> bool f) -> [double]:
+  if l == [] then
+    []
+  else
+    (if f(head l) then
+      head l : filter_double(tail l, f)
+    else
+      filter_double(tail l, f));
+
+def nth_double([double] l, int n) -> double:
+  if n == 0 then
+    head l
+  else
+    nth_double(tail l, n - 1);
+
+def reverse_acc_double([double] l, [double] acc) -> [double]:
+  if l == [] then
+    acc
+  else
+    reverse_acc_double(tail l, head l : acc);
+
+def reverse_double([double] l) -> [double]:
+  reverse_acc_double(l, []);
+
+def foldl_double([double] l, double acc, fun (double, double) -> double f) -> double:
+  if l == [] then
+    acc
+  else
+    foldl_double(tail l, f(acc, head l), f);
+
+def foldr_double([double] l, double acc, fun (double, double) -> double f) -> double:
+    if l == [] then
+        acc
+    else
+        f(head l, foldr_double(tail l, acc, f));
+
+def min_index_double([double] arr, int start) -> int:
+  if start >= length_double(arr) - 1 then
+    start
+  else
+    if nth_double(arr, start) < nth_double(arr, min_index_double(arr, start + 1)) then
+      start
+    else
+      min_index_double(arr, start + 1);
+
+def _internal_find_min_double([double] arr, double min_val, int min_idx, int acc) -> tuple(double, int):
+  if arr == [] then
+    (min_val, min_idx)
+  else
+    let current_val = head(arr) in
+    if current_val < min_val then
+      _internal_find_min_double(tail(arr), current_val, acc, acc + 1)
+    else
+      _internal_find_min_double(tail(arr), min_val, min_idx, acc + 1);
+
+def find_min_double([double] arr, double min_val) -> tuple(double, int):
+  _internal_find_min_double(arr, min_val, 0, 0);
+
+def remove_nth_double([double] arr, int n) -> [double]:
+  if n == 0 then
+    tail(arr)
+  else
+    head(arr) : remove_nth_double(tail(arr), n - 1);
+
+def selection_sort_double([double] arr) -> [double]:
+  if arr == [] then
+    []
+  else
+    let min_tuple = find_min_double(arr, 999999.0) in
+    let min_val = fst(min_tuple) in
+    let min_idx = snd(min_tuple) in
+    let rest = remove_nth_double(arr, min_idx) in
+    min_val : selection_sort_double(rest);
+
+FIXME: REPL runs fine, but when compiled, the empty list is always assumed %IntList* type.
+define %FloatList* @map_double.4(%FloatList* %l_0, double (double)* %f_0) {
+  %1 = ptrtoint %FloatList* %l_0 to i32
+  %2 = ptrtoint %IntList* null to i32
+  %3 = icmp eq i32 %1, %2
+  br i1 %3, label %if.then_0, label %if.else_0
+
+if.then_0:                                        ; preds = %0
+  br label %if.if_exit_0
+
+if.else_0:                                        ; preds = %0
+  %4 = getelementptr %FloatList, %FloatList* %l_0, i32 0, i32 0
+  %5 = load double, double* %4, align 8
+  %6 = call double %f_0(double %5)
+  %7 = getelementptr %FloatList, %FloatList* %l_0, i32 0, i32 1
+  %8 = load %FloatList*, %FloatList** %7, align 8
+  %9 = call %FloatList* @map_double.4(%FloatList* %8, double (double)* %f_0)
+  %10 = call %FloatList* @_alloc_double_list_node()
+  %11 = getelementptr %FloatList, %FloatList* %10, i32 0, i32 0
+  store double %6, double* %11, align 8
+  %12 = getelementptr %FloatList, %FloatList* %10, i32 0, i32 1
+  store %FloatList* %9, %FloatList** %12, align 8
+  br label %if.else_exit_0
+
+if.if_exit_0:                                     ; preds = %if.then_0
+  br label %if.end_0
+
+if.else_exit_0:                                   ; preds = %if.else_0
+  br label %if.end_0
+
+if.end_0:                                         ; preds = %if.else_exit_0, %if.if_exit_0
+  %13 = phi %IntList* [ null, %if.if_exit_0 ], [ %10, %if.else_exit_0 ]
+  ret %IntList* %13
+}
