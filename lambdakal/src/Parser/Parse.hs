@@ -14,6 +14,7 @@ import Text.Parsec
     eof,
     many,
     optionMaybe,
+    optional,
     parse,
     try,
     (<|>),
@@ -139,7 +140,11 @@ tuple = do
 list :: Parser S.Expr
 list = do
   elements <- L.brackets $ L.commaSep expr
-  return $ S.List elements
+  mType <- optionMaybe $ do
+    L.reserved "as"
+    t <- listT
+    return t
+  return $ S.List elements mType
 
 expr :: Parser S.Expr
 expr = Ex.buildExpressionParser (binops ++ unops ++ [[unop], [binop]]) factor

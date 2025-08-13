@@ -21,6 +21,20 @@ nullIntList = do
   let listn't = Null intListPtrType
   return $ ConstantOperand listn't
 
+nullDoubleList :: IRBuilderT ModuleBuilder Operand
+nullDoubleList = do
+  let doubleListType = ASTType.NamedTypeReference (AST.Name "FloatList")
+  let doubleListPtrType = ASTType.PointerType doubleListType (AddrSpace 0)
+  let listn't = Null doubleListPtrType
+  return $ ConstantOperand listn't
+
+nullBooleanList :: IRBuilderT ModuleBuilder Operand
+nullBooleanList = do
+  let booleanListType = ASTType.NamedTypeReference (AST.Name "BoolList")
+  let booleanListPtrType = ASTType.PointerType booleanListType (AddrSpace 0)
+  let listn't = Null booleanListPtrType
+  return $ ConstantOperand listn't
+
 createListNode :: AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
 createListNode nodeVal = do
   var <- call (ConstantOperand (C.GlobalReference (ASTType.ptr (ASTType.FunctionType listPtrType [] False)) (Name $ allocListNode elementType))) []

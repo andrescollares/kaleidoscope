@@ -15,7 +15,7 @@ data Expr
   | Float Double
   | Bool Bool
   | TupleI Expr Expr
-  | List [Expr]
+  | List [Expr] (Maybe Type)
   | Let Name Expr Expr
   | Var Name
   | Call Name [Expr]

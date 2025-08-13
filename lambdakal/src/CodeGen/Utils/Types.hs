@@ -37,7 +37,7 @@ getExpressionType (S.UnaryOp unOp (S.TupleI e1 e2)) currentDefs =
     "fst" -> getExpressionType e1 currentDefs
     "snd" -> getExpressionType e2 currentDefs
     _ -> error "Unsupported unary operation on Tuple"
-getExpressionType (S.UnaryOp unOp (S.List (x : _))) currentDefs =
+getExpressionType (S.UnaryOp unOp (S.List (x : _) _)) currentDefs =
   case unOp of
     "head" -> getExpressionType x currentDefs
     "tail" -> listPointerType x currentDefs
@@ -64,9 +64,9 @@ getExpressionType (S.If _ e1 e2) currentDefs =
     else error "Types of both sides of if statement should be the same"
   where
     e1Type = getExpressionType e1 currentDefs
-getExpressionType (S.List (x : _)) currentDefs = listPointerType x currentDefs
+getExpressionType (S.List (x : _) _) currentDefs = listPointerType x currentDefs
 -- FIXME: (?) empty list defaults to int list
-getExpressionType (S.List []) _ = ASTType.PointerType (ASTType.NamedTypeReference (AST.Name (fromString "IntList"))) (AddrSpace 0)
+getExpressionType (S.List [] _) _ = ASTType.PointerType (ASTType.NamedTypeReference (AST.Name (fromString "IntList"))) (AddrSpace 0)
 getExpressionType (S.TupleI e1 e2) currentDefs = ASTType.PointerType (ASTType.StructureType False [getExpressionType e1 currentDefs, getExpressionType e2 currentDefs]) (AddrSpace 0)
 
 findLocalVarType :: [CurrentDef] -> AST.Name -> S.Type

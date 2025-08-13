@@ -4,7 +4,7 @@
 
 module CodeGen.GenOperand where
 
-import CodeGen.DataStructures.List (createListNode, nullIntList, prependNode)
+import CodeGen.DataStructures.List (createListNode, nullIntList, nullDoubleList, nullBooleanList, prependNode)
 import CodeGen.LocalVar
   ( LocalVar,
     getFunctionOperand,
@@ -184,12 +184,17 @@ genOperand (S.TupleI a b) localVars = do
     storeVolatile :: MonadIRBuilder m => Operand -> Word32 -> Operand -> m ()
     storeVolatile addr align val = emitInstrVoid $ Store True addr val Nothing align []
 -- Lists
-genOperand (S.List []) _ = nullIntList
-genOperand (S.List (x : xs)) localVars = do
+-- empty lists need to be typed explicitly
+genOperand (S.List [] tp) _ = case tp of
+  Just (S.ListType S.Double) -> nullDoubleList
+  Just (S.ListType S.Boolean) -> nullBooleanList
+  _ -> nullIntList
+-- non-empty list type can be inferred
+genOperand (S.List (x : xs) _) localVars = do
   firstElem <- genOperand x localVars
   var <- createListNode firstElem
   next_slot <- gep var [int32 0, int32 1]
-  nextValue <- genOperand (S.List xs) localVars
+  nextValue <- genOperand (S.List xs Nothing) localVars
   store next_slot 0 nextValue
   return var
 genOperand x _ = error $ "This shouldn't have matched here: " <> show x
