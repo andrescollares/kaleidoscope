@@ -1,5 +1,16 @@
 FROM haskell:8.10.7-buster
 
+# buster is EOL
+RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g' /etc/apt/sources.list \
+ && sed -i '/security.debian.org/d' /etc/apt/sources.list \
+ && echo "deb http://archive.debian.org/debian-security buster/updates main" >> /etc/apt/sources.list \
+ && apt-get update -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false \
+ && apt-get install -y --no-install-recommends \
+    bash vim nano \
+    gnupg ca-certificates \
+    autoconf automake cmake dpkg-dev file make patch libc6-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 RUN apt-get -qq update \
     && apt-get install -qqy --no-install-recommends \
