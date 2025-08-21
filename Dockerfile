@@ -38,7 +38,7 @@ COPY /lambdakal/src/StdLib/cbits /lambdakal/src/StdLib/cbits
 
 WORKDIR /lambdakal/src/StdLib/cbits
 # put the shared object file (.so) under /usr/lib -> this is passed to ghc options in the cabal file
-RUN gcc -fPIC -shared -o /usr/lib/libstdlib.so io.c list.c
+RUN gcc -fPIC -shared -o /usr/lib/liblambdakal.so io.c list.c
 
 WORKDIR /lambdakal
 

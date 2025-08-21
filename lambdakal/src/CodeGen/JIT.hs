@@ -86,7 +86,7 @@ compileLLVMWithClang fileNameLlvm fileNameExecutable = do
   where
     cmd = "clang " ++ fileNameLlvm ++ " -o " ++ fileNameExecutable ++ " " ++ linkedLibraryDirectory ++ " " ++ linkedLibraryName
     linkedLibraryDirectory = "-L/usr/lib"
-    linkedLibraryName = "-lstdlib" -- the actual name of the library should be libstdlib.so
+    linkedLibraryName = "-llambdakal" -- the actual name of the library should be liblambdakal.so
 
 runJIT :: AST.Module -> IO String
 runJIT astModule = do
