@@ -1,12 +1,5 @@
 module Sum where
 
-sum' :: [Double] -> Double
-sum' [] = 0
-sum' (x:xs) = x + sum' xs
-
-
-
-main :: IO ()
-main = do
-  let numbers = [1.0..1000000.0]
-  print (sum' numbers)
+main = print $ sum1 [1.0..100000000.0]
+sum1 [] = 0
+sum1 (x : xs) = x + sum1 xs

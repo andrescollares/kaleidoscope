@@ -1,0 +1,9 @@
+# using doubles instead of i32 to avoid overflow
+
+def sum_acc([double] l, double acc) -> double: 
+  if l == [] as [double] then acc else sum_acc(tail l, acc + (head l));
+
+def one_to_n_acc(double n, [double] acc) -> [double]: 
+  if n <= 0.0 then acc else one_to_n_acc(n - 1.0, n : acc);
+
+sum_acc(one_to_n_acc(10000.0, [] as [double]), 0.0);

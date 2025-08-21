@@ -15,7 +15,7 @@ for N in 1000.0 10000.0 100000.0 1000000.0 10000000.0 100000000.0; do
       END {print LINE}
     ' "$FILE" > "$FILE.tmp"
 
-    time cabal run lambdakal -- -f "$FILE.tmp" -o"$OPT" 2>&1 | grep "real"
+    time cabal run lambdakal -- -f "$FILE.tmp" -o"$OPT" 2>&1
     /usr/bin/time -v cabal run lambdakal -- -f "$FILE.tmp" -o"$OPT" 2>&1 | grep "Maximum resident set size"
     sleep 1  # Sleep to avoid too fast consecutive runs
   done

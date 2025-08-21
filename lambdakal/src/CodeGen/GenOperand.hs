@@ -4,7 +4,7 @@
 
 module CodeGen.GenOperand where
 
-import CodeGen.DataStructures.List (createListNode, nullIntList, nullDoubleList, nullBooleanList, prependNode)
+import CodeGen.DataStructures.List (createListNode, nullIntList, nullDoubleList, nullBooleanList, prependNode, appendNode)
 import CodeGen.LocalVar
   ( LocalVar,
     getFunctionOperand,
@@ -122,6 +122,10 @@ genOperand (S.BinOp ":" a b) localVars = do
   opB <- genOperand b localVars
   firstElem <- createListNode opA
   prependNode firstElem opB
+genOperand (S.BinOp "++" a b) localVars = do
+  opA <- genOperand a localVars
+  opB <- genOperand b localVars
+  appendNode opA opB
 genOperand (S.BinOp oper a b) localVars = do
   opA <- genOperand a localVars
   opB <- genOperand b localVars

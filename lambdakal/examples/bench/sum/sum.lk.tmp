@@ -1,7 +1,7 @@
 # using doubles instead of i32 to avoid overflow
 
-def sum([double] l) -> double: if l == [] then 0 else (head l) + sum(tail(l));
+def sum([double] l) -> double: if l == [] then 0.0 else (head l) + sum(tail(l));
 
-def one_to_n(double n) -> [double]: if n <= 0 then [] else n : one_to_n(n - 1);
+def one_to_n(double n) -> [double]: if n <= 0.0 then [] as [double] else n : one_to_n(n - 1.0);
 
-sum(one_to_n(100000000.0));
+sum(one_to_n(10000000.0));

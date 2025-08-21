@@ -58,6 +58,12 @@ prependNode node list = do
   store i32_slot 0 list
   return node
 
+appendNode :: AST.Operand -> AST.Operand -> IRBuilderT ModuleBuilder AST.Operand
+appendNode node list = do
+  i32_slot <- gep list [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)]
+  store i32_slot 0 node
+  return list
+
 allocListNode :: ASTType.Type -> ShortByteString
 allocListNode elementType = case elementType of
   ASTType.FloatingPointType _ -> "_alloc_double_list_node"
